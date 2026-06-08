@@ -1,0 +1,125 @@
+using Microsoft.Data.Sqlite;
+using System.IO;
+
+namespace ShipmentCalendar.Data;
+
+/// <summary>SQLiteデータベース初期化・接続管理（工程マスタ・休日のみ管理）</summary>
+public static class DatabaseInitializer
+{
+    private static readonly string DataDir = Path.Combine(
+        AppDomain.CurrentDomain.BaseDirectory, "data");
+
+    private static string _dbPath = Path.Combine(DataDir, "shipment.db");
+
+    public static string ConnectionString => $"Data Source={_dbPath}";
+
+    public static void Initialize()
+    {
+        Directory.CreateDirectory(DataDir);
+
+        // 旧パス（exeと同じ場所）から新パス（data/）へ移行する
+        var oldPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "shipment.db");
+        if (File.Exists(oldPath) && !File.Exists(_dbPath))
+            File.Move(oldPath, _dbPath);
+
+        using var connection = new SqliteConnection(ConnectionString);
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            CREATE TABLE IF NOT EXISTS Products (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ProductName TEXT NOT NULL UNIQUE,
+                ItemNumber TEXT NOT NULL DEFAULT ''
+            );
+
+            CREATE TABLE IF NOT EXISTS ProcessDefinitions (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ItemNumber TEXT NOT NULL,
+                ProcessName TEXT NOT NULL,
+                LeadTimeDays INTEGER NOT NULL DEFAULT 0,
+                SortOrder INTEGER NOT NULL DEFAULT 0,
+                IsVisible INTEGER NOT NULL DEFAULT 1,
+                CsvColumnName TEXT NOT NULL DEFAULT '',
+                WarningDaysBeforeDeadline INTEGER NOT NULL DEFAULT 0
+            );
+
+            CREATE TABLE IF NOT EXISTS Holidays (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                Date TEXT NOT NULL UNIQUE,
+                Description TEXT NOT NULL DEFAULT ''
+            );
+        ";
+        command.ExecuteNonQuery();
+
+        MigrateRenameColumnIfExists(connection, "ProcessDefinitions", "BusinessDaysBeforeDelivery", "LeadTimeDays");
+        MigrateRenameColumnIfExists(connection, "ProcessDefinitions", "ProductName", "ItemNumber");
+        MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "LeadTimeDays", "INTEGER NOT NULL DEFAULT 0");
+        MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "IsVisible", "INTEGER NOT NULL DEFAULT 1");
+        MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "CsvColumnName", "TEXT NOT NULL DEFAULT ''");
+        MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "WarningDaysBeforeDeadline", "INTEGER NOT NULL DEFAULT 0");
+
+        // 既存DBのProcessDefinitions.ItemNumberをProductsテーブルに移行
+        MigrateAddColumnIfNotExists(connection, "Products", "DisplayName", "TEXT NOT NULL DEFAULT ''");
+        MigrateProductsFromProcessDefinitions(connection);
+    }
+
+    /// <summary>ProcessDefinitions.ItemNumber が存在する場合、Productsテーブルへ移行する</summary>
+    private static void MigrateProductsFromProcessDefinitions(SqliteConnection connection)
+    {
+        // ItemNumber列が存在しない場合はスキップ（既に移行済み or 新規DB）
+        var check = connection.CreateCommand();
+        check.CommandText = "PRAGMA table_info(ProcessDefinitions)";
+        bool hasItemNumber = false;
+        using (var reader = check.ExecuteReader())
+        {
+            while (reader.Read())
+            {
+                if (reader.GetString(1) == "ItemNumber") { hasItemNumber = true; break; }
+            }
+        }
+        if (!hasItemNumber) return;
+
+        // 既存のProductNameとItemNumberをProductsに移行（重複はスキップ）
+        var migrate = connection.CreateCommand();
+        migrate.CommandText = @"
+            INSERT OR IGNORE INTO Products (ProductName, ItemNumber)
+            SELECT DISTINCT ItemNumber, COALESCE(ItemNumber, '') FROM ProcessDefinitions
+            WHERE ItemNumber != ''";
+        migrate.ExecuteNonQuery();
+    }
+
+    private static void MigrateRenameColumnIfExists(SqliteConnection connection, string table, string oldColumn, string newColumn)
+    {
+        var check = connection.CreateCommand();
+        check.CommandText = $"PRAGMA table_info({table})";
+        using var reader = check.ExecuteReader();
+        bool hasOld = false, hasNew = false;
+        while (reader.Read())
+        {
+            var name = reader.GetString(1);
+            if (name == oldColumn) hasOld = true;
+            if (name == newColumn) hasNew = true;
+        }
+        if (hasOld && !hasNew)
+        {
+            var alter = connection.CreateCommand();
+            alter.CommandText = $"ALTER TABLE {table} RENAME COLUMN {oldColumn} TO {newColumn}";
+            alter.ExecuteNonQuery();
+        }
+    }
+
+    private static void MigrateAddColumnIfNotExists(SqliteConnection connection, string table, string column, string definition)
+    {
+        var check = connection.CreateCommand();
+        check.CommandText = $"PRAGMA table_info({table})";
+        using var reader = check.ExecuteReader();
+        while (reader.Read())
+        {
+            if (reader.GetString(1) == column) return;
+        }
+        var alter = connection.CreateCommand();
+        alter.CommandText = $"ALTER TABLE {table} ADD COLUMN {column} {definition}";
+        alter.ExecuteNonQuery();
+    }
+}

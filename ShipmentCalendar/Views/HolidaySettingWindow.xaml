@@ -1,0 +1,47 @@
+<Window x:Class="ShipmentCalendar.Views.HolidaySettingWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="休日設定" Height="500" Width="500"
+        WindowStartupLocation="CenterOwner">
+    <DockPanel Margin="16">
+        <!-- ボタン・ステータスを先に宣言しないと高さ不足で隠れる -->
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+            <Button Content="祝日を自動取得" Padding="12,6" Click="BtnFetchHolidays_Click" Margin="0,0,8,0"/>
+            <Button Content="選択を削除" Padding="12,6" Click="BtnDelete_Click" Margin="0,0,8,0"/>
+            <Button Content="閉じる" Padding="12,6" Click="BtnClose_Click"/>
+        </StackPanel>
+        <TextBlock Name="TxtStatus" DockPanel.Dock="Bottom" Margin="0,4,0,0" Foreground="#666666"/>
+
+        <TextBlock DockPanel.Dock="Top" FontSize="16" FontWeight="Bold"
+                   Text="会社休日カレンダー設定" Margin="0,0,0,12"/>
+
+        <!-- 年フィルター -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBlock Text="年：" VerticalAlignment="Center"/>
+            <ComboBox Name="CmbYear" Width="80" SelectionChanged="CmbYear_SelectionChanged" Margin="4,0"/>
+        </StackPanel>
+
+        <!-- 休日追加 -->
+        <Grid DockPanel.Dock="Bottom" Margin="0,8,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="140"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <DatePicker Name="DpHoliday" Grid.Column="0" Margin="0,0,4,0"/>
+            <TextBox Name="TxtDescription" Grid.Column="1" Margin="0,0,4,0" VerticalContentAlignment="Center"/>
+            <Button Grid.Column="2" Content="追加" Padding="8,4" Click="BtnAdd_Click"/>
+        </Grid>
+
+        <!-- 休日リスト（残りのスペースを自動で使用） -->
+        <DataGrid Name="HolidayGrid"
+                  AutoGenerateColumns="False" CanUserAddRows="False"
+                  IsReadOnly="True" HeadersVisibility="Column" Margin="0,0,0,0">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="日付" Binding="{Binding Date, StringFormat=yyyy/MM/dd (ddd)}" Width="160"/>
+                <DataGridTextColumn Header="説明" Binding="{Binding Description}" Width="*"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+    </DockPanel>
+</Window>

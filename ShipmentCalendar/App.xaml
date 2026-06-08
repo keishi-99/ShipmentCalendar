@@ -1,0 +1,15 @@
+<Application
+    x:Class="ShipmentCalendar.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="clr-namespace:ShipmentCalendar"
+    StartupUri="Views/MainWindow.xaml">
+    <Application.Resources>
+        <!--  工程ステータス色定義  -->
+        <SolidColorBrush x:Key="StatusNotStarted" Color="#F0F0F0" />
+        <SolidColorBrush x:Key="StatusInProgress" Color="#FFE066" />
+        <SolidColorBrush x:Key="StatusCompleted" Color="#66BB6A" />
+        <SolidColorBrush x:Key="StatusOverdue" Color="#EF5350" />
+        <SolidColorBrush x:Key="AccentColor" Color="#1976D2" />
+    </Application.Resources>
+</Application>
