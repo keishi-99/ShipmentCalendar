@@ -70,7 +70,7 @@ public class OdbcOrderRepository : IOrderRepository
         return orders;
     }
 
-    /// <summary>受入実績ビューから完了工程を取得して注文に仮登録する</summary>
+    /// <summary>受入実績ビューから完了工程を取得して注文に仮登録する（製番リストを1000件ずつバッチ処理）</summary>
     private async Task LoadUkeireJissekiAsync(Dictionary<string, Order> orders)
     {
         if (orders.Count == 0) return;
@@ -78,31 +78,37 @@ public class OdbcOrderRepository : IOrderRepository
         using var conn = OdbcConnectionFactory.Create(_settings);
         await conn.OpenAsync();
 
-        // 製番リストを IN 句で絞り込む
-        var seibanList = string.Join(",", orders.Keys.Select(s => $"'{s.Replace("'", "''")}'"));
+        var keys = orders.Keys.ToList();
+        const int batchSize = 1000;
 
-        using var cmd = conn.CreateCommand();
-        cmd.CommandText = $@"SELECT 製番, 指示内容 FROM VP_受入実績情報_YD
-            WHERE 製番 IN ({seibanList})
-              AND 指示内容 IS NOT NULL
-              AND 指示内容 <> '< NULL >'";
-
-        using var reader = await cmd.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
+        for (int i = 0; i < keys.Count; i += batchSize)
         {
-            var seiban = reader["製番"]?.ToString()?.Trim() ?? string.Empty;
-            var processCode = reader["指示内容"]?.ToString()?.Trim() ?? string.Empty;
-            if (string.IsNullOrEmpty(seiban) || string.IsNullOrEmpty(processCode)) continue;
-            if (!orders.TryGetValue(seiban, out var order)) continue;
+            var batchKeys = keys.Skip(i).Take(batchSize);
+            var seibanList = string.Join(",", batchKeys.Select(s => $"'{s.Replace("'", "''")}'"));
 
-            // 完了工程を仮登録（ProcessName = 指示内容コード。BuildProcessesで変換される）
-            if (!order.Processes.Any(p => p.ProcessName == processCode))
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = $@"SELECT 製番, 指示内容 FROM VP_受入実績情報_YD
+                WHERE 製番 IN ({seibanList})
+                  AND 指示内容 IS NOT NULL
+                  AND 指示内容 <> '< NULL >'";
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
             {
-                order.Processes.Add(new OrderProcess
+                var seiban = reader["製番"]?.ToString()?.Trim() ?? string.Empty;
+                var processCode = reader["指示内容"]?.ToString()?.Trim() ?? string.Empty;
+                if (string.IsNullOrEmpty(seiban) || string.IsNullOrEmpty(processCode)) continue;
+                if (!orders.TryGetValue(seiban, out var order)) continue;
+
+                // 完了工程を仮登録（ProcessName = 指示内容コード。BuildProcessesで変換される）
+                if (!order.Processes.Any(p => p.ProcessName == processCode))
                 {
-                    ProcessName = processCode,
-                    Status = ProcessStatus.Completed
-                });
+                    order.Processes.Add(new OrderProcess
+                    {
+                        ProcessName = processCode,
+                        Status = ProcessStatus.Completed
+                    });
+                }
             }
         }
     }

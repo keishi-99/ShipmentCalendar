@@ -21,10 +21,14 @@ public partial class SettingsWindow : Window
         TxtRangeDays.Text = viewModel.Settings.DeliveryDateRangeDays.ToString();
     }
 
-    private void BtnTestConnection_Click(object sender, RoutedEventArgs e)
+    private async void BtnTestConnection_Click(object sender, RoutedEventArgs e)
     {
         TxtConnectionStatus.Text = "接続中...";
-        var error = OdbcConnectionFactory.Test(TxtOdbcDsn.Text.Trim(), TxtOdbcUserId.Text.Trim(), PwdOdbcPassword.Password);
+        var dsn = TxtOdbcDsn.Text.Trim();
+        var userId = TxtOdbcUserId.Text.Trim();
+        var password = PwdOdbcPassword.Password;
+
+        var error = await Task.Run(() => OdbcConnectionFactory.Test(dsn, userId, password));
         if (error == null)
         {
             TxtConnectionStatus.Foreground = System.Windows.Media.Brushes.Green;
