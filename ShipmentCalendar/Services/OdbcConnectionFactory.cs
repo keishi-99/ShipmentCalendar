@@ -6,9 +6,15 @@ namespace ShipmentCalendar.Services;
 /// <summary>ODBC接続を生成するファクトリ（DSN方式）</summary>
 public static class OdbcConnectionFactory
 {
-    // パスワード中の } を }} にエスケープして接続文字列インジェクションを防ぐ
+    // OdbcConnectionStringBuilder で特殊文字を安全にエスケープ
     private static string BuildConnectionString(string dsn, string userId, string password)
-        => $"DSN={dsn};Uid={userId};Pwd={{{password.Replace("}", "}}")}}};";
+    {
+        var builder = new System.Data.Odbc.OdbcConnectionStringBuilder();
+        builder["DSN"] = dsn;
+        builder["Uid"] = userId;
+        builder["Pwd"] = password;
+        return builder.ConnectionString;
+    }
 
     public static OdbcConnection Create(AppSettings settings)
         => new OdbcConnection(BuildConnectionString(settings.OdbcDsn, settings.OdbcUserId, settings.OdbcPassword));

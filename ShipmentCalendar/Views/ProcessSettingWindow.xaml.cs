@@ -199,7 +199,7 @@ public partial class ProcessSettingWindow : Window
             await conn.OpenAsync();
 
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT 品目名 FROM VP_生産計画情報_YD WHERE 品目番号 = ? LIMIT 1";
+            cmd.CommandText = "SELECT TOP 1 品目名 FROM VP_生産計画情報_YD WHERE 品目番号 = ?";
             cmd.Parameters.Add("@in", System.Data.Odbc.OdbcType.VarChar).Value = itemNumber;
 
             var result = await cmd.ExecuteScalarAsync();
