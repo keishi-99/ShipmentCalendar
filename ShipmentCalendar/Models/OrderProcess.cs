@@ -9,6 +9,8 @@ public class OrderProcess
     public DateOnly DueDate { get; set; }
     public ProcessStatus Status { get; set; } = ProcessStatus.NotStarted;
     public int SortOrder { get; set; }
+    /// <summary>担当部署ID（ProcessDefinitionから引き継ぐ）</summary>
+    public int DepartmentId { get; set; } = 0;
 }
 
 public enum ProcessStatus

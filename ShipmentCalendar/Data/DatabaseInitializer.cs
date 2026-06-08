@@ -49,8 +49,22 @@ public static class DatabaseInitializer
                 Date TEXT NOT NULL UNIQUE,
                 Description TEXT NOT NULL DEFAULT ''
             );
+
+            CREATE TABLE IF NOT EXISTS Departments (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                Name TEXT NOT NULL UNIQUE,
+                SortOrder INTEGER NOT NULL DEFAULT 0
+            );
         ";
         command.ExecuteNonQuery();
+
+        // デフォルト部署を登録（既存なら無視）
+        var insertDepts = connection.CreateCommand();
+        insertDepts.CommandText = @"
+            INSERT OR IGNORE INTO Departments (Name, SortOrder) VALUES ('製造課', 0);
+            INSERT OR IGNORE INTO Departments (Name, SortOrder) VALUES ('検査課', 1);
+        ";
+        insertDepts.ExecuteNonQuery();
 
         MigrateRenameColumnIfExists(connection, "ProcessDefinitions", "BusinessDaysBeforeDelivery", "LeadTimeDays");
         MigrateRenameColumnIfExists(connection, "ProcessDefinitions", "ProductName", "ItemNumber");
@@ -58,6 +72,7 @@ public static class DatabaseInitializer
         MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "IsVisible", "INTEGER NOT NULL DEFAULT 1");
         MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "CsvColumnName", "TEXT NOT NULL DEFAULT ''");
         MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "WarningDaysBeforeDeadline", "INTEGER NOT NULL DEFAULT 0");
+        MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "DepartmentId", "INTEGER NOT NULL DEFAULT 0");
 
         // 既存DBのProcessDefinitions.ItemNumberをProductsテーブルに移行
         MigrateAddColumnIfNotExists(connection, "Products", "DisplayName", "TEXT NOT NULL DEFAULT ''");

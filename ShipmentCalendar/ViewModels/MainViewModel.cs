@@ -41,6 +41,12 @@ public partial class MainViewModel : ObservableObject {
     public static IReadOnlyList<string> RegistrationStatusOptions { get; } =
         new[] { "両方", "登録済みのみ", "登録無しのみ" };
 
+    /// <summary>ツールバー部署フィルターボタン用リスト（「全て」含む）</summary>
+    public ObservableCollection<DepartmentFilterItem> DepartmentFilters { get; } = new();
+
+    /// <summary>選択中の担当部署ID（0=全て）</summary>
+    [ObservableProperty] private int _filterDepartmentId = 0;
+
     partial void OnFilterItemNumberChanged(string value) => ApplyFilter();
     partial void OnFilterProductNameChanged(string value) => ApplyFilter();
     partial void OnFilterManufactureNumberChanged(string value) => ApplyFilter();
@@ -48,6 +54,16 @@ public partial class MainViewModel : ObservableObject {
     partial void OnFilterDeliveryToChanged(DateTime? value) => ApplyFilter();
     partial void OnFilterHideCompletedChanged(bool value) => ApplyFilter();
     partial void OnFilterRegistrationStatusChanged(string value) => ApplyFilter();
+    partial void OnFilterDepartmentIdChanged(int value)
+    {
+        // 各ボタンの選択状態を同期してからフィルターを適用
+        foreach (var item in DepartmentFilters)
+            item.IsSelected = item.Id == value;
+        ApplyFilter();
+    }
+
+    [RelayCommand]
+    private void SelectDepartment(int id) => FilterDepartmentId = id;
 
     public void ClearFilter() {
         FilterItemNumber = string.Empty;
@@ -84,8 +100,38 @@ public partial class MainViewModel : ObservableObject {
         else if (FilterRegistrationStatus == "登録無しのみ")
             result = result.Where(o => !_registeredItemNumbers.Contains(o.ItemNumber));
 
-        Orders = new ObservableCollection<Order>(result.OrderBy(o => o.DeliveryDate));
+        // 担当部署フィルター：未完了工程のうち SortOrder 最小のものが選択部署の行のみ表示
+        if (FilterDepartmentId > 0)
+        {
+            result = result.Where(o => {
+                var next = o.Processes
+                    .Where(p => p.Status != ProcessStatus.Completed)
+                    .OrderBy(p => p.SortOrder)
+                    .FirstOrDefault();
+                return next?.DepartmentId == FilterDepartmentId;
+            });
+            // 担当工程の DueDate 順でソート
+            Orders = new ObservableCollection<Order>(result.OrderBy(o =>
+                o.Processes
+                    .Where(p => p.Status != ProcessStatus.Completed)
+                    .OrderBy(p => p.SortOrder)
+                    .FirstOrDefault()?.DueDate ?? DateOnly.MaxValue));
+        }
+        else
+        {
+            Orders = new ObservableCollection<Order>(result.OrderBy(o => o.DeliveryDate));
+        }
         UpdateStatusMessage();
+    }
+
+    /// <summary>部署マスタを再取得してフィルターボタンリストを更新する</summary>
+    public async Task RefreshDepartmentFiltersAsync()
+    {
+        var departments = await new Repositories.SqliteDepartmentRepository().GetAllAsync();
+        DepartmentFilters.Clear();
+        DepartmentFilters.Add(new DepartmentFilterItem { Id = 0, Name = "全て", IsSelected = FilterDepartmentId == 0 });
+        foreach (var d in departments)
+            DepartmentFilters.Add(new DepartmentFilterItem { Id = d.Id, Name = d.Name, IsSelected = FilterDepartmentId == d.Id });
     }
 
     private void RefreshFilterDateRange()
@@ -190,7 +236,8 @@ public partial class MainViewModel : ObservableObject {
                     SortOrder = csv.SortOrder,                               // 順序は常にCSV
                     LeadTimeDays = db.LeadTimeDays,
                     IsVisible = db.IsVisible,
-                    WarningDaysBeforeDeadline = db.WarningDaysBeforeDeadline
+                    WarningDaysBeforeDeadline = db.WarningDaysBeforeDeadline,
+                    DepartmentId = db.DepartmentId
                 };
             }).ToList();
 
@@ -245,6 +292,10 @@ public partial class MainViewModel : ObservableObject {
             _allOrders = orders.OrderBy(o => o.DeliveryDate).ToList();
             var registeredNumbers = await new SqliteProcessDefinitionRepository().GetItemNumbersAsync();
             _registeredItemNumbers = new HashSet<string>(registeredNumbers, StringComparer.OrdinalIgnoreCase);
+
+            // 部署フィルターボタンリストを更新
+            await RefreshDepartmentFiltersAsync();
+
             _lastLoaded = DateTime.Now;
             ApplyFilter();
 

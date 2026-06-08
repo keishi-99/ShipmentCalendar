@@ -15,4 +15,6 @@ public class ProcessDefinition
     public string CsvColumnName { get; set; } = string.Empty;
     /// <summary>期限日まで何日以内で警告するか（0=警告なし）</summary>
     public int WarningDaysBeforeDeadline { get; set; } = 0;
+    /// <summary>担当部署ID（0=未設定）</summary>
+    public int DepartmentId { get; set; } = 0;
 }

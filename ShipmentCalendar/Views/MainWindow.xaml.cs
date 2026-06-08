@@ -116,6 +116,15 @@ public partial class MainWindow : Window
         window.ShowDialog();
     }
 
+    private async void BtnDeptSetting_Click(object sender, RoutedEventArgs e)
+    {
+        var window = new DepartmentSettingWindow();
+        window.Owner = this;
+        window.ShowDialog();
+        // 部署マスタが変更された可能性があるため、フィルターボタンリストを更新
+        await _viewModel.RefreshDepartmentFiltersAsync();
+    }
+
     private void BtnClearFilter_Click(object sender, RoutedEventArgs e)
     {
         _viewModel.ClearFilter();

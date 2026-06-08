@@ -33,36 +33,56 @@
                 更新
             </Button>
             <Separator />
-            <Button
-                Name="BtnSettings"
-                Padding="8,4"
-                Background="Transparent"
-                BorderThickness="0"
-                Click="BtnSettings_Click"
-                FontSize="14"
-                Foreground="White">
-                設定
-            </Button>
-            <Button
-                Name="BtnProcess"
-                Padding="8,4"
-                Background="Transparent"
-                BorderThickness="0"
-                Click="BtnProcess_Click"
-                FontSize="14"
-                Foreground="White">
-                工程設定
-            </Button>
-            <Button
-                Name="BtnHoliday"
-                Padding="8,4"
-                Background="Transparent"
-                BorderThickness="0"
-                Click="BtnHoliday_Click"
-                FontSize="14"
-                Foreground="White">
-                休日設定
-            </Button>
+            <!--  設定系をまとめたドロップダウンメニュー  -->
+            <Menu Background="Transparent" VerticalAlignment="Center">
+                <MenuItem FontSize="14" Foreground="White" Background="Transparent" Padding="8,4">
+                    <MenuItem.Header>設定 ▾</MenuItem.Header>
+                    <MenuItem Header="データソース設定" Click="BtnSettings_Click"/>
+                    <MenuItem Header="工程設定"          Click="BtnProcess_Click"/>
+                    <MenuItem Header="休日設定"          Click="BtnHoliday_Click"/>
+                    <MenuItem Header="部署設定"          Click="BtnDeptSetting_Click"/>
+                </MenuItem>
+            </Menu>
+            <Separator />
+            <!--  担当部署フィルターボタン（動的生成）  -->
+            <ItemsControl ItemsSource="{Binding DepartmentFilters}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <ToggleButton
+                            Content="{Binding Name}"
+                            IsChecked="{Binding IsSelected, Mode=OneWay}"
+                            Command="{Binding DataContext.SelectDepartmentCommand,
+                                      RelativeSource={RelativeSource AncestorType=ToolBar}}"
+                            CommandParameter="{Binding Id}"
+                            Padding="10,4" Margin="2,0"
+                            FontSize="13" FontWeight="SemiBold"
+                            Foreground="White" Background="Transparent" BorderThickness="0">
+                            <ToggleButton.Style>
+                                <Style TargetType="ToggleButton">
+                                    <Setter Property="Foreground" Value="White"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsChecked" Value="True">
+                                            <Setter Property="Background" Value="#0D47A1"/>
+                                            <Setter Property="BorderThickness" Value="0,0,0,3"/>
+                                            <Setter Property="BorderBrush" Value="White"/>
+                                        </Trigger>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#1565C0"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ToggleButton.Style>
+                        </ToggleButton>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
         </ToolBar>
 
         <!--  フィルターバー  -->

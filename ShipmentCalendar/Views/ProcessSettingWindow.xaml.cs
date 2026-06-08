@@ -2,10 +2,29 @@ using ShipmentCalendar.Models;
 using ShipmentCalendar.Repositories;
 using ShipmentCalendar.Services;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
 using System.Windows;
+using System.Windows.Data;
 
 namespace ShipmentCalendar.Views;
+
+/// <summary>DepartmentId → 部署名に変換するコンバーター（ProcessSettingWindow 用）</summary>
+public class DeptIdToNameConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is int id && id > 0)
+        {
+            var dept = ProcessSettingWindow.DepartmentsSource?.FirstOrDefault(d => d.Id == id);
+            return dept?.Name ?? string.Empty;
+        }
+        return string.Empty;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => throw new NotImplementedException();
+}
 
 public partial class ProcessSettingWindow : Window
 {
@@ -14,11 +33,25 @@ public partial class ProcessSettingWindow : Window
     private readonly SqliteProductDisplayNameRepository _nameRepository = new SqliteProductDisplayNameRepository();
     private ObservableCollection<ProcessDefinition> _currentDefinitions = new();
 
+    /// <summary>XAML の DataTemplate から参照できる静的な部署リスト</summary>
+    public static IReadOnlyList<Department>? DepartmentsSource { get; private set; }
+
     public ProcessSettingWindow()
     {
         InitializeComponent();
         ProcessGrid.ItemsSource = _currentDefinitions;
-        Loaded += async (_, _) => await RefreshRegisteredListAsync();
+        Loaded += async (_, _) =>
+        {
+            // 部署リストをDBから読み込んでDataGrid.Tag経由でCellEditingTemplateに渡す
+            var depts = (await new SqliteDepartmentRepository().GetAllAsync()).ToList();
+            // 先頭に「未設定」（Id=0）を追加
+            var allDepts = new List<Department> { new Department { Id = 0, Name = "（未設定）" } };
+            allDepts.AddRange(depts);
+            DepartmentsSource = allDepts;
+            ProcessGrid.Tag = allDepts;
+
+            await RefreshRegisteredListAsync();
+        };
     }
 
     /// <summary>DB に登録済みの品目番号をコンボボックスに読み込む</summary>
