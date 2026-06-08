@@ -186,9 +186,6 @@ public partial class MainViewModel : ObservableObject {
         StatusMessage = "読み込み中...";
         IsLoading = true;
 
-        // スピナーが描画されるまで待ってから重い処理に入る
-        await Task.Delay(50);
-
         try {
             // ODBCはasync内部実装が同期のためTask.Runでスレッドプールに逃がす
             var settings = Settings;
