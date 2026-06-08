@@ -178,45 +178,40 @@ public partial class MainViewModel : ObservableObject {
 
     [RelayCommand]
     public async Task LoadOrdersAsync() {
-        if (string.IsNullOrEmpty(Settings.SeisanKeikakuCsvPath)) {
-            StatusMessage = "データソースが設定されていません。設定から生産計画CSVファイルを選択してください。";
+        if (string.IsNullOrEmpty(Settings.OdbcDsn)) {
+            StatusMessage = "ODBC接続が設定されていません。設定 > データソース設定 から接続情報を入力してください。";
             return;
         }
 
         StatusMessage = "読み込み中...";
         IsLoading = true;
 
-        // UIが再描画されるタイミングを確保してからスピナーを表示する
-        await Task.Yield();
+        // スピナーが描画されるまで待ってから重い処理に入る
+        await Task.Delay(50);
 
         try {
+            // ODBCはasync内部実装が同期のためTask.Runでスレッドプールに逃がす
+            var settings = Settings;
+            var (orders, allCsvDefs) = await Task.Run(async () =>
+            {
+                var repo = new OdbcOrderRepository(settings);
+                var o = (await repo.GetAllAsync()).ToList();
 
-            var repository = new CsvOrderRepository(
-                Settings.SeisanKeikakuCsvPath,
-                Settings.UkeireJissekiCsvPath,
-                Settings.DeliveryDateRangeDays,
-                Settings.DeliveryDatePastDays);
+                IProcessDefinitionRepository processRepo = new OdbcProcessDefinitionRepository(settings);
+                var defs = (await processRepo.GetAllAsync()).ToList();
+                return (o, defs);
+            });
 
             var holidays = await _holidayRepository.GetAllAsync();
             var calculator = new BusinessDayCalculator(holidays);
             var today = DateOnly.FromDateTime(DateTime.Today);
 
-            var orders = (await repository.GetAllAsync()).ToList();
-
-            // DB登録済みの品目名があればCSV品目名を上書きする
+            // DB登録済みの品目名があればODBC品目名を上書きする
             var displayNames = await new Repositories.SqliteProductDisplayNameRepository().GetAllDisplayNamesAsync();
             foreach (var order in orders) {
                 if (displayNames.TryGetValue(order.ItemNumber, out var displayName) && !string.IsNullOrEmpty(displayName))
                     order.ProductName = displayName;
             }
-
-            // 指示工程CSV + 名称情報CSV から工程構造を取得（未設定時は DB にフォールバック）
-            IProcessDefinitionRepository processDefRepo =
-                !string.IsNullOrEmpty(Settings.ShijiKoteiCsvPath)
-                    ? new CsvProcessDefinitionRepository(Settings.ShijiKoteiCsvPath, Settings.MeishoJohoCsvPath)
-                    : new SqliteProcessDefinitionRepository();
-
-            var allCsvDefs = (await processDefRepo.GetAllAsync()).ToList();
 
             // DB のユーザー設定（工程名カスタマイズ・LT・表示・警告）をマージ
             // キー: "ItemNumber|CsvColumnName(=指示内容コード)"

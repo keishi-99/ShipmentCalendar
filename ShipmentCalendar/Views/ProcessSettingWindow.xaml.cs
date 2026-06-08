@@ -3,7 +3,6 @@ using ShipmentCalendar.Repositories;
 using ShipmentCalendar.Services;
 using System.Collections.ObjectModel;
 using System.Globalization;
-using System.IO;
 using System.Windows;
 using System.Windows.Data;
 
@@ -96,16 +95,14 @@ public partial class ProcessSettingWindow : Window
         }
 
         var settings = _settingsService.Load();
-        if (string.IsNullOrEmpty(settings.ShijiKoteiCsvPath) || !File.Exists(settings.ShijiKoteiCsvPath))
+        if (string.IsNullOrEmpty(settings.OdbcDsn))
         {
-            TxtStatus.Text = "設定から指示工程CSVファイルを指定してください";
+            TxtStatus.Text = "設定からODBC接続情報を入力してください";
             return;
         }
 
-        // CSVから工程定義を取得（順序・指示内容コード・デフォルト工程名・LT）
-        var csvRepo = new CsvProcessDefinitionRepository(
-            settings.ShijiKoteiCsvPath,
-            settings.MeishoJohoCsvPath);
+        // ODBCから工程定義を取得（順序・指示内容コード・デフォルト工程名・LT）
+        var csvRepo = new OdbcProcessDefinitionRepository(settings);
         var csvDefs = (await csvRepo.GetByItemNumberAsync(itemNumber)).ToList();
 
         if (!csvDefs.Any())
@@ -114,12 +111,12 @@ public partial class ProcessSettingWindow : Window
             return;
         }
 
-        // 品目名の初期値をDB未登録なら生産計画CSVから取得
+        // 品目名の初期値をDB未登録ならODBCから取得
         if (string.IsNullOrEmpty(TxtItemName.Text))
         {
-            var csvItemName = await LookupItemNameFromCsvAsync(itemNumber, settings.SeisanKeikakuCsvPath);
-            if (!string.IsNullOrEmpty(csvItemName))
-                TxtItemName.Text = csvItemName;
+            var dbItemName = await LookupItemNameFromOdbcAsync(itemNumber, settings);
+            if (!string.IsNullOrEmpty(dbItemName))
+                TxtItemName.Text = dbItemName;
         }
 
         // DB既存設定を取得（品目番号 = ProductName として保存済みのもの）
@@ -191,42 +188,24 @@ public partial class ProcessSettingWindow : Window
         CmbRegistered.SelectedItem = itemNumber;
     }
 
-    /// <summary>VP_生産計画情報_YD から品目番号に対応する品目名を取得する</summary>
-    private static Task<string?> LookupItemNameFromCsvAsync(string itemNumber, string seisanKeikakuCsvPath)
+    /// <summary>VP_生産計画情報_YD から品目番号に対応する品目名をODBC経由で取得する</summary>
+    private static async Task<string?> LookupItemNameFromOdbcAsync(string itemNumber, Models.AppSettings settings)
     {
-        if (string.IsNullOrEmpty(seisanKeikakuCsvPath) || !File.Exists(seisanKeikakuCsvPath))
-            return Task.FromResult<string?>(null);
+        if (string.IsNullOrEmpty(settings.OdbcDsn)) return null;
 
         try
         {
-            var firstLine = File.ReadLines(seisanKeikakuCsvPath, System.Text.Encoding.UTF8).FirstOrDefault() ?? string.Empty;
-            var delimiter = firstLine.Contains('\t') ? "\t" : ",";
-            var config = new CsvHelper.Configuration.CsvConfiguration(System.Globalization.CultureInfo.InvariantCulture)
-            {
-                HasHeaderRecord = true,
-                Delimiter = delimiter,
-                BadDataFound = null,
-                MissingFieldFound = null
-            };
+            using var conn = Services.OdbcConnectionFactory.Create(settings);
+            await conn.OpenAsync();
 
-            using var reader = new StreamReader(seisanKeikakuCsvPath, System.Text.Encoding.UTF8);
-            using var csv = new CsvHelper.CsvReader(reader, config);
-            csv.Read();
-            csv.ReadHeader();
-            while (csv.Read())
-            {
-                string? field;
-                try { field = csv.GetField("品目番号"); } catch { field = null; }
-                if (field != itemNumber) continue;
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT 品目名 FROM VP_生産計画情報_YD WHERE 品目番号 = ? FETCH FIRST 1 ROWS ONLY";
+            cmd.Parameters.Add("@in", System.Data.Odbc.OdbcType.VarChar).Value = itemNumber;
 
-                string? name;
-                try { name = csv.GetField("品目名"); } catch { name = null; }
-                return Task.FromResult(name);
-            }
+            var result = await cmd.ExecuteScalarAsync();
+            return result?.ToString()?.Trim();
         }
-        catch { /* CSVが読めない場合は空で返す */ }
-
-        return Task.FromResult<string?>(null);
+        catch { return null; }
     }
 
     /// <summary>品目番号ごと削除：工程定義と品目名をまとめてDBから削除する</summary>
