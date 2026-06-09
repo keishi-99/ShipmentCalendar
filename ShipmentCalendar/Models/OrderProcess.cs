@@ -13,6 +13,8 @@ public class OrderProcess
     public int SortOrder { get; set; }
     /// <summary>担当部署ID（ProcessDefinitionから引き継ぐ）</summary>
     public int DepartmentId { get; set; } = 0;
+    /// <summary>必要時間（分）= (段取時間 + 作業時間) × 計画数。0=未設定</summary>
+    public double RequiredMinutes { get; set; } = 0;
 }
 
 public enum ProcessStatus

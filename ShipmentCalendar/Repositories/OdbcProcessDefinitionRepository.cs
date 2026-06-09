@@ -20,7 +20,7 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository {
         var definitions = new List<ProcessDefinition>();
 
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = @"SELECT 品目番号, 指示内容, 指示内容名称, 順序
+        cmd.CommandText = @"SELECT 品目番号, 指示内容, 指示内容名称, 順序, 段取時間, 作業時間
             FROM V_指示工程情報_YD
             WHERE 指示内容 IS NOT NULL
               AND 指示内容 <> '< NULL >'";
@@ -34,12 +34,14 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository {
             _ = int.TryParse(reader["順序"]?.ToString(), out int sortOrder);
             var processName = reader["指示内容名称"]?.ToString()?.Trim();
             if (string.IsNullOrEmpty(processName)) processName = processCode;
+            _ = double.TryParse(reader["段取時間"]?.ToString(), out double setupTime);
+            _ = double.TryParse(reader["作業時間"]?.ToString(), out double workTime);
 
             definitions.Add(new ProcessDefinition {
                 ItemNumber = itemNumber,
                 ProcessName = processName,
                 CsvColumnName = processCode,
-                LeadTimeMinutes = 0,
+                LeadTimeMinutes = setupTime + workTime,
                 SortOrder = sortOrder,
                 IsVisible = true,
                 WarningDaysBeforeDeadline = 0
@@ -58,7 +60,7 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository {
         var definitions = new List<ProcessDefinition>();
 
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = @"SELECT 品目番号, 指示内容, 指示内容名称, 順序
+        cmd.CommandText = @"SELECT 品目番号, 指示内容, 指示内容名称, 順序, 段取時間, 作業時間
             FROM V_指示工程情報_YD
             WHERE 品目番号 = ?
               AND 指示内容 IS NOT NULL
@@ -73,12 +75,14 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository {
             _ = int.TryParse(reader["順序"]?.ToString(), out int sortOrder);
             var processName = reader["指示内容名称"]?.ToString()?.Trim();
             if (string.IsNullOrEmpty(processName)) processName = processCode;
+            _ = double.TryParse(reader["段取時間"]?.ToString(), out double setupTime);
+            _ = double.TryParse(reader["作業時間"]?.ToString(), out double workTime);
 
             definitions.Add(new ProcessDefinition {
                 ItemNumber = itemNumber,
                 ProcessName = processName,
                 CsvColumnName = processCode,
-                LeadTimeMinutes = 0,
+                LeadTimeMinutes = setupTime + workTime,
                 SortOrder = sortOrder,
                 IsVisible = true,
                 WarningDaysBeforeDeadline = 0
