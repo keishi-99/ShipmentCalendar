@@ -45,7 +45,7 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
                 ItemNumber = itemNumber,
                 ProcessName = processName,
                 CsvColumnName = processCode,
-                LeadTimeDays = 0,
+                LeadTimeHours = 0,
                 SortOrder = sortOrder,
                 IsVisible = true,
                 WarningDaysBeforeDeadline = 0
@@ -87,7 +87,7 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
                 ItemNumber = itemNumber,
                 ProcessName = processName,
                 CsvColumnName = processCode,
-                LeadTimeDays = 0,
+                LeadTimeHours = 0,
                 SortOrder = sortOrder,
                 IsVisible = true,
                 WarningDaysBeforeDeadline = 0

@@ -48,7 +48,9 @@ public class BusinessDayCalculator {
         var baseDate = order.DeliveryDate;
         for (int i = sorted.Count - 1; i >= 0; i--) {
             var def = sorted[i];
-            var dueDate = SubtractBusinessDays(baseDate, def.LeadTimeDays);
+            // 時間単位を営業日数に変換（8時間=1営業日、端数は切り上げ）
+            int businessDays = (int)Math.Ceiling(def.LeadTimeHours / 8.0);
+            var dueDate = SubtractBusinessDays(baseDate, businessDays);
             results.Insert(0, new OrderProcess {
                 ProcessName = def.ProcessName,
                 DueDate = dueDate,
@@ -58,8 +60,8 @@ public class BusinessDayCalculator {
                 SortOrder = def.SortOrder,
                 DepartmentId = def.DepartmentId
             });
-            // LeadTimeDays=0のときbaseDateは変えない（同日に複数工程）
-            if (def.LeadTimeDays > 0)
+            // LeadTimeHours=0のときbaseDateは変えない（同日に複数工程）
+            if (def.LeadTimeHours > 0)
                 baseDate = dueDate;
         }
 

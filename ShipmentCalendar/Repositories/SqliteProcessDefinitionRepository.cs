@@ -13,7 +13,7 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
         await connection.OpenAsync();
 
         var command = connection.CreateCommand();
-        command.CommandText = "SELECT Id, ItemNumber, ProcessName, LeadTimeDays, SortOrder, IsVisible, CsvColumnName, WarningDaysBeforeDeadline, DepartmentId FROM ProcessDefinitions ORDER BY ItemNumber, SortOrder";
+        command.CommandText = "SELECT Id, ItemNumber, ProcessName, LeadTimeHours, SortOrder, IsVisible, CsvColumnName, WarningDaysBeforeDeadline, DepartmentId FROM ProcessDefinitions ORDER BY ItemNumber, SortOrder";
         using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
             definitions.Add(ReadDefinition(reader));
@@ -28,7 +28,7 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
         await connection.OpenAsync();
 
         var command = connection.CreateCommand();
-        command.CommandText = "SELECT Id, ItemNumber, ProcessName, LeadTimeDays, SortOrder, IsVisible, CsvColumnName, WarningDaysBeforeDeadline, DepartmentId FROM ProcessDefinitions WHERE ItemNumber = $in ORDER BY SortOrder";
+        command.CommandText = "SELECT Id, ItemNumber, ProcessName, LeadTimeHours, SortOrder, IsVisible, CsvColumnName, WarningDaysBeforeDeadline, DepartmentId FROM ProcessDefinitions WHERE ItemNumber = $in ORDER BY SortOrder";
         command.Parameters.AddWithValue("$in", itemNumber);
         using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
@@ -59,11 +59,11 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
 
         var command = connection.CreateCommand();
         command.CommandText = @"
-            INSERT INTO ProcessDefinitions (ItemNumber, ProcessName, LeadTimeDays, SortOrder, IsVisible, CsvColumnName, WarningDaysBeforeDeadline, DepartmentId)
+            INSERT INTO ProcessDefinitions (ItemNumber, ProcessName, LeadTimeHours, SortOrder, IsVisible, CsvColumnName, WarningDaysBeforeDeadline, DepartmentId)
             VALUES ($in, $name, $days, $so, $vis, $csv, $warn, $dept)";
         command.Parameters.AddWithValue("$in", definition.ItemNumber);
         command.Parameters.AddWithValue("$name", definition.ProcessName);
-        command.Parameters.AddWithValue("$days", definition.LeadTimeDays);
+        command.Parameters.AddWithValue("$days", definition.LeadTimeHours);
         command.Parameters.AddWithValue("$so", definition.SortOrder);
         command.Parameters.AddWithValue("$vis", definition.IsVisible ? 1 : 0);
         command.Parameters.AddWithValue("$csv", definition.CsvColumnName);
@@ -79,10 +79,10 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
 
         var command = connection.CreateCommand();
         command.CommandText = @"
-            UPDATE ProcessDefinitions SET ProcessName=$name, LeadTimeDays=$days, SortOrder=$so, IsVisible=$vis, CsvColumnName=$csv, WarningDaysBeforeDeadline=$warn, DepartmentId=$dept
+            UPDATE ProcessDefinitions SET ProcessName=$name, LeadTimeHours=$days, SortOrder=$so, IsVisible=$vis, CsvColumnName=$csv, WarningDaysBeforeDeadline=$warn, DepartmentId=$dept
             WHERE Id=$id";
         command.Parameters.AddWithValue("$name", definition.ProcessName);
-        command.Parameters.AddWithValue("$days", definition.LeadTimeDays);
+        command.Parameters.AddWithValue("$days", definition.LeadTimeHours);
         command.Parameters.AddWithValue("$so", definition.SortOrder);
         command.Parameters.AddWithValue("$vis", definition.IsVisible ? 1 : 0);
         command.Parameters.AddWithValue("$csv", definition.CsvColumnName);
@@ -108,7 +108,7 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
         Id = reader.GetInt32(0),
         ItemNumber = reader.GetString(1),
         ProcessName = reader.GetString(2),
-        LeadTimeDays = reader.GetInt32(3),
+        LeadTimeHours = reader.GetDouble(3),
         SortOrder = reader.GetInt32(4),
         IsVisible = reader.GetInt32(5) == 1,
         CsvColumnName = reader.GetString(6),

@@ -139,7 +139,7 @@ public partial class ProcessSettingWindow : Window
                     ProcessName = db.ProcessName,
                     CsvColumnName = csv.CsvColumnName,
                     SortOrder = csv.SortOrder,                              // 順序は常にCSV
-                    LeadTimeDays = db.LeadTimeDays,
+                    LeadTimeHours = db.LeadTimeHours,
                     IsVisible = db.IsVisible,
                     WarningDaysBeforeDeadline = db.WarningDaysBeforeDeadline
                 };

@@ -59,7 +59,7 @@ public class CsvProcessDefinitionRepository : IProcessDefinitionRepository
                 ItemNumber = itemNumber,
                 ProcessName = processName,
                 CsvColumnName = processCode,     // 受入実績の指示内容と照合するコード
-                LeadTimeDays = leadTimeDays,
+                LeadTimeHours = leadTimeDays,
                 SortOrder = sortOrder,
                 IsVisible = true,
                 WarningDaysBeforeDeadline = 0
