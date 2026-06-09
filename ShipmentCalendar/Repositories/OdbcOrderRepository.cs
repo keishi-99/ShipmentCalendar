@@ -116,8 +116,12 @@ public class OdbcOrderRepository : IOrderRepository
 
     private static DateOnly? ToDateOnly(object? value)
     {
+        if (value == null || value == DBNull.Value) return null;
         if (value is DateTime dt) return DateOnly.FromDateTime(dt);
-        if (value is string s && DateTime.TryParse(s, out var parsed)) return DateOnly.FromDateTime(parsed);
+        // DrSum ODBCドライバーが文字列や独自型で返す場合に対応
+        var str = value.ToString();
+        if (!string.IsNullOrEmpty(str) && DateTime.TryParse(str, out var parsed))
+            return DateOnly.FromDateTime(parsed);
         return null;
     }
 
