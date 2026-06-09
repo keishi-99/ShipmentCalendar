@@ -7,6 +7,8 @@ public class OrderProcess
     public int OrderId { get; set; }
     public string ProcessName { get; set; } = string.Empty;
     public DateOnly DueDate { get; set; }
+    /// <summary>実際の完了日（受入実績の受入日）。完了工程のみセット</summary>
+    public DateOnly? ActualDate { get; set; }
     public ProcessStatus Status { get; set; } = ProcessStatus.NotStarted;
     public int SortOrder { get; set; }
     /// <summary>担当部署ID（ProcessDefinitionから引き継ぐ）</summary>

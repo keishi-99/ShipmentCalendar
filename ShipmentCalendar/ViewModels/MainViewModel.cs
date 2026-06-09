@@ -261,7 +261,19 @@ public partial class MainViewModel : ObservableObject {
                     .Select(d => new OrderProcess { ProcessName = d.ProcessName, Status = ProcessStatus.Completed })
                     .ToList();
 
+                // BuildProcesses前にActualDateを保存（CsvColumnName→ProcessNameの変換後）
+                var actualDates = order.Processes
+                    .Where(p => p.ActualDate.HasValue)
+                    .ToDictionary(p => p.ProcessName, p => p.ActualDate!.Value);
+
                 order.Processes = calculator.BuildProcesses(order, productDefs.Where(d => d.IsVisible));
+
+                // 完了工程にActualDateを引き継ぐ
+                foreach (var process in order.Processes)
+                {
+                    if (actualDates.TryGetValue(process.ProcessName, out var actual))
+                        process.ActualDate = actual;
+                }
 
                 // ステータスを警告日数込みで確定
                 foreach (var process in order.Processes) {

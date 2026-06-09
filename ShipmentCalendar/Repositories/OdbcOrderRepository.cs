@@ -87,7 +87,7 @@ public class OdbcOrderRepository : IOrderRepository
             var seibanList = string.Join(",", batchKeys.Select(s => $"'{s.Replace("'", "''")}'"));
 
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = $@"SELECT 製番, 指示内容 FROM VP_受入実績情報_YD
+            cmd.CommandText = $@"SELECT 製番, 指示内容, 受入日 FROM VP_受入実績情報_YD
                 WHERE 製番 IN ({seibanList})
                   AND 指示内容 IS NOT NULL
                   AND 指示内容 <> '< NULL >'";
@@ -106,7 +106,8 @@ public class OdbcOrderRepository : IOrderRepository
                     order.Processes.Add(new OrderProcess
                     {
                         ProcessName = processCode,
-                        Status = ProcessStatus.Completed
+                        Status = ProcessStatus.Completed,
+                        ActualDate = ToDateOnly(reader["受入日"])
                     });
                 }
             }
