@@ -202,13 +202,8 @@ public class ProcessIndexToDueDateConverter : System.Windows.Data.IMultiValueCon
         if (process.Status == ProcessStatus.Completed)
             return process.ActualDate.HasValue ? $"✓{process.ActualDate.Value:MM/dd}" : string.Empty;
         // 未完了工程は予定日 + 必要時間（時間単位、小数1桁）
-        var dateStr = process.DueDate.ToString("MM/dd");
-        if (process.RequiredMinutes > 0)
-        {
-            var hours = process.RequiredMinutes / 60.0;
-            return $"{dateStr} ({hours:F1}h)";
-        }
-        return dateStr;
+        var hours = process.RequiredMinutes / 60.0;
+        return $"{process.DueDate:MM/dd} ({hours:F1}h)";
     }
 
     public object[] ConvertBack(object value, Type[] targetTypes, object parameter, System.Globalization.CultureInfo culture)
