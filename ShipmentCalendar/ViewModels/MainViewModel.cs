@@ -249,19 +249,22 @@ public partial class MainViewModel : ObservableObject {
                 if (!productDefs.Any())
                     continue;
 
-                // CsvOrderRepository が仮登録した完了コード（指示内容コード）を取得
-                var csvCompletedColumns = order.Processes
+                // 仮登録した完了コード（指示内容コード）→ActualDateのマッピングを保存
+                var completedActualDates = order.Processes
                     .Where(p => p.Status == ProcessStatus.Completed)
-                    .Select(p => p.ProcessName)
-                    .ToHashSet();
+                    .ToDictionary(p => p.ProcessName, p => p.ActualDate);
 
-                // 完了コードを ProcessName（表示名）に変換
+                // 完了コードを ProcessName（表示名）に変換（ActualDateも引き継ぐ）
                 order.Processes = productDefs
-                    .Where(d => csvCompletedColumns.Contains(d.CsvColumnName))
-                    .Select(d => new OrderProcess { ProcessName = d.ProcessName, Status = ProcessStatus.Completed })
+                    .Where(d => completedActualDates.ContainsKey(d.CsvColumnName))
+                    .Select(d => new OrderProcess {
+                        ProcessName = d.ProcessName,
+                        Status = ProcessStatus.Completed,
+                        ActualDate = completedActualDates[d.CsvColumnName]
+                    })
                     .ToList();
 
-                // BuildProcesses前にActualDateを保存（CsvColumnName→ProcessNameの変換後）
+                // BuildProcesses前にActualDate（表示名キー）を保存
                 var actualDates = order.Processes
                     .Where(p => p.ActualDate.HasValue)
                     .ToDictionary(p => p.ProcessName, p => p.ActualDate!.Value);
