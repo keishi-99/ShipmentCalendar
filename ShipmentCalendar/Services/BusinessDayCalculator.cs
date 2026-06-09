@@ -53,10 +53,18 @@ public class BusinessDayCalculator {
         {
             double minutes = sorted[i].LeadTimeMinutes * order.PlannedQuantity;
             running += minutes;
-            // 0分の工程は前の工程と同じチャンク（または1）
-            chunks[i] = minutes <= 0
-                ? (i > 0 ? chunks[i - 1] : 1)
-                : (int)Math.Ceiling(running / 480.0);
+            if (minutes <= 0)
+            {
+                // 0分の工程は前の工程と同じチャンク（または1）
+                chunks[i] = i > 0 ? chunks[i - 1] : 1;
+            }
+            else
+            {
+                chunks[i] = (int)Math.Ceiling(running / 480.0);
+                // 1日以上かかる工程はチャンク末尾にrunningを揃え、後続工程を次の日へ押し出す
+                if (minutes >= 480)
+                    running = chunks[i] * 480.0;
+            }
         }
         int totalChunks = Math.Max(1, chunks.Max());
 
