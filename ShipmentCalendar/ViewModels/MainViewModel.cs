@@ -280,6 +280,14 @@ public partial class MainViewModel : ObservableObject {
                         process.ActualDate = actual;
                 }
 
+                // 順序999が完了している場合、前工程すべてを完了扱いにする
+                var proc999 = order.Processes.FirstOrDefault(p => p.SortOrder == 999);
+                if (proc999?.Status == ProcessStatus.Completed)
+                {
+                    foreach (var process in order.Processes)
+                        process.Status = ProcessStatus.Completed;
+                }
+
                 // ステータスを警告日数込みで確定
                 foreach (var process in order.Processes) {
                     var warningDays = productDefs

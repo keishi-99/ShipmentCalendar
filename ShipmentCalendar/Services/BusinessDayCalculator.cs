@@ -55,7 +55,7 @@ public class BusinessDayCalculator {
                 Status = importedStatuses.TryGetValue(def.ProcessName, out var s) && s == ProcessStatus.Completed
                     ? ProcessStatus.Completed
                     : ProcessStatus.NotStarted,
-                SortOrder = i,
+                SortOrder = def.SortOrder,
                 DepartmentId = def.DepartmentId
             });
             // LeadTimeDays=0のときbaseDateは変えない（同日に複数工程）
