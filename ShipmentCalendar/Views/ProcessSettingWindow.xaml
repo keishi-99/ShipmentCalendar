@@ -150,7 +150,7 @@
                 <DataGridTextColumn
                     Width="90"
                     Binding="{Binding LeadTimeHours, UpdateSourceTrigger=PropertyChanged}"
-                    Header="製造LT（時間）" />
+                    Header="標準時間（時間）" />
                 <DataGridCheckBoxColumn
                     Width="45"
                     Binding="{Binding IsVisible, UpdateSourceTrigger=PropertyChanged}"
