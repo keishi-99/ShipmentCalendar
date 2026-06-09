@@ -37,7 +37,7 @@ public static class DatabaseInitializer
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 ItemNumber TEXT NOT NULL,
                 ProcessName TEXT NOT NULL,
-                LeadTimeDays INTEGER NOT NULL DEFAULT 0,
+                LeadTimeHours REAL NOT NULL DEFAULT 0,
                 SortOrder INTEGER NOT NULL DEFAULT 0,
                 IsVisible INTEGER NOT NULL DEFAULT 1,
                 CsvColumnName TEXT NOT NULL DEFAULT '',
@@ -66,16 +66,6 @@ public static class DatabaseInitializer
         ";
         insertDepts.ExecuteNonQuery();
 
-        MigrateRenameColumnIfExists(connection, "ProcessDefinitions", "BusinessDaysBeforeDelivery", "LeadTimeDays");
-        MigrateRenameColumnIfExists(connection, "ProcessDefinitions", "ProductName", "ItemNumber");
-        MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "LeadTimeDays", "INTEGER NOT NULL DEFAULT 0");
-        // LeadTimeDays（日単位）→ LeadTimeHours（時間単位）へ移行。既存値を×8換算
-        if (MigrateRenameColumnIfExists(connection, "ProcessDefinitions", "LeadTimeDays", "LeadTimeHours"))
-        {
-            var convert = connection.CreateCommand();
-            convert.CommandText = "UPDATE ProcessDefinitions SET LeadTimeHours = LeadTimeHours * 8";
-            convert.ExecuteNonQuery();
-        }
         MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "LeadTimeHours", "REAL NOT NULL DEFAULT 0");
         MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "IsVisible", "INTEGER NOT NULL DEFAULT 1");
         MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "CsvColumnName", "TEXT NOT NULL DEFAULT ''");
@@ -112,8 +102,7 @@ public static class DatabaseInitializer
         migrate.ExecuteNonQuery();
     }
 
-    /// <summary>カラムをリネームする。実行した場合はtrueを返す</summary>
-    private static bool MigrateRenameColumnIfExists(SqliteConnection connection, string table, string oldColumn, string newColumn)
+    private static void MigrateRenameColumnIfExists(SqliteConnection connection, string table, string oldColumn, string newColumn)
     {
         var check = connection.CreateCommand();
         check.CommandText = $"PRAGMA table_info({table})";
@@ -130,9 +119,7 @@ public static class DatabaseInitializer
             var alter = connection.CreateCommand();
             alter.CommandText = $"ALTER TABLE {table} RENAME COLUMN {oldColumn} TO {newColumn}";
             alter.ExecuteNonQuery();
-            return true;
         }
-        return false;
     }
 
     private static void MigrateAddColumnIfNotExists(SqliteConnection connection, string table, string column, string definition)
