@@ -31,30 +31,43 @@ public class BusinessDayCalculator {
     }
 
     /// <summary>
-    /// 工程定義から期限日を直列逆算で計算する。
-    /// SortOrderの大きい工程（納期に近い）から順に逆算し、基準日を更新していく。
-    /// LeadTimeDays=0の工程は前の工程と同じ期限日になる。
+    /// 工程定義から期限日を計算する。
+    /// 全工程の累積必要時間を前向きに集計し、480分（8時間）単位の日チャンクに割り当て、
+    /// 納期から逆算して各工程の予定日を決定する。
+    /// 例: 作業A=120分, B=100分, C=300分 → A,B は同日、C は翌日（=納期当日）
     /// </summary>
-    public List<OrderProcess> BuildProcesses(Order order, IEnumerable<ProcessDefinition> definitions) {
-        // 同一 ProcessName が複数ある場合（名称マスタ重複等）は先着優先で1件に集約
+    public List<OrderProcess> BuildProcesses(Order order, IEnumerable<ProcessDefinition> definitions)
+    {
+        // 同一 ProcessName が複数ある場合は先着優先で1件に集約
         var importedStatuses = order.Processes
             .GroupBy(p => p.ProcessName)
             .ToDictionary(g => g.Key, g => g.First().Status);
 
         var sorted = definitions.OrderBy(d => d.SortOrder).ToList();
-        var results = new List<OrderProcess>(sorted.Count);
+        if (!sorted.Any()) return new List<OrderProcess>();
 
-        // 納期を起点に直列逆算（SortOrder降順＝納期に近い順に処理）
-        var baseDate = order.DeliveryDate;
-        for (int i = sorted.Count - 1; i >= 0; i--) {
+        // 前向きに累積分数を計算し、480分ごとの日チャンク番号を割り当て
+        double running = 0;
+        var chunks = new int[sorted.Count];
+        for (int i = 0; i < sorted.Count; i++)
+        {
+            double minutes = sorted[i].LeadTimeMinutes * order.PlannedQuantity;
+            running += minutes;
+            // 0分の工程は前の工程と同じチャンク（または1）
+            chunks[i] = minutes <= 0
+                ? (i > 0 ? chunks[i - 1] : 1)
+                : (int)Math.Ceiling(running / 480.0);
+        }
+        int totalChunks = Math.Max(1, chunks.Max());
+
+        // 各工程の予定日 = 納期 - (totalChunks - chunk) 営業日
+        var results = new List<OrderProcess>(sorted.Count);
+        for (int i = 0; i < sorted.Count; i++)
+        {
             var def = sorted[i];
-            // 必要時間（分）= (段取時間 + 作業時間) × 計画数
             double requiredMinutes = def.LeadTimeMinutes * order.PlannedQuantity;
-            // 必要時間を営業日数（総日数）に変換
-            int daysNeeded = requiredMinutes <= 0 ? 0 : (int)Math.Ceiling(requiredMinutes / 480.0);
-            // 予定日: 当日を含めるため総日数-1日前（480分以内は当日扱い）
-            var dueDate = SubtractBusinessDays(baseDate, Math.Max(0, daysNeeded - 1));
-            results.Insert(0, new OrderProcess {
+            var dueDate = SubtractBusinessDays(order.DeliveryDate, totalChunks - chunks[i]);
+            results.Add(new OrderProcess {
                 ProcessName = def.ProcessName,
                 DueDate = dueDate,
                 Status = importedStatuses.TryGetValue(def.ProcessName, out var s) && s == ProcessStatus.Completed
@@ -64,11 +77,7 @@ public class BusinessDayCalculator {
                 DepartmentId = def.DepartmentId,
                 RequiredMinutes = requiredMinutes
             });
-            // baseDateは総日数分遡る（前工程はこの工程の開始日の前日から計算）
-            if (def.LeadTimeMinutes > 0)
-                baseDate = SubtractBusinessDays(baseDate, daysNeeded);
         }
-
         return results;
     }
 
