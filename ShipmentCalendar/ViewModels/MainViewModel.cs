@@ -249,10 +249,11 @@ public partial class MainViewModel : ObservableObject {
                 if (!productDefs.Any())
                     continue;
 
-                // 仮登録した完了コード（指示内容コード）→ActualDateのマッピングを保存
+                // 仮登録した完了コード（指示内容コード）→ActualDateのマッピングを保存（重複は先着優先）
                 var completedActualDates = order.Processes
                     .Where(p => p.Status == ProcessStatus.Completed)
-                    .ToDictionary(p => p.ProcessName, p => p.ActualDate);
+                    .GroupBy(p => p.ProcessName)
+                    .ToDictionary(g => g.Key, g => g.First().ActualDate);
 
                 // 完了コードを ProcessName（表示名）に変換（ActualDateも引き継ぐ）
                 order.Processes = productDefs
@@ -264,10 +265,11 @@ public partial class MainViewModel : ObservableObject {
                     })
                     .ToList();
 
-                // BuildProcesses前にActualDate（表示名キー）を保存
+                // BuildProcesses前にActualDate（表示名キー）を保存（重複は先着優先）
                 var actualDates = order.Processes
                     .Where(p => p.ActualDate.HasValue)
-                    .ToDictionary(p => p.ProcessName, p => p.ActualDate!.Value);
+                    .GroupBy(p => p.ProcessName)
+                    .ToDictionary(g => g.Key, g => g.First().ActualDate!.Value);
 
                 order.Processes = calculator.BuildProcesses(order, productDefs.Where(d => d.IsVisible));
 

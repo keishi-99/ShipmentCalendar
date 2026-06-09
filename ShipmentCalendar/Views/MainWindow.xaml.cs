@@ -198,6 +198,7 @@ public class ProcessIndexToDueDateConverter : System.Windows.Data.IMultiValueCon
         if (values[1] is not int index) return string.Empty;
         var process = processes.ElementAtOrDefault(index);
         if (process == null) return string.Empty;
+        System.Diagnostics.Debug.WriteLine($"[DueDate] {process.ProcessName} Status={process.Status} ActualDate={process.ActualDate} DueDate={process.DueDate}");
         // 完了工程は実際の受入日を表示、それ以外は予定日を表示
         var date = process.Status == ProcessStatus.Completed && process.ActualDate.HasValue
             ? process.ActualDate.Value
