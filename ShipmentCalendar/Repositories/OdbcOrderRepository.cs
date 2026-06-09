@@ -120,7 +120,7 @@ public class OdbcOrderRepository : IOrderRepository
         if (value is DateTime dt) return DateOnly.FromDateTime(dt);
         // DrSum ODBCドライバーが文字列や独自型で返す場合に対応
         var str = value.ToString();
-        if (!string.IsNullOrEmpty(str) && DateTime.TryParse(str, out var parsed))
+        if (!string.IsNullOrEmpty(str) && DateTime.TryParse(str, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var parsed))
             return DateOnly.FromDateTime(parsed);
         return null;
     }

@@ -141,7 +141,8 @@ public partial class ProcessSettingWindow : Window
                     SortOrder = csv.SortOrder,                              // 順序は常にCSV
                     LeadTimeHours = db.LeadTimeHours,
                     IsVisible = db.IsVisible,
-                    WarningDaysBeforeDeadline = db.WarningDaysBeforeDeadline
+                    WarningDaysBeforeDeadline = db.WarningDaysBeforeDeadline,
+                    DepartmentId = db.DepartmentId
                 };
             })
         );

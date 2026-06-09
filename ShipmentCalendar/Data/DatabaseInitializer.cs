@@ -67,6 +67,23 @@ public static class DatabaseInitializer
         insertDepts.ExecuteNonQuery();
 
         MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "LeadTimeHours", "REAL NOT NULL DEFAULT 0");
+        // LeadTimeDays（日単位）が残っている既存DBの場合、×8で時間単位に移行
+        var checkDaysCmd = connection.CreateCommand();
+        checkDaysCmd.CommandText = "PRAGMA table_info(ProcessDefinitions)";
+        bool hasLeadTimeDays = false;
+        using (var r = checkDaysCmd.ExecuteReader())
+        {
+            while (r.Read())
+            {
+                if (r.GetString(1) == "LeadTimeDays") { hasLeadTimeDays = true; break; }
+            }
+        }
+        if (hasLeadTimeDays)
+        {
+            var migrateCmd = connection.CreateCommand();
+            migrateCmd.CommandText = "UPDATE ProcessDefinitions SET LeadTimeHours = CAST(LeadTimeDays AS REAL) * 8.0 WHERE LeadTimeHours = 0";
+            migrateCmd.ExecuteNonQuery();
+        }
         MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "IsVisible", "INTEGER NOT NULL DEFAULT 1");
         MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "CsvColumnName", "TEXT NOT NULL DEFAULT ''");
         MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "WarningDaysBeforeDeadline", "INTEGER NOT NULL DEFAULT 0");

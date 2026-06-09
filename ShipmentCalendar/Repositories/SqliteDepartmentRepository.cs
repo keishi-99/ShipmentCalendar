@@ -43,9 +43,28 @@ public class SqliteDepartmentRepository
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
-        var command = connection.CreateCommand();
-        command.CommandText = "DELETE FROM Departments WHERE Id = $id";
-        command.Parameters.AddWithValue("$id", id);
-        await command.ExecuteNonQueryAsync();
+        // 部署削除と同時にProcessDefinitionsの該当DepartmentIdを0（未設定）に更新
+        using var transaction = await connection.BeginTransactionAsync();
+        try
+        {
+            var deleteCmd = connection.CreateCommand();
+            deleteCmd.Transaction = transaction as SqliteTransaction;
+            deleteCmd.CommandText = "DELETE FROM Departments WHERE Id = $id";
+            deleteCmd.Parameters.AddWithValue("$id", id);
+            await deleteCmd.ExecuteNonQueryAsync();
+
+            var updateCmd = connection.CreateCommand();
+            updateCmd.Transaction = transaction as SqliteTransaction;
+            updateCmd.CommandText = "UPDATE ProcessDefinitions SET DepartmentId = 0 WHERE DepartmentId = $id";
+            updateCmd.Parameters.AddWithValue("$id", id);
+            await updateCmd.ExecuteNonQueryAsync();
+
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 }
