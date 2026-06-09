@@ -50,10 +50,10 @@ public class BusinessDayCalculator {
             var def = sorted[i];
             // 必要時間（分）= (段取時間 + 作業時間) × 計画数
             double requiredMinutes = def.LeadTimeMinutes * order.PlannedQuantity;
-            // 必要時間を営業日数に変換（当日に480分まで収まる場合は0日、超過分を切り上げ）
-            int businessDays = requiredMinutes <= 0 ? 0
-                : (int)Math.Max(0, Math.Ceiling(requiredMinutes / 480.0) - 1);
-            var dueDate = SubtractBusinessDays(baseDate, businessDays);
+            // 必要時間を営業日数（総日数）に変換
+            int daysNeeded = requiredMinutes <= 0 ? 0 : (int)Math.Ceiling(requiredMinutes / 480.0);
+            // 予定日: 当日を含めるため総日数-1日前（480分以内は当日扱い）
+            var dueDate = SubtractBusinessDays(baseDate, Math.Max(0, daysNeeded - 1));
             results.Insert(0, new OrderProcess {
                 ProcessName = def.ProcessName,
                 DueDate = dueDate,
@@ -64,9 +64,9 @@ public class BusinessDayCalculator {
                 DepartmentId = def.DepartmentId,
                 RequiredMinutes = requiredMinutes
             });
-            // LeadTimeMinutes=0のときbaseDateは変えない（同日に複数工程）
+            // baseDateは総日数分遡る（前工程はこの工程の開始日の前日から計算）
             if (def.LeadTimeMinutes > 0)
-                baseDate = dueDate;
+                baseDate = SubtractBusinessDays(baseDate, daysNeeded);
         }
 
         return results;
