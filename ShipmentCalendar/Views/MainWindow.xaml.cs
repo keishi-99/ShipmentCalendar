@@ -201,9 +201,9 @@ public class ProcessIndexToDueDateConverter : System.Windows.Data.IMultiValueCon
         // 完了工程は受入日を表示（受入日不明は空白）
         if (process.Status == ProcessStatus.Completed)
             return process.ActualDate.HasValue ? $"✓{process.ActualDate.Value:MM/dd}" : string.Empty;
-        // 未完了工程は予定日 + 必要時間（時間単位、小数1桁）
+        // 未完了工程は着手予定日 + 必要時間（時間単位、小数1桁）
         var hours = process.RequiredMinutes / 60.0;
-        return $"{process.DueDate:MM/dd} ({hours:F1}h)";
+        return $"{process.StartDate:MM/dd} ({hours:F1}h)";
     }
 
     public object[] ConvertBack(object value, Type[] targetTypes, object parameter, System.Globalization.CultureInfo culture)

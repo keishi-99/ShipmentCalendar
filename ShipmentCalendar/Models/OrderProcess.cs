@@ -6,6 +6,8 @@ public class OrderProcess
     public int Id { get; set; }
     public int OrderId { get; set; }
     public string ProcessName { get; set; } = string.Empty;
+    /// <summary>着手予定日（開始日）。DueDateより前になる場合がある（480分超えの工程）</summary>
+    public DateOnly StartDate { get; set; }
     public DateOnly DueDate { get; set; }
     /// <summary>実際の完了日（受入実績の受入日）。完了工程のみセット</summary>
     public DateOnly? ActualDate { get; set; }

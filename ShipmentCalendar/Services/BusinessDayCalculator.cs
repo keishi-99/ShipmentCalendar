@@ -75,8 +75,12 @@ public class BusinessDayCalculator {
             var def = sorted[i];
             double requiredMinutes = def.LeadTimeMinutes * order.PlannedQuantity;
             var dueDate = SubtractBusinessDays(order.DeliveryDate, totalChunks - chunks[i]);
+            // 480分超えの工程は複数日にまたがるため、開始日を別途計算する
+            var daysSpan = requiredMinutes > 0 ? (int)Math.Ceiling(requiredMinutes / 480.0) - 1 : 0;
+            var startDate = SubtractBusinessDays(dueDate, daysSpan);
             results.Add(new OrderProcess {
                 ProcessName = def.ProcessName,
+                StartDate = startDate,
                 DueDate = dueDate,
                 Status = importedStatuses.TryGetValue(def.ProcessName, out var s) && s == ProcessStatus.Completed
                     ? ProcessStatus.Completed
