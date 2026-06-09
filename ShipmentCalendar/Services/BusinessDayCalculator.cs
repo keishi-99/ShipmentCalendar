@@ -50,8 +50,9 @@ public class BusinessDayCalculator {
             var def = sorted[i];
             // 必要時間（分）= (段取時間 + 作業時間) × 計画数
             double requiredMinutes = def.LeadTimeMinutes * order.PlannedQuantity;
-            // 必要時間を営業日数に変換（480分=8時間=1営業日、端数は切り上げ）
-            int businessDays = (int)Math.Ceiling(requiredMinutes / 480.0);
+            // 必要時間を営業日数に変換（当日に480分まで収まる場合は0日、超過分を切り上げ）
+            int businessDays = requiredMinutes <= 0 ? 0
+                : (int)Math.Max(0, Math.Ceiling(requiredMinutes / 480.0) - 1);
             var dueDate = SubtractBusinessDays(baseDate, businessDays);
             results.Insert(0, new OrderProcess {
                 ProcessName = def.ProcessName,
