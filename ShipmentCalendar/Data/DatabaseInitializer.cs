@@ -37,7 +37,7 @@ public static class DatabaseInitializer
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 ItemNumber TEXT NOT NULL,
                 ProcessName TEXT NOT NULL,
-                LeadTimeHours REAL NOT NULL DEFAULT 0,
+                LeadTimeMinutes REAL NOT NULL DEFAULT 0,
                 SortOrder INTEGER NOT NULL DEFAULT 0,
                 IsVisible INTEGER NOT NULL DEFAULT 1,
                 CsvColumnName TEXT NOT NULL DEFAULT '',
@@ -66,22 +66,31 @@ public static class DatabaseInitializer
         ";
         insertDepts.ExecuteNonQuery();
 
-        MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "LeadTimeHours", "REAL NOT NULL DEFAULT 0");
-        // LeadTimeDays（日単位）が残っている既存DBの場合、×8で時間単位に移行
-        var checkDaysCmd = connection.CreateCommand();
-        checkDaysCmd.CommandText = "PRAGMA table_info(ProcessDefinitions)";
-        bool hasLeadTimeDays = false;
-        using (var r = checkDaysCmd.ExecuteReader())
+        MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "LeadTimeMinutes", "REAL NOT NULL DEFAULT 0");
+        // 既存DBのLeadTimeHours（時間単位）→LeadTimeMinutes（分単位）×60で移行
+        // 既存DBのLeadTimeDays（日単位）→LeadTimeMinutes（分単位）×480で移行
+        var checkColCmd = connection.CreateCommand();
+        checkColCmd.CommandText = "PRAGMA table_info(ProcessDefinitions)";
+        bool hasLeadTimeHours = false, hasLeadTimeDays = false;
+        using (var r = checkColCmd.ExecuteReader())
         {
             while (r.Read())
             {
-                if (r.GetString(1) == "LeadTimeDays") { hasLeadTimeDays = true; break; }
+                var col = r.GetString(1);
+                if (col == "LeadTimeHours") hasLeadTimeHours = true;
+                if (col == "LeadTimeDays") hasLeadTimeDays = true;
             }
         }
-        if (hasLeadTimeDays)
+        if (hasLeadTimeHours)
         {
             var migrateCmd = connection.CreateCommand();
-            migrateCmd.CommandText = "UPDATE ProcessDefinitions SET LeadTimeHours = CAST(LeadTimeDays AS REAL) * 8.0 WHERE LeadTimeHours = 0";
+            migrateCmd.CommandText = "UPDATE ProcessDefinitions SET LeadTimeMinutes = LeadTimeHours * 60.0 WHERE LeadTimeMinutes = 0 AND LeadTimeHours > 0";
+            migrateCmd.ExecuteNonQuery();
+        }
+        else if (hasLeadTimeDays)
+        {
+            var migrateCmd = connection.CreateCommand();
+            migrateCmd.CommandText = "UPDATE ProcessDefinitions SET LeadTimeMinutes = CAST(LeadTimeDays AS REAL) * 480.0 WHERE LeadTimeMinutes = 0";
             migrateCmd.ExecuteNonQuery();
         }
         MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "IsVisible", "INTEGER NOT NULL DEFAULT 1");

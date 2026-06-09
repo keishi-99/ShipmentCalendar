@@ -4,23 +4,19 @@ using ShipmentCalendar.Services;
 namespace ShipmentCalendar.Repositories;
 
 /// <summary>
-/// ODBC経由でV_指示工程情報_YD / VP_名称情報_YD から工程定義を取得するリポジトリ。
+/// ODBC経由でV_指示工程情報_YD から工程定義を取得するリポジトリ。
 /// </summary>
-public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
-{
+public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository {
     private readonly AppSettings _settings;
 
-    public OdbcProcessDefinitionRepository(AppSettings settings)
-    {
+    public OdbcProcessDefinitionRepository(AppSettings settings) {
         _settings = settings;
     }
 
-    public async Task<IEnumerable<ProcessDefinition>> GetAllAsync()
-    {
+    public async Task<IEnumerable<ProcessDefinition>> GetAllAsync() {
         using var conn = OdbcConnectionFactory.Create(_settings);
         await conn.OpenAsync();
 
-        // 指示内容名称はビューに含まれるため VP_名称情報_YD への別クエリは不要
         var definitions = new List<ProcessDefinition>();
 
         using var cmd = conn.CreateCommand();
@@ -30,8 +26,7 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
               AND 指示内容 <> '< NULL >'";
 
         using var reader = await cmd.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
-        {
+        while (await reader.ReadAsync()) {
             var itemNumber = reader["品目番号"]?.ToString()?.Trim() ?? string.Empty;
             var processCode = reader["指示内容"]?.ToString()?.Trim() ?? string.Empty;
             if (string.IsNullOrEmpty(itemNumber) || string.IsNullOrEmpty(processCode)) continue;
@@ -40,12 +35,11 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
             var processName = reader["指示内容名称"]?.ToString()?.Trim();
             if (string.IsNullOrEmpty(processName)) processName = processCode;
 
-            definitions.Add(new ProcessDefinition
-            {
+            definitions.Add(new ProcessDefinition {
                 ItemNumber = itemNumber,
                 ProcessName = processName,
                 CsvColumnName = processCode,
-                LeadTimeHours = 0,
+                LeadTimeMinutes = 0,
                 SortOrder = sortOrder,
                 IsVisible = true,
                 WarningDaysBeforeDeadline = 0
@@ -55,8 +49,7 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
         return definitions;
     }
 
-    public async Task<IEnumerable<ProcessDefinition>> GetByItemNumberAsync(string itemNumber)
-    {
+    public async Task<IEnumerable<ProcessDefinition>> GetByItemNumberAsync(string itemNumber) {
         if (string.IsNullOrEmpty(itemNumber)) return Enumerable.Empty<ProcessDefinition>();
 
         using var conn = OdbcConnectionFactory.Create(_settings);
@@ -73,8 +66,7 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
         cmd.Parameters.Add("@ItemNumber", System.Data.Odbc.OdbcType.VarChar).Value = itemNumber;
 
         using var reader = await cmd.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
-        {
+        while (await reader.ReadAsync()) {
             var processCode = reader["指示内容"]?.ToString()?.Trim() ?? string.Empty;
             if (string.IsNullOrEmpty(processCode)) continue;
 
@@ -82,12 +74,11 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
             var processName = reader["指示内容名称"]?.ToString()?.Trim();
             if (string.IsNullOrEmpty(processName)) processName = processCode;
 
-            definitions.Add(new ProcessDefinition
-            {
+            definitions.Add(new ProcessDefinition {
                 ItemNumber = itemNumber,
                 ProcessName = processName,
                 CsvColumnName = processCode,
-                LeadTimeHours = 0,
+                LeadTimeMinutes = 0,
                 SortOrder = sortOrder,
                 IsVisible = true,
                 WarningDaysBeforeDeadline = 0
@@ -97,8 +88,7 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
         return definitions;
     }
 
-    public async Task<IEnumerable<string>> GetItemNumbersAsync()
-    {
+    public async Task<IEnumerable<string>> GetItemNumbersAsync() {
         using var conn = OdbcConnectionFactory.Create(_settings);
         await conn.OpenAsync();
 
@@ -111,8 +101,7 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
             ORDER BY 品目番号";
 
         using var reader = await cmd.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
-        {
+        while (await reader.ReadAsync()) {
             var itemNumber = reader["品目番号"]?.ToString()?.Trim();
             if (!string.IsNullOrEmpty(itemNumber))
                 itemNumbers.Add(itemNumber);
@@ -121,7 +110,7 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
         return itemNumbers;
     }
 
-public Task AddAsync(ProcessDefinition definition) => Task.CompletedTask;
+    public Task AddAsync(ProcessDefinition definition) => Task.CompletedTask;
     public Task UpdateAsync(ProcessDefinition definition) => Task.CompletedTask;
     public Task DeleteAsync(int id) => Task.CompletedTask;
 }
