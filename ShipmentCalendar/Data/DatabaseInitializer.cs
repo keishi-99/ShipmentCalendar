@@ -43,7 +43,8 @@ public static class DatabaseInitializer
                 CsvColumnName TEXT NOT NULL DEFAULT '',
                 WarningDaysBeforeDeadline INTEGER NOT NULL DEFAULT 0,
                 DepartmentId INTEGER NOT NULL DEFAULT 0,
-                CoolTimeMinutes REAL NOT NULL DEFAULT 0
+                CoolTimeMinutes REAL NOT NULL DEFAULT 0,
+                OutsourceLeadDays INTEGER NOT NULL DEFAULT 0
             );
 
             CREATE TABLE IF NOT EXISTS Holidays (
@@ -105,6 +106,7 @@ public static class DatabaseInitializer
 
         // CoolTimeMinutesはMigrateLeadTimeMinutesNullableのテーブル再作成後に追加する（再作成時に列が失われないようにするため）
         MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "CoolTimeMinutes", "REAL NOT NULL DEFAULT 0");
+        MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "OutsourceLeadDays", "INTEGER NOT NULL DEFAULT 0");
 
         // 既存DBのProcessDefinitions.ItemNumberをProductsテーブルに移行
         MigrateAddColumnIfNotExists(connection, "Products", "DisplayName", "TEXT NOT NULL DEFAULT ''");

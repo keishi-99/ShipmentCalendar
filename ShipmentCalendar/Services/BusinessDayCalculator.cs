@@ -73,6 +73,10 @@ public class BusinessDayCalculator {
                 if (running > dayLimit)
                     running = dayLimit;
             }
+
+            // TODO(human): 外注リードタイム（OutsourceLeadDays、営業日単位）の反映
+            // この工程の後にOutsourceLeadDays日分の外注待ちが発生する場合、
+            // 後続工程の開始基準(running)をその日数分だけ後ろ倒しする。
         }
         int totalChunks = Math.Max(1, chunks.Max());
 

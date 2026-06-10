@@ -155,6 +155,10 @@
                     Width="90"
                     Binding="{Binding CoolTimeMinutes, UpdateSourceTrigger=PropertyChanged}"
                     Header="クールタイム（分）" />
+                <DataGridTextColumn
+                    Width="90"
+                    Binding="{Binding OutsourceLeadDays, UpdateSourceTrigger=PropertyChanged}"
+                    Header="外注待ち（営業日）" />
                 <DataGridCheckBoxColumn
                     Width="45"
                     Binding="{Binding IsVisible, UpdateSourceTrigger=PropertyChanged}"
