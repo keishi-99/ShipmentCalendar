@@ -1,0 +1,41 @@
+<Window x:Class="ShipmentCalendar.Views.DepartmentSettingWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="部署設定" Height="360" Width="400"
+        WindowStartupLocation="CenterOwner">
+    <DockPanel Margin="16">
+        <!-- ボタンを先に宣言して高さ不足で隠れないようにする -->
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+            <Button Content="閉じる" Padding="16,6" Click="BtnClose_Click"/>
+        </StackPanel>
+        <TextBlock Name="TxtStatus" DockPanel.Dock="Bottom" Margin="0,4,0,0" Foreground="#666666"/>
+
+        <TextBlock DockPanel.Dock="Top" FontSize="16" FontWeight="Bold"
+                   Text="担当部署マスタ" Margin="0,0,0,12"/>
+
+        <!-- 部署追加エリア -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBlock Text="部署名：" VerticalAlignment="Center" Width="60"/>
+            <TextBox Name="TxtDeptName" Width="200" Padding="4,2" VerticalContentAlignment="Center"/>
+            <Button Content="追加" Padding="10,4" Margin="8,0,0,0" Click="BtnAdd_Click"/>
+        </StackPanel>
+
+        <!-- 部署一覧 -->
+        <DataGrid Name="DeptGrid" DockPanel.Dock="Top"
+                  AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                  HeadersVisibility="Column" IsReadOnly="True">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="部署名" Binding="{Binding Name}" Width="*"/>
+                <DataGridTemplateColumn Header="" Width="50">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button Content="削除" Padding="4,2" FontSize="11"
+                                    Background="#FFEBEE" Foreground="#D32F2F" BorderThickness="0"
+                                    Click="BtnDelete_Click"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+    </DockPanel>
+</Window>

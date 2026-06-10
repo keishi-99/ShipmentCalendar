@@ -116,6 +116,15 @@ public partial class MainWindow : Window
         window.ShowDialog();
     }
 
+    private async void BtnDeptSetting_Click(object sender, RoutedEventArgs e)
+    {
+        var window = new DepartmentSettingWindow();
+        window.Owner = this;
+        window.ShowDialog();
+        // 部署マスタが変更された可能性があるため、フィルターボタンリストを更新
+        await _viewModel.RefreshDepartmentFiltersAsync();
+    }
+
     private void BtnClearFilter_Click(object sender, RoutedEventArgs e)
     {
         _viewModel.ClearFilter();
@@ -188,7 +197,13 @@ public class ProcessIndexToDueDateConverter : System.Windows.Data.IMultiValueCon
         if (values[0] is not IEnumerable<OrderProcess> processes) return string.Empty;
         if (values[1] is not int index) return string.Empty;
         var process = processes.ElementAtOrDefault(index);
-        return process?.DueDate.ToString("MM/dd") ?? string.Empty;
+        if (process == null) return string.Empty;
+        // 完了工程は受入日を表示（受入日不明は空白）
+        if (process.Status == ProcessStatus.Completed)
+            return process.ActualDate.HasValue ? $"✓{process.ActualDate.Value:MM/dd}" : string.Empty;
+        // 未完了工程は着手予定日 + 必要時間（時間単位、小数1桁）
+        var hours = process.RequiredMinutes / 60.0;
+        return $"{process.StartDate:MM/dd} ({hours:F1}h)";
     }
 
     public object[] ConvertBack(object value, Type[] targetTypes, object parameter, System.Globalization.CultureInfo culture)

@@ -31,37 +31,64 @@ public class BusinessDayCalculator {
     }
 
     /// <summary>
-    /// 工程定義から期限日を直列逆算で計算する。
-    /// SortOrderの大きい工程（納期に近い）から順に逆算し、基準日を更新していく。
-    /// LeadTimeDays=0の工程は前の工程と同じ期限日になる。
+    /// 工程定義から期限日を計算する。
+    /// 全工程の累積必要時間を前向きに集計し、480分（8時間）単位の日チャンクに割り当て、
+    /// 納期から逆算して各工程の予定日を決定する。
+    /// 例: 作業A=120分, B=100分, C=300分 → A,B は同日、C は翌日（=納期当日）
     /// </summary>
-    public List<OrderProcess> BuildProcesses(Order order, IEnumerable<ProcessDefinition> definitions) {
-        // 同一 ProcessName が複数ある場合（名称マスタ重複等）は先着優先で1件に集約
-        var importedStatuses = order.Processes
-            .GroupBy(p => p.ProcessName)
-            .ToDictionary(g => g.Key, g => g.First().Status);
-
+    /// <summary>
+    /// completedByDestNumber: 完了済み指示先番号→受入日 のマッピング（指示先番号は工程ごとに一意）
+    /// </summary>
+    public List<OrderProcess> BuildProcesses(Order order, IEnumerable<ProcessDefinition> definitions, Dictionary<string, DateOnly?> completedByDestNumber)
+    {
         var sorted = definitions.OrderBy(d => d.SortOrder).ToList();
-        var results = new List<OrderProcess>(sorted.Count);
+        if (!sorted.Any()) return new List<OrderProcess>();
 
-        // 納期を起点に直列逆算（SortOrder降順＝納期に近い順に処理）
-        var baseDate = order.DeliveryDate;
-        for (int i = sorted.Count - 1; i >= 0; i--) {
-            var def = sorted[i];
-            var dueDate = SubtractBusinessDays(baseDate, def.LeadTimeDays);
-            results.Insert(0, new OrderProcess {
-                ProcessName = def.ProcessName,
-                DueDate = dueDate,
-                Status = importedStatuses.TryGetValue(def.ProcessName, out var s) && s == ProcessStatus.Completed
-                    ? ProcessStatus.Completed
-                    : ProcessStatus.NotStarted,
-                SortOrder = i
-            });
-            // LeadTimeDays=0のときbaseDateは変えない（同日に複数工程）
-            if (def.LeadTimeDays > 0)
-                baseDate = dueDate;
+        // 前向きに累積分数を計算し、480分ごとの日チャンク番号を割り当て
+        double running = 0;
+        var chunks = new int[sorted.Count];
+        for (int i = 0; i < sorted.Count; i++)
+        {
+            double minutes = (sorted[i].LeadTimeMinutes ?? 0) * order.PlannedQuantity;
+            running += minutes;
+            if (minutes <= 0)
+            {
+                // 0分の工程は前の工程と同じチャンク（または1）
+                chunks[i] = i > 0 ? chunks[i - 1] : 1;
+            }
+            else
+            {
+                chunks[i] = (int)Math.Ceiling(running / 480.0);
+                // 1日以上かかる工程はチャンク末尾にrunningを揃え、後続工程を次の日へ押し出す
+                if (minutes >= 480)
+                    running = chunks[i] * 480.0;
+            }
         }
+        int totalChunks = Math.Max(1, chunks.Max());
 
+        // 各工程の予定日 = 納期 - (totalChunks - chunk) 営業日
+        var results = new List<OrderProcess>(sorted.Count);
+        for (int i = 0; i < sorted.Count; i++)
+        {
+            var def = sorted[i];
+            double requiredMinutes = (def.LeadTimeMinutes ?? 0) * order.PlannedQuantity;
+            var dueDate = SubtractBusinessDays(order.DeliveryDate, totalChunks - chunks[i]);
+            // 480分超えの工程は複数日にまたがるため、開始日を別途計算する
+            var daysSpan = requiredMinutes > 0 ? (int)Math.Ceiling(requiredMinutes / 480.0) - 1 : 0;
+            var startDate = SubtractBusinessDays(dueDate, daysSpan);
+            // 指示先番号（一意）で完了判定。指示内容（表示名）の重複の影響を受けない
+            var isCompleted = completedByDestNumber.TryGetValue(def.CsvColumnName, out var actualDate);
+            results.Add(new OrderProcess {
+                ProcessName = def.ProcessName,
+                StartDate = startDate,
+                DueDate = dueDate,
+                ActualDate = isCompleted ? actualDate : null,
+                Status = isCompleted ? ProcessStatus.Completed : ProcessStatus.NotStarted,
+                SortOrder = def.SortOrder,
+                DepartmentId = def.DepartmentId,
+                RequiredMinutes = requiredMinutes
+            });
+        }
         return results;
     }
 

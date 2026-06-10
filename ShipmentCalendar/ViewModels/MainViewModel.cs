@@ -41,6 +41,12 @@ public partial class MainViewModel : ObservableObject {
     public static IReadOnlyList<string> RegistrationStatusOptions { get; } =
         new[] { "両方", "登録済みのみ", "登録無しのみ" };
 
+    /// <summary>ツールバー部署フィルターボタン用リスト（「全て」含む）</summary>
+    public ObservableCollection<DepartmentFilterItem> DepartmentFilters { get; } = new();
+
+    /// <summary>選択中の担当部署ID（0=全て）</summary>
+    [ObservableProperty] private int _filterDepartmentId = 0;
+
     partial void OnFilterItemNumberChanged(string value) => ApplyFilter();
     partial void OnFilterProductNameChanged(string value) => ApplyFilter();
     partial void OnFilterManufactureNumberChanged(string value) => ApplyFilter();
@@ -48,6 +54,16 @@ public partial class MainViewModel : ObservableObject {
     partial void OnFilterDeliveryToChanged(DateTime? value) => ApplyFilter();
     partial void OnFilterHideCompletedChanged(bool value) => ApplyFilter();
     partial void OnFilterRegistrationStatusChanged(string value) => ApplyFilter();
+    partial void OnFilterDepartmentIdChanged(int value)
+    {
+        // 各ボタンの選択状態を同期してからフィルターを適用
+        foreach (var item in DepartmentFilters)
+            item.IsSelected = item.Id == value;
+        ApplyFilter();
+    }
+
+    [RelayCommand]
+    private void SelectDepartment(int id) => FilterDepartmentId = id;
 
     public void ClearFilter() {
         FilterItemNumber = string.Empty;
@@ -84,8 +100,38 @@ public partial class MainViewModel : ObservableObject {
         else if (FilterRegistrationStatus == "登録無しのみ")
             result = result.Where(o => !_registeredItemNumbers.Contains(o.ItemNumber));
 
-        Orders = new ObservableCollection<Order>(result.OrderBy(o => o.DeliveryDate));
+        // 担当部署フィルター：未完了工程のうち SortOrder 最小のものが選択部署の行のみ表示
+        if (FilterDepartmentId > 0)
+        {
+            result = result.Where(o => {
+                var next = o.Processes
+                    .Where(p => p.Status != ProcessStatus.Completed)
+                    .OrderBy(p => p.SortOrder)
+                    .FirstOrDefault();
+                return next?.DepartmentId == FilterDepartmentId;
+            });
+            // 担当工程の DueDate 順でソート
+            Orders = new ObservableCollection<Order>(result.OrderBy(o =>
+                o.Processes
+                    .Where(p => p.Status != ProcessStatus.Completed)
+                    .OrderBy(p => p.SortOrder)
+                    .FirstOrDefault()?.DueDate ?? DateOnly.MaxValue));
+        }
+        else
+        {
+            Orders = new ObservableCollection<Order>(result.OrderBy(o => o.DeliveryDate));
+        }
         UpdateStatusMessage();
+    }
+
+    /// <summary>部署マスタを再取得してフィルターボタンリストを更新する</summary>
+    public async Task RefreshDepartmentFiltersAsync()
+    {
+        var departments = await new Repositories.SqliteDepartmentRepository().GetAllAsync();
+        DepartmentFilters.Clear();
+        DepartmentFilters.Add(new DepartmentFilterItem { Id = 0, Name = "全て", IsSelected = FilterDepartmentId == 0 });
+        foreach (var d in departments)
+            DepartmentFilters.Add(new DepartmentFilterItem { Id = d.Id, Name = d.Name, IsSelected = FilterDepartmentId == d.Id });
     }
 
     private void RefreshFilterDateRange()
@@ -132,48 +178,40 @@ public partial class MainViewModel : ObservableObject {
 
     [RelayCommand]
     public async Task LoadOrdersAsync() {
-        if (string.IsNullOrEmpty(Settings.SeisanKeikakuCsvPath)) {
-            StatusMessage = "データソースが設定されていません。設定から生産計画CSVファイルを選択してください。";
+        if (!Settings.IsOdbcConfigured) {
+            StatusMessage = "ODBC接続が設定されていません。設定 > データソース設定 から接続情報を入力してください。";
             return;
         }
 
         StatusMessage = "読み込み中...";
         IsLoading = true;
 
-        // UIが再描画されるタイミングを確保してからスピナーを表示する
-        await Task.Yield();
-
         try {
+            // ODBCはasync内部実装が同期のためTask.Runでスレッドプールに逃がす
+            var settings = Settings;
+            var (orders, allCsvDefs) = await Task.Run(async () =>
+            {
+                var repo = new OdbcOrderRepository(settings);
+                var o = (await repo.GetAllAsync()).ToList();
 
-            var repository = new CsvOrderRepository(
-                Settings.SeisanKeikakuCsvPath,
-                Settings.UkeireJissekiCsvPath,
-                Settings.DeliveryDateRangeDays,
-                Settings.DeliveryDatePastDays);
+                IProcessDefinitionRepository processRepo = new OdbcProcessDefinitionRepository(settings);
+                var defs = (await processRepo.GetAllAsync()).ToList();
+                return (o, defs);
+            });
 
             var holidays = await _holidayRepository.GetAllAsync();
             var calculator = new BusinessDayCalculator(holidays);
             var today = DateOnly.FromDateTime(DateTime.Today);
 
-            var orders = (await repository.GetAllAsync()).ToList();
-
-            // DB登録済みの品目名があればCSV品目名を上書きする
+            // DB登録済みの品目名があればODBC品目名を上書きする
             var displayNames = await new Repositories.SqliteProductDisplayNameRepository().GetAllDisplayNamesAsync();
             foreach (var order in orders) {
                 if (displayNames.TryGetValue(order.ItemNumber, out var displayName) && !string.IsNullOrEmpty(displayName))
                     order.ProductName = displayName;
             }
 
-            // 指示工程CSV + 名称情報CSV から工程構造を取得（未設定時は DB にフォールバック）
-            IProcessDefinitionRepository processDefRepo =
-                !string.IsNullOrEmpty(Settings.ShijiKoteiCsvPath)
-                    ? new CsvProcessDefinitionRepository(Settings.ShijiKoteiCsvPath, Settings.MeishoJohoCsvPath)
-                    : new SqliteProcessDefinitionRepository();
-
-            var allCsvDefs = (await processDefRepo.GetAllAsync()).ToList();
-
             // DB のユーザー設定（工程名カスタマイズ・LT・表示・警告）をマージ
-            // キー: "ItemNumber|CsvColumnName(=指示内容コード)"
+            // キー: "ItemNumber|CsvColumnName(=指示先番号)"
             var dbDefs = await new SqliteProcessDefinitionRepository().GetAllAsync();
             var dbDict = dbDefs
                 .Where(d => !string.IsNullOrEmpty(d.CsvColumnName))
@@ -188,9 +226,10 @@ public partial class MainViewModel : ObservableObject {
                     ProcessName = db.ProcessName,
                     CsvColumnName = csv.CsvColumnName,
                     SortOrder = csv.SortOrder,                               // 順序は常にCSV
-                    LeadTimeDays = db.LeadTimeDays,
+                    LeadTimeMinutes = db.LeadTimeMinutes ?? csv.LeadTimeMinutes,
                     IsVisible = db.IsVisible,
-                    WarningDaysBeforeDeadline = db.WarningDaysBeforeDeadline
+                    WarningDaysBeforeDeadline = db.WarningDaysBeforeDeadline,
+                    DepartmentId = db.DepartmentId
                 };
             }).ToList();
 
@@ -210,19 +249,21 @@ public partial class MainViewModel : ObservableObject {
                 if (!productDefs.Any())
                     continue;
 
-                // CsvOrderRepository が仮登録した完了コード（指示内容コード）を取得
-                var csvCompletedColumns = order.Processes
+                // 仮登録した完了済み指示先番号→受入日のマッピング（指示先番号は工程ごとに一意。重複は先着優先）
+                var completedByDestNumber = order.Processes
                     .Where(p => p.Status == ProcessStatus.Completed)
-                    .Select(p => p.ProcessName)
-                    .ToHashSet();
+                    .GroupBy(p => p.ProcessName)
+                    .ToDictionary(g => g.Key, g => g.First().ActualDate);
 
-                // 完了コードを ProcessName（表示名）に変換
-                order.Processes = productDefs
-                    .Where(d => csvCompletedColumns.Contains(d.CsvColumnName))
-                    .Select(d => new OrderProcess { ProcessName = d.ProcessName, Status = ProcessStatus.Completed })
-                    .ToList();
+                order.Processes = calculator.BuildProcesses(order, productDefs.Where(d => d.IsVisible), completedByDestNumber);
 
-                order.Processes = calculator.BuildProcesses(order, productDefs.Where(d => d.IsVisible));
+                // 順序999が完了している場合、前工程すべてを完了扱いにする
+                var proc999 = order.Processes.FirstOrDefault(p => p.SortOrder == 999);
+                if (proc999?.Status == ProcessStatus.Completed)
+                {
+                    foreach (var process in order.Processes)
+                        process.Status = ProcessStatus.Completed;
+                }
 
                 // ステータスを警告日数込みで確定
                 foreach (var process in order.Processes) {
@@ -245,6 +286,10 @@ public partial class MainViewModel : ObservableObject {
             _allOrders = orders.OrderBy(o => o.DeliveryDate).ToList();
             var registeredNumbers = await new SqliteProcessDefinitionRepository().GetItemNumbersAsync();
             _registeredItemNumbers = new HashSet<string>(registeredNumbers, StringComparer.OrdinalIgnoreCase);
+
+            // 部署フィルターボタンリストを更新
+            await RefreshDepartmentFiltersAsync();
+
             _lastLoaded = DateTime.Now;
             ApplyFilter();
 

@@ -2,10 +2,28 @@ using ShipmentCalendar.Models;
 using ShipmentCalendar.Repositories;
 using ShipmentCalendar.Services;
 using System.Collections.ObjectModel;
-using System.IO;
+using System.Globalization;
 using System.Windows;
+using System.Windows.Data;
 
 namespace ShipmentCalendar.Views;
+
+/// <summary>DepartmentId → 部署名に変換するコンバーター（ProcessSettingWindow 用）</summary>
+public class DeptIdToNameConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is int id && id > 0)
+        {
+            var dept = ProcessSettingWindow.DepartmentsSource?.FirstOrDefault(d => d.Id == id);
+            return dept?.Name ?? string.Empty;
+        }
+        return string.Empty;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => throw new NotImplementedException();
+}
 
 public partial class ProcessSettingWindow : Window
 {
@@ -14,11 +32,25 @@ public partial class ProcessSettingWindow : Window
     private readonly SqliteProductDisplayNameRepository _nameRepository = new SqliteProductDisplayNameRepository();
     private ObservableCollection<ProcessDefinition> _currentDefinitions = new();
 
+    /// <summary>XAML の DataTemplate から参照できる静的な部署リスト</summary>
+    public static IReadOnlyList<Department>? DepartmentsSource { get; private set; }
+
     public ProcessSettingWindow()
     {
         InitializeComponent();
         ProcessGrid.ItemsSource = _currentDefinitions;
-        Loaded += async (_, _) => await RefreshRegisteredListAsync();
+        Loaded += async (_, _) =>
+        {
+            // 部署リストをDBから読み込んでDataGrid.Tag経由でCellEditingTemplateに渡す
+            var depts = (await new SqliteDepartmentRepository().GetAllAsync()).ToList();
+            // 先頭に「未設定」（Id=0）を追加
+            var allDepts = new List<Department> { new Department { Id = 0, Name = "（未設定）" } };
+            allDepts.AddRange(depts);
+            DepartmentsSource = allDepts;
+            ProcessGrid.Tag = allDepts;
+
+            await RefreshRegisteredListAsync();
+        };
     }
 
     /// <summary>DB に登録済みの品目番号をコンボボックスに読み込む</summary>
@@ -63,17 +95,16 @@ public partial class ProcessSettingWindow : Window
         }
 
         var settings = _settingsService.Load();
-        if (string.IsNullOrEmpty(settings.ShijiKoteiCsvPath) || !File.Exists(settings.ShijiKoteiCsvPath))
+        if (!settings.IsOdbcConfigured)
         {
-            TxtStatus.Text = "設定から指示工程CSVファイルを指定してください";
+            TxtStatus.Text = "設定からODBC接続情報を入力してください";
             return;
         }
 
-        // CSVから工程定義を取得（順序・指示内容コード・デフォルト工程名・LT）
-        var csvRepo = new CsvProcessDefinitionRepository(
-            settings.ShijiKoteiCsvPath,
-            settings.MeishoJohoCsvPath);
-        var csvDefs = (await csvRepo.GetByItemNumberAsync(itemNumber)).ToList();
+        // ODBCから工程定義を取得（順序・指示内容コード・デフォルト工程名・LT）
+        // ODBC呼び出しは実質同期処理のため、UIスレッドのフリーズを避けてバックグラウンドで実行する
+        var csvRepo = new OdbcProcessDefinitionRepository(settings);
+        var csvDefs = (await Task.Run(async () => await csvRepo.GetByItemNumberAsync(itemNumber))).ToList();
 
         if (!csvDefs.Any())
         {
@@ -81,12 +112,12 @@ public partial class ProcessSettingWindow : Window
             return;
         }
 
-        // 品目名の初期値をDB未登録なら生産計画CSVから取得
+        // 品目名の初期値をDB未登録ならODBCから取得
         if (string.IsNullOrEmpty(TxtItemName.Text))
         {
-            var csvItemName = await LookupItemNameFromCsvAsync(itemNumber, settings.SeisanKeikakuCsvPath);
-            if (!string.IsNullOrEmpty(csvItemName))
-                TxtItemName.Text = csvItemName;
+            var dbItemName = await Task.Run(async () => await LookupItemNameFromOdbcAsync(itemNumber, settings));
+            if (!string.IsNullOrEmpty(dbItemName))
+                TxtItemName.Text = dbItemName;
         }
 
         // DB既存設定を取得（品目番号 = ProductName として保存済みのもの）
@@ -109,9 +140,10 @@ public partial class ProcessSettingWindow : Window
                     ProcessName = db.ProcessName,
                     CsvColumnName = csv.CsvColumnName,
                     SortOrder = csv.SortOrder,                              // 順序は常にCSV
-                    LeadTimeDays = db.LeadTimeDays,
+                    LeadTimeMinutes = db.LeadTimeMinutes,
                     IsVisible = db.IsVisible,
-                    WarningDaysBeforeDeadline = db.WarningDaysBeforeDeadline
+                    WarningDaysBeforeDeadline = db.WarningDaysBeforeDeadline,
+                    DepartmentId = db.DepartmentId
                 };
             })
         );
@@ -158,42 +190,24 @@ public partial class ProcessSettingWindow : Window
         CmbRegistered.SelectedItem = itemNumber;
     }
 
-    /// <summary>VP_生産計画情報_YD から品目番号に対応する品目名を取得する</summary>
-    private static Task<string?> LookupItemNameFromCsvAsync(string itemNumber, string seisanKeikakuCsvPath)
+    /// <summary>VP_生産計画情報_YD から品目番号に対応する品目名をODBC経由で取得する</summary>
+    private static async Task<string?> LookupItemNameFromOdbcAsync(string itemNumber, Models.AppSettings settings)
     {
-        if (string.IsNullOrEmpty(seisanKeikakuCsvPath) || !File.Exists(seisanKeikakuCsvPath))
-            return Task.FromResult<string?>(null);
+        if (!settings.IsOdbcConfigured) return null;
 
         try
         {
-            var firstLine = File.ReadLines(seisanKeikakuCsvPath, System.Text.Encoding.UTF8).FirstOrDefault() ?? string.Empty;
-            var delimiter = firstLine.Contains('\t') ? "\t" : ",";
-            var config = new CsvHelper.Configuration.CsvConfiguration(System.Globalization.CultureInfo.InvariantCulture)
-            {
-                HasHeaderRecord = true,
-                Delimiter = delimiter,
-                BadDataFound = null,
-                MissingFieldFound = null
-            };
+            using var conn = Services.OdbcConnectionFactory.Create(settings);
+            await conn.OpenAsync();
 
-            using var reader = new StreamReader(seisanKeikakuCsvPath, System.Text.Encoding.UTF8);
-            using var csv = new CsvHelper.CsvReader(reader, config);
-            csv.Read();
-            csv.ReadHeader();
-            while (csv.Read())
-            {
-                string? field;
-                try { field = csv.GetField("品目番号"); } catch { field = null; }
-                if (field != itemNumber) continue;
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT TOP 1 品目名 FROM VP_生産計画情報_YD WHERE 品目番号 = ?";
+            cmd.Parameters.Add("@in", System.Data.Odbc.OdbcType.VarChar).Value = itemNumber;
 
-                string? name;
-                try { name = csv.GetField("品目名"); } catch { name = null; }
-                return Task.FromResult(name);
-            }
+            var result = await cmd.ExecuteScalarAsync();
+            return result?.ToString()?.Trim();
         }
-        catch { /* CSVが読めない場合は空で返す */ }
-
-        return Task.FromResult<string?>(null);
+        catch { return null; }
     }
 
     /// <summary>品目番号ごと削除：工程定義と品目名をまとめてDBから削除する</summary>

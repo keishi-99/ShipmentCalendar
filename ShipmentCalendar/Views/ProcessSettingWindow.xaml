@@ -1,90 +1,195 @@
-<Window x:Class="ShipmentCalendar.Views.ProcessSettingWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="工程設定" Height="540" Width="700"
-        WindowStartupLocation="CenterOwner">
+<Window
+    x:Class="ShipmentCalendar.Views.ProcessSettingWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="clr-namespace:ShipmentCalendar.Views"
+    Title="工程設定"
+    Width="820"
+    Height="560"
+    WindowStartupLocation="CenterOwner">
+    <Window.Resources>
+        <local:DeptIdToNameConverter x:Key="DeptIdToNameConverter" />
+    </Window.Resources>
     <DockPanel Margin="16">
-        <!-- ボタン・ステータスを先に宣言しないと高さ不足で隠れる -->
-        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-            <Button Content="品目番号ごと削除" Padding="12,6" Background="#D32F2F" Foreground="White"
-                    BorderThickness="0" Click="BtnDeleteItem_Click" Margin="0,0,8,0"/>
-            <Button Content="保存" Padding="16,6" Background="#1976D2" Foreground="White"
-                    BorderThickness="0" Click="BtnSave_Click" Margin="0,0,8,0"/>
-            <Button Content="閉じる" Padding="16,6" Click="BtnClose_Click"/>
+        <!--  ボタン・ステータスを先に宣言しないと高さ不足で隠れる  -->
+        <StackPanel
+            Margin="0,8,0,0"
+            HorizontalAlignment="Right"
+            DockPanel.Dock="Bottom"
+            Orientation="Horizontal">
+            <Button
+                Margin="0,0,8,0"
+                Padding="12,6"
+                Background="#D32F2F"
+                BorderThickness="0"
+                Click="BtnDeleteItem_Click"
+                Content="品目番号ごと削除"
+                Foreground="White" />
+            <Button
+                Margin="0,0,8,0"
+                Padding="16,6"
+                Background="#1976D2"
+                BorderThickness="0"
+                Click="BtnSave_Click"
+                Content="保存"
+                Foreground="White" />
+            <Button
+                Padding="16,6"
+                Click="BtnClose_Click"
+                Content="閉じる" />
         </StackPanel>
-        <TextBlock Name="TxtStatus" DockPanel.Dock="Bottom" Margin="0,4,0,0" Foreground="#666666"/>
+        <TextBlock
+            Name="TxtStatus"
+            Margin="0,4,0,0"
+            DockPanel.Dock="Bottom"
+            Foreground="#666666" />
 
-        <TextBlock DockPanel.Dock="Top" FontSize="16" FontWeight="Bold"
-                   Text="品目ごとの工程設定" Margin="0,0,0,12"/>
+        <TextBlock
+            Margin="0,0,0,12"
+            DockPanel.Dock="Top"
+            FontSize="16"
+            FontWeight="Bold"
+            Text="品目ごとの工程設定" />
 
-        <!-- 登録済み品目番号の選択 -->
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
-            <TextBlock Text="登録済み：" VerticalAlignment="Center" Width="70"/>
-            <ComboBox Name="CmbRegistered" Width="220"
-                      SelectionChanged="CmbRegistered_SelectionChanged"
-                      ToolTip="DB に保存済みの品目番号"/>
+        <!--  登録済み品目番号の選択  -->
+        <StackPanel
+            Margin="0,0,0,6"
+            DockPanel.Dock="Top"
+            Orientation="Horizontal">
+            <TextBlock
+                Width="70"
+                VerticalAlignment="Center"
+                Text="登録済み：" />
+            <ComboBox
+                Name="CmbRegistered"
+                Width="220"
+                SelectionChanged="CmbRegistered_SelectionChanged"
+                ToolTip="DB に保存済みの品目番号" />
         </StackPanel>
 
-        <!-- 品目番号入力 + 取り込みボタン -->
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,4">
-            <TextBlock Text="品目番号：" VerticalAlignment="Center" Width="70"/>
-            <TextBox Name="TxtItemNumber" Width="220"
-                     VerticalContentAlignment="Center" Padding="4,2"
-                     ToolTip="VP_指示工程情報_YD の品目番号と完全一致するコードを入力"/>
-            <Button Content="CSVから取り込む" Padding="8,4" Margin="8,0,0,0"
-                    Click="BtnImport_Click"/>
+        <!--  品目番号入力 + 取り込みボタン  -->
+        <StackPanel
+            Margin="0,0,0,4"
+            DockPanel.Dock="Top"
+            Orientation="Horizontal">
+            <TextBlock
+                Width="70"
+                VerticalAlignment="Center"
+                Text="品目番号：" />
+            <TextBox
+                Name="TxtItemNumber"
+                Width="220"
+                Padding="4,2"
+                VerticalContentAlignment="Center"
+                ToolTip="VP_指示工程情報_YD の品目番号と完全一致するコードを入力" />
+            <Button
+                Margin="8,0,0,0"
+                Padding="8,4"
+                Click="BtnImport_Click"
+                Content="PRONESSから工程取得" />
         </StackPanel>
 
-        <!-- 品目名（初期値はCSV品目名、変更可） -->
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-            <TextBlock Text="品目名：" VerticalAlignment="Center" Width="70"/>
-            <TextBox Name="TxtItemName" Width="320"
-                     VerticalContentAlignment="Center" Padding="4,2"
-                     ToolTip="アプリ上で表示する品目名（初期値はCSVの品目名）"/>
+        <!--  品目名（初期値はCSV品目名、変更可）  -->
+        <StackPanel
+            Margin="0,0,0,8"
+            DockPanel.Dock="Top"
+            Orientation="Horizontal">
+            <TextBlock
+                Width="70"
+                VerticalAlignment="Center"
+                Text="品目名：" />
+            <TextBox
+                Name="TxtItemName"
+                Width="320"
+                Padding="4,2"
+                VerticalContentAlignment="Center"
+                ToolTip="アプリ上で表示する品目名（初期値はCSVの品目名）" />
         </StackPanel>
 
-        <!-- 工程リスト（順序・指示内容は読み取り専用、工程名・LT・設定は編集可） -->
-        <DataGrid Name="ProcessGrid" DockPanel.Dock="Top" Height="310"
-                  AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
-                  HeadersVisibility="Column" Margin="0,0,0,8"
-                  SelectionUnit="Cell" SelectionMode="Single">
+        <!--  工程リスト（順序・指示内容は読み取り専用、工程名・LT・設定は編集可）  -->
+        <DataGrid
+            Name="ProcessGrid"
+            Height="310"
+            Margin="0,0,0,8"
+            AutoGenerateColumns="False"
+            CanUserAddRows="False"
+            CanUserDeleteRows="False"
+            DockPanel.Dock="Top"
+            HeadersVisibility="Column"
+            SelectionMode="Single"
+            SelectionUnit="Cell">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="順序" Binding="{Binding SortOrder}" Width="50"
-                                    IsReadOnly="True">
+                <DataGridTextColumn
+                    Width="50"
+                    Binding="{Binding SortOrder}"
+                    Header="順序"
+                    IsReadOnly="True">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
-                            <Setter Property="Foreground" Value="#888888"/>
-                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                            <Setter Property="Foreground" Value="#888888" />
+                            <Setter Property="HorizontalAlignment" Value="Center" />
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
-                <DataGridTextColumn Header="工程名（変更可）"
-                                    Binding="{Binding ProcessName, UpdateSourceTrigger=PropertyChanged}"
-                                    Width="*"/>
-                <DataGridTextColumn Header="指示内容" Binding="{Binding CsvColumnName}" Width="90"
-                                    IsReadOnly="True">
+                <DataGridTextColumn
+                    Width="*"
+                    Binding="{Binding ProcessName, UpdateSourceTrigger=PropertyChanged}"
+                    Header="工程名（変更可）" />
+                <DataGridTextColumn
+                    Width="90"
+                    Binding="{Binding CsvColumnName}"
+                    Header="指示内容"
+                    IsReadOnly="True">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
-                            <Setter Property="Foreground" Value="#888888"/>
-                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                            <Setter Property="Foreground" Value="#888888" />
+                            <Setter Property="HorizontalAlignment" Value="Center" />
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
-                <DataGridTextColumn Header="製造LT（日）"
-                                    Binding="{Binding LeadTimeDays, UpdateSourceTrigger=PropertyChanged}"
-                                    Width="90"/>
-                <DataGridCheckBoxColumn Header="表示"
-                                        Binding="{Binding IsVisible, UpdateSourceTrigger=PropertyChanged}"
-                                        Width="45"/>
-                <DataGridTextColumn Header="警告（日前）"
-                                    Binding="{Binding WarningDaysBeforeDeadline, UpdateSourceTrigger=PropertyChanged}"
-                                    Width="80"/>
-                <DataGridTemplateColumn Header="" Width="44">
+                <DataGridTextColumn
+                    Width="90"
+                    Binding="{Binding LeadTimeMinutes, UpdateSourceTrigger=PropertyChanged}"
+                    Header="標準時間（分）" />
+                <DataGridCheckBoxColumn
+                    Width="45"
+                    Binding="{Binding IsVisible, UpdateSourceTrigger=PropertyChanged}"
+                    Header="表示" />
+                <DataGridTextColumn
+                    Width="80"
+                    Binding="{Binding WarningDaysBeforeDeadline, UpdateSourceTrigger=PropertyChanged}"
+                    Header="警告（日前）" />
+                <!--  担当部署コンボボックス列  -->
+                <DataGridTemplateColumn Width="110" Header="担当部署">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <Button Content="✕" Padding="4,2" FontSize="11"
-                                    Background="Transparent" BorderThickness="0" Foreground="#D32F2F"
-                                    Click="BtnDeleteRow_Click"/>
+                            <TextBlock
+                                Padding="4,0"
+                                VerticalAlignment="Center"
+                                Text="{Binding DepartmentId, Converter={StaticResource DeptIdToNameConverter}}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                    <DataGridTemplateColumn.CellEditingTemplate>
+                        <DataTemplate>
+                            <ComboBox
+                                DisplayMemberPath="Name"
+                                ItemsSource="{Binding Tag, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                SelectedValue="{Binding DepartmentId, UpdateSourceTrigger=PropertyChanged}"
+                                SelectedValuePath="Id" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellEditingTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Width="44" Header="">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button
+                                Padding="4,2"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Click="BtnDeleteRow_Click"
+                                Content="✕"
+                                FontSize="11"
+                                Foreground="#D32F2F" />
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
