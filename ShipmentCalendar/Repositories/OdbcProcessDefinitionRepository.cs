@@ -46,7 +46,7 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
             {
                 ItemNumber = itemNumber,
                 ProcessName = processName,
-                CsvColumnName = destNumber,
+                DestinationCode = destNumber,
                 LeadTimeMinutes = setup + work,
                 SortOrder = sortOrder,
                 IsVisible = true,
@@ -90,7 +90,7 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
             {
                 ItemNumber = itemNumber,
                 ProcessName = processName,
-                CsvColumnName = destNumber,
+                DestinationCode = destNumber,
                 LeadTimeMinutes = setup + work,
                 SortOrder = sortOrder,
                 IsVisible = true,

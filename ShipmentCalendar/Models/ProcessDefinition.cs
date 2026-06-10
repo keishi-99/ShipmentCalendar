@@ -11,8 +11,8 @@ public class ProcessDefinition
     public int SortOrder { get; set; }
     /// <summary>一覧に表示するか</summary>
     public bool IsVisible { get; set; } = true;
-    /// <summary>CSV上の完了日列名（空の場合はCSV連携なし）</summary>
-    public string CsvColumnName { get; set; } = string.Empty;
+    /// <summary>指示先番号（取引先コード）。工程ごとに一意な識別子</summary>
+    public string DestinationCode { get; set; } = string.Empty;
     /// <summary>期限日まで何日以内で警告するか（0=警告なし）</summary>
     public int WarningDaysBeforeDeadline { get; set; } = 0;
     /// <summary>担当部署ID（0=未設定）</summary>

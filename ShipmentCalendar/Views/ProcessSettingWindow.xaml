@@ -137,7 +137,7 @@
                     Header="工程名（変更可）" />
                 <DataGridTextColumn
                     Width="90"
-                    Binding="{Binding CsvColumnName}"
+                    Binding="{Binding DestinationCode}"
                     Header="指示先番号"
                     IsReadOnly="True">
                     <DataGridTextColumn.ElementStyle>

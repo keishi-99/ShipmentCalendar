@@ -103,10 +103,10 @@ public partial class ProcessSettingWindow : Window
 
         // ODBCから工程定義を取得（順序・指示先番号・デフォルト工程名・LT）
         // ODBC呼び出しは実質同期処理のため、UIスレッドのフリーズを避けてバックグラウンドで実行する
-        var csvRepo = new OdbcProcessDefinitionRepository(settings);
-        var csvDefs = (await Task.Run(async () => await csvRepo.GetByItemNumberAsync(itemNumber))).ToList();
+        var odbcRepo = new OdbcProcessDefinitionRepository(settings);
+        var odbcDefs = (await Task.Run(async () => await odbcRepo.GetByItemNumberAsync(itemNumber))).ToList();
 
-        if (!csvDefs.Any())
+        if (!odbcDefs.Any())
         {
             TxtStatus.Text = $"品目番号 '{itemNumber}' の工程データが見つかりませんでした";
             return;
@@ -123,23 +123,23 @@ public partial class ProcessSettingWindow : Window
         // DB既存設定を取得（品目番号 = ProductName として保存済みのもの）
         var dbDefs = (await _dbRepository.GetByItemNumberAsync(itemNumber)).ToList();
         var dbDict = dbDefs
-            .Where(d => !string.IsNullOrEmpty(d.CsvColumnName))
-            .ToDictionary(d => d.CsvColumnName, d => d);
+            .Where(d => !string.IsNullOrEmpty(d.DestinationCode))
+            .ToDictionary(d => d.DestinationCode, d => d);
 
-        // CSV構造 + DB設定をマージ
-        // 順序・指示先番号はCSVが正、工程名・LT・表示・警告はDB設定を優先
+        // ODBC構造 + DB設定をマージ
+        // 順序・指示先番号はODBCが正、工程名・LT・表示・警告はDB設定を優先
         _currentDefinitions = new ObservableCollection<ProcessDefinition>(
-            csvDefs.Select(csv =>
+            odbcDefs.Select(odbcDef =>
             {
-                if (!dbDict.TryGetValue(csv.CsvColumnName, out var db))
-                    return csv;  // DB未登録 → CSV既定値をそのまま使用
+                if (!dbDict.TryGetValue(odbcDef.DestinationCode, out var db))
+                    return odbcDef;  // DB未登録 → ODBC既定値をそのまま使用
 
                 return new ProcessDefinition
                 {
                     ItemNumber = itemNumber,
                     ProcessName = db.ProcessName,
-                    CsvColumnName = csv.CsvColumnName,
-                    SortOrder = csv.SortOrder,                              // 順序は常にCSV
+                    DestinationCode = odbcDef.DestinationCode,
+                    SortOrder = odbcDef.SortOrder,                          // 順序は常にODBC
                     LeadTimeMinutes = db.LeadTimeMinutes,
                     IsVisible = db.IsVisible,
                     WarningDaysBeforeDeadline = db.WarningDaysBeforeDeadline,
@@ -150,7 +150,7 @@ public partial class ProcessSettingWindow : Window
             })
         );
         ProcessGrid.ItemsSource = _currentDefinitions;
-        TxtStatus.Text = $"{csvDefs.Count} 件の工程を取り込みました";
+        TxtStatus.Text = $"{odbcDefs.Count} 件の工程を取り込みました";
     }
 
     /// <summary>

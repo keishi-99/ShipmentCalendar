@@ -40,7 +40,7 @@ public static class DatabaseInitializer
                 LeadTimeMinutes REAL,
                 SortOrder INTEGER NOT NULL DEFAULT 0,
                 IsVisible INTEGER NOT NULL DEFAULT 1,
-                CsvColumnName TEXT NOT NULL DEFAULT '',
+                DestinationCode TEXT NOT NULL DEFAULT '',
                 WarningDaysBeforeDeadline INTEGER NOT NULL DEFAULT 0,
                 DepartmentId INTEGER NOT NULL DEFAULT 0,
                 CoolTimeMinutes REAL NOT NULL DEFAULT 0,
@@ -97,7 +97,7 @@ public static class DatabaseInitializer
             migrateCmd.ExecuteNonQuery();
         }
         MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "IsVisible", "INTEGER NOT NULL DEFAULT 1");
-        MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "CsvColumnName", "TEXT NOT NULL DEFAULT ''");
+        MigrateRenameOrAddColumn(connection, "ProcessDefinitions", "CsvColumnName", "DestinationCode", "TEXT NOT NULL DEFAULT ''");
         MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "WarningDaysBeforeDeadline", "INTEGER NOT NULL DEFAULT 0");
         MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "DepartmentId", "INTEGER NOT NULL DEFAULT 0");
 
@@ -169,7 +169,7 @@ public static class DatabaseInitializer
                 LeadTimeMinutes REAL,
                 SortOrder INTEGER NOT NULL DEFAULT 0,
                 IsVisible INTEGER NOT NULL DEFAULT 1,
-                CsvColumnName TEXT NOT NULL DEFAULT '',
+                DestinationCode TEXT NOT NULL DEFAULT '',
                 WarningDaysBeforeDeadline INTEGER NOT NULL DEFAULT 0,
                 DepartmentId INTEGER NOT NULL DEFAULT 0
             )";
@@ -179,8 +179,8 @@ public static class DatabaseInitializer
         var copy = connection.CreateCommand();
         copy.Transaction = transaction;
         copy.CommandText = @"
-            INSERT INTO ProcessDefinitions_new (Id, ItemNumber, ProcessName, LeadTimeMinutes, SortOrder, IsVisible, CsvColumnName, WarningDaysBeforeDeadline, DepartmentId)
-            SELECT Id, ItemNumber, ProcessName, NULLIF(LeadTimeMinutes, 0), SortOrder, IsVisible, CsvColumnName, WarningDaysBeforeDeadline, DepartmentId
+            INSERT INTO ProcessDefinitions_new (Id, ItemNumber, ProcessName, LeadTimeMinutes, SortOrder, IsVisible, DestinationCode, WarningDaysBeforeDeadline, DepartmentId)
+            SELECT Id, ItemNumber, ProcessName, NULLIF(LeadTimeMinutes, 0), SortOrder, IsVisible, DestinationCode, WarningDaysBeforeDeadline, DepartmentId
             FROM ProcessDefinitions";
         copy.ExecuteNonQuery();
 
@@ -208,6 +208,30 @@ public static class DatabaseInitializer
         }
         var alter = connection.CreateCommand();
         alter.CommandText = $"ALTER TABLE {table} ADD COLUMN {column} {definition}";
+        alter.ExecuteNonQuery();
+    }
+
+    /// <summary>旧列名が存在すれば新列名にリネームし、どちらも存在しなければ新列名で追加する</summary>
+    private static void MigrateRenameOrAddColumn(SqliteConnection connection, string table, string oldColumn, string newColumn, string definition)
+    {
+        var check = connection.CreateCommand();
+        check.CommandText = $"PRAGMA table_info({table})";
+        bool hasOld = false, hasNew = false;
+        using (var reader = check.ExecuteReader())
+        {
+            while (reader.Read())
+            {
+                var col = reader.GetString(1);
+                if (col == oldColumn) hasOld = true;
+                if (col == newColumn) hasNew = true;
+            }
+        }
+        if (hasNew) return;
+
+        var alter = connection.CreateCommand();
+        alter.CommandText = hasOld
+            ? $"ALTER TABLE {table} RENAME COLUMN {oldColumn} TO {newColumn}"
+            : $"ALTER TABLE {table} ADD COLUMN {newColumn} {definition}";
         alter.ExecuteNonQuery();
     }
 }

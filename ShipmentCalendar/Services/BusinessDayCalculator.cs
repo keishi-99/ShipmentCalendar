@@ -92,10 +92,10 @@ public class BusinessDayCalculator {
             var dueDate = SubtractBusinessDays(order.CompletionDate, finishBucket[i] - 1);
             var startDate = SubtractBusinessDays(order.CompletionDate, startBucket[i] - 1);
             // 指示先番号（一意）で完了判定。指示内容（表示名）の重複の影響を受けない
-            var isCompleted = completedByDestNumber.TryGetValue(def.CsvColumnName, out var actualDate);
+            var isCompleted = completedByDestNumber.TryGetValue(def.DestinationCode, out var actualDate);
             results.Add(new OrderProcess {
                 ProcessName = def.ProcessName,
-                CsvColumnName = def.CsvColumnName,
+                DestinationCode = def.DestinationCode,
                 StartDate = startDate,
                 DueDate = dueDate,
                 ActualDate = isCompleted ? actualDate : null,
