@@ -136,26 +136,6 @@ public static class DatabaseInitializer
         migrate.ExecuteNonQuery();
     }
 
-    private static void MigrateRenameColumnIfExists(SqliteConnection connection, string table, string oldColumn, string newColumn)
-    {
-        var check = connection.CreateCommand();
-        check.CommandText = $"PRAGMA table_info({table})";
-        using var reader = check.ExecuteReader();
-        bool hasOld = false, hasNew = false;
-        while (reader.Read())
-        {
-            var name = reader.GetString(1);
-            if (name == oldColumn) hasOld = true;
-            if (name == newColumn) hasNew = true;
-        }
-        if (hasOld && !hasNew)
-        {
-            var alter = connection.CreateCommand();
-            alter.CommandText = $"ALTER TABLE {table} RENAME COLUMN {oldColumn} TO {newColumn}";
-            alter.ExecuteNonQuery();
-        }
-    }
-
     /// <summary>ProcessDefinitions.LeadTimeMinutesがNOT NULLの場合、NULL許容にテーブルを再作成する（既存の0はNULLに変換）</summary>
     private static void MigrateLeadTimeMinutesNullable(SqliteConnection connection)
     {
