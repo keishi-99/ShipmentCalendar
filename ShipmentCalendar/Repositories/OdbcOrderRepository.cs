@@ -106,6 +106,7 @@ public class OdbcOrderRepository : IOrderRepository
                     order.Processes.Add(new OrderProcess
                     {
                         ProcessName = processCode,
+                        CsvColumnName = processCode,
                         Status = ProcessStatus.Completed,
                         ActualDate = ToDateOnly(reader["受入日"])
                     });
