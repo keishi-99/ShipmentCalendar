@@ -23,13 +23,28 @@ public partial class MainWindow : Window {
             if (e.PropertyName == nameof(_viewModel.Orders))
                 BuildProcessColumns();
         };
+        UpdateDueDateDisplayButtonText();
+    }
+
+    /// <summary>表示日切り替えボタンの文言を現在の設定に合わせて更新する</summary>
+    private void UpdateDueDateDisplayButtonText() {
+        BtnToggleDueDateDisplay.Content = _viewModel.Settings.ShowDueDateForNotStarted
+            ? "表示中：完了必須日"
+            : "表示中：着手必須日";
+    }
+
+    private void BtnToggleDueDateDisplay_Click(object sender, RoutedEventArgs e) {
+        _viewModel.Settings.ShowDueDateForNotStarted = !_viewModel.Settings.ShowDueDateForNotStarted;
+        UpdateDueDateDisplayButtonText();
+        _viewModel.SaveSettings();
+        BuildProcessColumns();
     }
 
     /// <summary>工程列をインデックスベースで動的生成する（列ヘッダー: 1, 2, 3...）</summary>
     private void BuildProcessColumns() {
-        // 固定列（出荷日・品目番号・品目名・製番・計画数）以外を削除
-        while (OrderGrid.Columns.Count > 5)
-            OrderGrid.Columns.RemoveAt(5);
+        // 固定列（出荷日・完了日・品目番号・品目名・製番・計画数）以外を削除
+        while (OrderGrid.Columns.Count > 6)
+            OrderGrid.Columns.RemoveAt(6);
 
         if (!_viewModel.Orders.Any()) return;
 
