@@ -101,6 +101,9 @@ public static class DatabaseInitializer
         // LeadTimeMinutesをNULL許容に変更（0=明示的な当日完了、NULL=未設定/フォールバックを区別するため）
         MigrateLeadTimeMinutesNullable(connection);
 
+        // CoolTimeMinutesはMigrateLeadTimeMinutesNullableのテーブル再作成後に追加する（再作成時に列が失われないようにするため）
+        MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "CoolTimeMinutes", "REAL NOT NULL DEFAULT 0");
+
         // 既存DBのProcessDefinitions.ItemNumberをProductsテーブルに移行
         MigrateAddColumnIfNotExists(connection, "Products", "DisplayName", "TEXT NOT NULL DEFAULT ''");
         MigrateProductsFromProcessDefinitions(connection);

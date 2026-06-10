@@ -63,6 +63,16 @@ public class BusinessDayCalculator {
                 if (minutes >= 480)
                     running = chunks[i] * 480.0;
             }
+
+            // クールタイム（数量に依存しない固定の待機時間）を加算。
+            // 単独では翌日に繰り越さず、その日のチャンク上限で切り詰める
+            if (sorted[i].CoolTimeMinutes > 0)
+            {
+                running += sorted[i].CoolTimeMinutes;
+                var dayLimit = chunks[i] * 480.0;
+                if (running > dayLimit)
+                    running = dayLimit;
+            }
         }
         int totalChunks = Math.Max(1, chunks.Max());
 
