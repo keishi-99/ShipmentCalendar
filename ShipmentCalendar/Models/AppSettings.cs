@@ -25,6 +25,8 @@ public class AppSettings
     public int DeliveryDatePastDays { get; set; } = 0;
     /// <summary>完了日の算出に使う、出荷日からの営業日数（出荷日からこの日数だけ前の営業日を完了日とする）</summary>
     public int CompletionDateLeadDays { get; set; } = 1;
+    /// <summary>未着手工程の表示日付を完了予定日にするか（false=着手予定日を表示）</summary>
+    public bool ShowDueDateForNotStarted { get; set; } = false;
 
     /// <summary>ODBC接続設定が入力済みか（接続方式に応じて必須項目を判定）</summary>
     public bool IsOdbcConfigured =>
