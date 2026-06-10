@@ -95,7 +95,7 @@ public partial class ProcessSettingWindow : Window
         }
 
         var settings = _settingsService.Load();
-        if (string.IsNullOrEmpty(settings.OdbcDsn))
+        if (!settings.IsOdbcConfigured)
         {
             TxtStatus.Text = "設定からODBC接続情報を入力してください";
             return;
@@ -193,7 +193,7 @@ public partial class ProcessSettingWindow : Window
     /// <summary>VP_生産計画情報_YD から品目番号に対応する品目名をODBC経由で取得する</summary>
     private static async Task<string?> LookupItemNameFromOdbcAsync(string itemNumber, Models.AppSettings settings)
     {
-        if (string.IsNullOrEmpty(settings.OdbcDsn)) return null;
+        if (!settings.IsOdbcConfigured) return null;
 
         try
         {

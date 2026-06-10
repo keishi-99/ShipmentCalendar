@@ -178,7 +178,7 @@ public partial class MainViewModel : ObservableObject {
 
     [RelayCommand]
     public async Task LoadOrdersAsync() {
-        if (string.IsNullOrEmpty(Settings.OdbcDsn)) {
+        if (!Settings.IsOdbcConfigured) {
             StatusMessage = "ODBC接続が設定されていません。設定 > データソース設定 から接続情報を入力してください。";
             return;
         }
