@@ -52,27 +52,20 @@ public class AppSettingsService
 
     public void Save(AppSettings settings)
     {
-        // 呼び出し元のオブジェクトを変更しないよう、暗号化済みの値を持つコピーを作成してから保存する
-        var toSave = new AppSettings
-        {
-            OdbcConnectionMode = settings.OdbcConnectionMode,
-            OdbcDsn = settings.OdbcDsn,
-            OdbcServer = settings.OdbcServer,
-            OdbcPort = settings.OdbcPort,
-            OdbcDatabase = settings.OdbcDatabase,
-            OdbcUserId = Protect(settings.OdbcUserId),
-            OdbcPassword = Protect(settings.OdbcPassword),
-            AutoRefreshMinutes = settings.AutoRefreshMinutes,
-            DeliveryDateRangeDays = settings.DeliveryDateRangeDays,
-            DeliveryDatePastDays = settings.DeliveryDatePastDays
-        };
+        ArgumentNullException.ThrowIfNull(settings);
 
-        var json = JsonSerializer.Serialize(toSave, JsonOptions);
-        File.WriteAllText(SettingsPath, json);
+        // 呼び出し元のオブジェクトを変更しないよう、シリアライズ経由でコピーを作成してから暗号化して保存する
+        var json = JsonSerializer.Serialize(settings, JsonOptions);
+        var toSave = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+        toSave.OdbcUserId = Protect(settings.OdbcUserId);
+        toSave.OdbcPassword = Protect(settings.OdbcPassword);
+
+        var encryptedJson = JsonSerializer.Serialize(toSave, JsonOptions);
+        File.WriteAllText(SettingsPath, encryptedJson);
     }
 
     /// <summary>DPAPI（CurrentUserスコープ）で文字列を暗号化する</summary>
-    private static string Protect(string plainText)
+    private static string Protect(string? plainText)
     {
         if (string.IsNullOrEmpty(plainText))
             return string.Empty;
