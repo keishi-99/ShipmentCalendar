@@ -75,7 +75,9 @@ public class BusinessDayCalculator {
                 running = (chunks[i] + sorted[i].OutsourceLeadDays) * 480.0;
             }
         }
-        int totalChunks = Math.Max(1, chunks.Max());
+        // 最終工程にOutsourceLeadDaysがある場合、chunks.Max()には反映されないため
+        // 最終的なrunning（総所要分数）から総チャンク数を算出する
+        int totalChunks = Math.Max(1, (int)Math.Ceiling(running / 480.0));
 
         // 各工程の予定日 = 完了日 - (totalChunks - chunk) 営業日
         var results = new List<OrderProcess>(sorted.Count);
