@@ -21,15 +21,13 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
         using var conn = OdbcConnectionFactory.Create(_settings);
         await conn.OpenAsync();
 
-        // 指示先番号→取引先名称の辞書を先に構築
-        var nameDict = await LoadNameDictAsync(conn);
-
         var definitions = new List<ProcessDefinition>();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = @"SELECT 品目番号, 指示先番号, 順序, 段取時間, 作業時間
-            FROM VP_指示工程情報_YD
-            WHERE 指示先番号 IS NOT NULL
-              AND 指示先番号 <> '< NULL >'";
+        cmd.CommandText = @"SELECT A.品目番号, A.指示先番号, A.順序, A.段取時間, A.作業時間, B.取引先名称
+            FROM VP_指示工程情報_YD A
+            LEFT JOIN VP_取引先情報_YD B ON A.指示先番号 = B.取引先番号
+            WHERE A.指示先番号 IS NOT NULL
+              AND A.指示先番号 <> '< NULL >'";
 
         using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
@@ -41,7 +39,8 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
             _ = int.TryParse(reader["順序"]?.ToString(), out int sortOrder);
             _ = double.TryParse(reader["段取時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double setup);
             _ = double.TryParse(reader["作業時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double work);
-            var processName = nameDict.TryGetValue(destNumber, out var n) ? n : destNumber;
+            var supplierName = reader["取引先名称"]?.ToString()?.Trim();
+            var processName = string.IsNullOrEmpty(supplierName) ? destNumber : supplierName;
 
             definitions.Add(new ProcessDefinition
             {
@@ -65,15 +64,14 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
         using var conn = OdbcConnectionFactory.Create(_settings);
         await conn.OpenAsync();
 
-        var nameDict = await LoadNameDictAsync(conn);
-
         var definitions = new List<ProcessDefinition>();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = @"SELECT 指示先番号, 順序, 段取時間, 作業時間
-            FROM VP_指示工程情報_YD
-            WHERE 品目番号 = ?
-              AND 指示先番号 IS NOT NULL
-              AND 指示先番号 <> '< NULL >'";
+        cmd.CommandText = @"SELECT A.指示先番号, A.順序, A.段取時間, A.作業時間, B.取引先名称
+            FROM VP_指示工程情報_YD A
+            LEFT JOIN VP_取引先情報_YD B ON A.指示先番号 = B.取引先番号
+            WHERE A.品目番号 = ?
+              AND A.指示先番号 IS NOT NULL
+              AND A.指示先番号 <> '< NULL >'";
         cmd.Parameters.Add("@ItemNumber", System.Data.Odbc.OdbcType.VarChar).Value = itemNumber;
 
         using var reader = await cmd.ExecuteReaderAsync();
@@ -85,7 +83,8 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
             _ = int.TryParse(reader["順序"]?.ToString(), out int sortOrder);
             _ = double.TryParse(reader["段取時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double setup);
             _ = double.TryParse(reader["作業時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double work);
-            var processName = nameDict.TryGetValue(destNumber, out var n) ? n : destNumber;
+            var supplierName = reader["取引先名称"]?.ToString()?.Trim();
+            var processName = string.IsNullOrEmpty(supplierName) ? destNumber : supplierName;
 
             definitions.Add(new ProcessDefinition
             {
@@ -123,25 +122,6 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
         }
 
         return itemNumbers;
-    }
-
-    /// <summary>VP_取引先情報_YD から 取引先番号（=指示先番号）→取引先名称 辞書を構築する</summary>
-    private async Task<Dictionary<string, string>> LoadNameDictAsync(System.Data.Odbc.OdbcConnection conn)
-    {
-        var dict = new Dictionary<string, string>();
-        using var cmd = conn.CreateCommand();
-        cmd.CommandText = @"SELECT 取引先番号, 取引先名称
-            FROM VP_取引先情報_YD";
-
-        using var reader = await cmd.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
-        {
-            var code = reader["取引先番号"]?.ToString()?.Trim() ?? string.Empty;
-            var name = reader["取引先名称"]?.ToString()?.Trim() ?? string.Empty;
-            if (!string.IsNullOrEmpty(code) && !string.IsNullOrEmpty(name))
-                dict[code] = name;
-        }
-        return dict;
     }
 
     public Task AddAsync(ProcessDefinition definition) => Task.CompletedTask;

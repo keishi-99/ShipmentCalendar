@@ -272,7 +272,7 @@ public partial class MainViewModel : ObservableObject {
                 // ステータスを警告日数込みで確定
                 foreach (var process in order.Processes) {
                     var warningDays = productDefs
-                        .FirstOrDefault(d => d.ProcessName == process.ProcessName)
+                        .FirstOrDefault(d => d.CsvColumnName == process.CsvColumnName)
                         ?.WarningDaysBeforeDeadline ?? 0;
                     process.Status = calculator.DetermineStatus(process, today, warningDays);
                 }
