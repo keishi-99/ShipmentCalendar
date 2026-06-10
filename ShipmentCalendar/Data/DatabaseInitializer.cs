@@ -41,7 +41,9 @@ public static class DatabaseInitializer
                 SortOrder INTEGER NOT NULL DEFAULT 0,
                 IsVisible INTEGER NOT NULL DEFAULT 1,
                 CsvColumnName TEXT NOT NULL DEFAULT '',
-                WarningDaysBeforeDeadline INTEGER NOT NULL DEFAULT 0
+                WarningDaysBeforeDeadline INTEGER NOT NULL DEFAULT 0,
+                DepartmentId INTEGER NOT NULL DEFAULT 0,
+                CoolTimeMinutes REAL NOT NULL DEFAULT 0
             );
 
             CREATE TABLE IF NOT EXISTS Holidays (

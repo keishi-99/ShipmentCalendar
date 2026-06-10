@@ -102,7 +102,7 @@
             </StackPanel>
 
             <TextBlock Grid.Row="11" Grid.Column="0" Text="完了日までの営業日数：" VerticalAlignment="Center"/>
-            <StackPanel Grid.Row="11" Grid.Column="1" Orientation="Horizontal">
+            <StackPanel Grid.Row="11" Grid.Column="1" Grid.ColumnSpan="2" Orientation="Horizontal">
                 <TextBox Name="TxtCompletionLeadDays" Width="60" VerticalContentAlignment="Center" Padding="4"/>
                 <TextBlock Text="　※ 出荷日の何営業日前を完了日とするか" VerticalAlignment="Center" Foreground="#888" Margin="8,0,0,0"/>
             </StackPanel>

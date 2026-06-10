@@ -229,7 +229,8 @@ public partial class MainViewModel : ObservableObject {
                     LeadTimeMinutes = db.LeadTimeMinutes ?? csv.LeadTimeMinutes,
                     IsVisible = db.IsVisible,
                     WarningDaysBeforeDeadline = db.WarningDaysBeforeDeadline,
-                    DepartmentId = db.DepartmentId
+                    DepartmentId = db.DepartmentId,
+                    CoolTimeMinutes = db.CoolTimeMinutes
                 };
             }).ToList();
 
