@@ -15,7 +15,7 @@ public class AppSettings
     public string OdbcDatabase { get; set; } = string.Empty;
     /// <summary>ODBCユーザーID</summary>
     public string OdbcUserId { get; set; } = string.Empty;
-    /// <summary>ODBCパスワード（社内利用前提で平文保存）</summary>
+    /// <summary>ODBCパスワード（保存時はDPAPIで暗号化される）</summary>
     public string OdbcPassword { get; set; } = string.Empty;
     /// <summary>自動更新間隔（分）。0=自動更新なし</summary>
     public int AutoRefreshMinutes { get; set; } = 5;
