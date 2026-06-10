@@ -4,15 +4,12 @@ using ShipmentCalendar.Services;
 namespace ShipmentCalendar.Repositories;
 
 /// <summary>
-/// ODBC経由でVP_指示工程情報_YD + VP_名称情報_YD から工程定義を取得するリポジトリ。
+/// ODBC経由でVP_指示工程情報_YD + VP_取引先情報_YD から工程定義を取得するリポジトリ。
 /// V_指示工程情報_YD（ビュー）は使用しない。
 /// </summary>
 public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
 {
     private readonly AppSettings _settings;
-
-    // VP_名称情報_YD における指示内容の区分番号
-    private const string ShijiNaiyoKubun = "063";
 
     public OdbcProcessDefinitionRepository(AppSettings settings)
     {
@@ -24,7 +21,7 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
         using var conn = OdbcConnectionFactory.Create(_settings);
         await conn.OpenAsync();
 
-        // 指示内容コード→工程名の辞書を先に構築
+        // 指示先番号→取引先名称の辞書を先に構築
         var nameDict = await LoadNameDictAsync(conn);
 
         var definitions = new List<ProcessDefinition>();
@@ -45,7 +42,7 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
             _ = int.TryParse(reader["順序"]?.ToString(), out int sortOrder);
             _ = double.TryParse(reader["段取時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double setup);
             _ = double.TryParse(reader["作業時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double work);
-            var processName = nameDict.TryGetValue(processCode, out var n) ? n : processCode;
+            var processName = nameDict.TryGetValue(destNumber, out var n) ? n : processCode;
 
             definitions.Add(new ProcessDefinition
             {
@@ -90,7 +87,7 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
             _ = int.TryParse(reader["順序"]?.ToString(), out int sortOrder);
             _ = double.TryParse(reader["段取時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double setup);
             _ = double.TryParse(reader["作業時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double work);
-            var processName = nameDict.TryGetValue(processCode, out var n) ? n : processCode;
+            var processName = nameDict.TryGetValue(destNumber, out var n) ? n : processCode;
 
             definitions.Add(new ProcessDefinition
             {
@@ -130,21 +127,19 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
         return itemNumbers;
     }
 
-    /// <summary>VP_名称情報_YD から区分番号=063 の 指示内容コード→工程名 辞書を構築する</summary>
+    /// <summary>VP_取引先情報_YD から 取引先番号（=指示先番号）→取引先名称 辞書を構築する</summary>
     private async Task<Dictionary<string, string>> LoadNameDictAsync(System.Data.Odbc.OdbcConnection conn)
     {
         var dict = new Dictionary<string, string>();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = @"SELECT 名称番号, 名称名
-            FROM VP_名称情報_YD
-            WHERE 区分番号 = ?";
-        cmd.Parameters.Add("@Kubun", System.Data.Odbc.OdbcType.VarChar).Value = ShijiNaiyoKubun;
+        cmd.CommandText = @"SELECT 取引先番号, 取引先名称
+            FROM VP_取引先情報_YD";
 
         using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
-            var code = reader["名称番号"]?.ToString()?.Trim() ?? string.Empty;
-            var name = reader["名称名"]?.ToString()?.Trim() ?? string.Empty;
+            var code = reader["取引先番号"]?.ToString()?.Trim() ?? string.Empty;
+            var name = reader["取引先名称"]?.ToString()?.Trim() ?? string.Empty;
             if (!string.IsNullOrEmpty(code) && !string.IsNullOrEmpty(name))
                 dict[code] = name;
         }
