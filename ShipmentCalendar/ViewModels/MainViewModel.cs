@@ -249,36 +249,13 @@ public partial class MainViewModel : ObservableObject {
                 if (!productDefs.Any())
                     continue;
 
-                // 仮登録した完了コード（指示内容コード）→ActualDateのマッピングを保存（重複は先着優先）
-                var completedActualDates = order.Processes
+                // 仮登録した完了済み指示先番号→受入日のマッピング（指示先番号は工程ごとに一意。重複は先着優先）
+                var completedByDestNumber = order.Processes
                     .Where(p => p.Status == ProcessStatus.Completed)
                     .GroupBy(p => p.ProcessName)
                     .ToDictionary(g => g.Key, g => g.First().ActualDate);
 
-                // 完了コードを ProcessName（表示名）に変換（ActualDateも引き継ぐ）
-                order.Processes = productDefs
-                    .Where(d => completedActualDates.ContainsKey(d.CsvColumnName))
-                    .Select(d => new OrderProcess {
-                        ProcessName = d.ProcessName,
-                        Status = ProcessStatus.Completed,
-                        ActualDate = completedActualDates[d.CsvColumnName]
-                    })
-                    .ToList();
-
-                // BuildProcesses前にActualDate（表示名キー）を保存（重複は先着優先）
-                var actualDates = order.Processes
-                    .Where(p => p.ActualDate.HasValue)
-                    .GroupBy(p => p.ProcessName)
-                    .ToDictionary(g => g.Key, g => g.First().ActualDate!.Value);
-
-                order.Processes = calculator.BuildProcesses(order, productDefs.Where(d => d.IsVisible));
-
-                // 完了工程にActualDateを引き継ぐ
-                foreach (var process in order.Processes)
-                {
-                    if (actualDates.TryGetValue(process.ProcessName, out var actual))
-                        process.ActualDate = actual;
-                }
+                order.Processes = calculator.BuildProcesses(order, productDefs.Where(d => d.IsVisible), completedByDestNumber);
 
                 // 順序999が完了している場合、前工程すべてを完了扱いにする
                 var proc999 = order.Processes.FirstOrDefault(p => p.SortOrder == 999);

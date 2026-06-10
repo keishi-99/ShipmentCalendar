@@ -36,13 +36,11 @@ public class BusinessDayCalculator {
     /// 納期から逆算して各工程の予定日を決定する。
     /// 例: 作業A=120分, B=100分, C=300分 → A,B は同日、C は翌日（=納期当日）
     /// </summary>
-    public List<OrderProcess> BuildProcesses(Order order, IEnumerable<ProcessDefinition> definitions)
+    /// <summary>
+    /// completedByDestNumber: 完了済み指示先番号→受入日 のマッピング（指示先番号は工程ごとに一意）
+    /// </summary>
+    public List<OrderProcess> BuildProcesses(Order order, IEnumerable<ProcessDefinition> definitions, Dictionary<string, DateOnly?> completedByDestNumber)
     {
-        // 同一 ProcessName が複数ある場合は先着優先で1件に集約
-        var importedStatuses = order.Processes
-            .GroupBy(p => p.ProcessName)
-            .ToDictionary(g => g.Key, g => g.First().Status);
-
         var sorted = definitions.OrderBy(d => d.SortOrder).ToList();
         if (!sorted.Any()) return new List<OrderProcess>();
 
@@ -78,13 +76,14 @@ public class BusinessDayCalculator {
             // 480分超えの工程は複数日にまたがるため、開始日を別途計算する
             var daysSpan = requiredMinutes > 0 ? (int)Math.Ceiling(requiredMinutes / 480.0) - 1 : 0;
             var startDate = SubtractBusinessDays(dueDate, daysSpan);
+            // 指示先番号（一意）で完了判定。指示内容（表示名）の重複の影響を受けない
+            var isCompleted = completedByDestNumber.TryGetValue(def.CsvColumnName, out var actualDate);
             results.Add(new OrderProcess {
                 ProcessName = def.ProcessName,
                 StartDate = startDate,
                 DueDate = dueDate,
-                Status = importedStatuses.TryGetValue(def.ProcessName, out var s) && s == ProcessStatus.Completed
-                    ? ProcessStatus.Completed
-                    : ProcessStatus.NotStarted,
+                ActualDate = isCompleted ? actualDate : null,
+                Status = isCompleted ? ProcessStatus.Completed : ProcessStatus.NotStarted,
                 SortOrder = def.SortOrder,
                 DepartmentId = def.DepartmentId,
                 RequiredMinutes = requiredMinutes
