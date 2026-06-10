@@ -26,23 +26,22 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
 
         var definitions = new List<ProcessDefinition>();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = @"SELECT 品目番号, 指示内容, 指示先番号, 順序, 段取時間, 作業時間
+        cmd.CommandText = @"SELECT 品目番号, 指示先番号, 順序, 段取時間, 作業時間
             FROM VP_指示工程情報_YD
-            WHERE 指示内容 IS NOT NULL
-              AND 指示内容 <> '< NULL >'";
+            WHERE 指示先番号 IS NOT NULL
+              AND 指示先番号 <> '< NULL >'";
 
         using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
             var itemNumber = reader["品目番号"]?.ToString()?.Trim() ?? string.Empty;
-            var processCode = reader["指示内容"]?.ToString()?.Trim() ?? string.Empty;
             var destNumber = reader["指示先番号"]?.ToString()?.Trim() ?? string.Empty;
-            if (string.IsNullOrEmpty(itemNumber) || string.IsNullOrEmpty(processCode)) continue;
+            if (string.IsNullOrEmpty(itemNumber) || string.IsNullOrEmpty(destNumber)) continue;
 
             _ = int.TryParse(reader["順序"]?.ToString(), out int sortOrder);
             _ = double.TryParse(reader["段取時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double setup);
             _ = double.TryParse(reader["作業時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double work);
-            var processName = nameDict.TryGetValue(destNumber, out var n) ? n : processCode;
+            var processName = nameDict.TryGetValue(destNumber, out var n) ? n : destNumber;
 
             definitions.Add(new ProcessDefinition
             {
@@ -70,24 +69,23 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
 
         var definitions = new List<ProcessDefinition>();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = @"SELECT 指示内容, 指示先番号, 順序, 段取時間, 作業時間
+        cmd.CommandText = @"SELECT 指示先番号, 順序, 段取時間, 作業時間
             FROM VP_指示工程情報_YD
             WHERE 品目番号 = ?
-              AND 指示内容 IS NOT NULL
-              AND 指示内容 <> '< NULL >'";
+              AND 指示先番号 IS NOT NULL
+              AND 指示先番号 <> '< NULL >'";
         cmd.Parameters.Add("@ItemNumber", System.Data.Odbc.OdbcType.VarChar).Value = itemNumber;
 
         using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
-            var processCode = reader["指示内容"]?.ToString()?.Trim() ?? string.Empty;
             var destNumber = reader["指示先番号"]?.ToString()?.Trim() ?? string.Empty;
-            if (string.IsNullOrEmpty(processCode)) continue;
+            if (string.IsNullOrEmpty(destNumber)) continue;
 
             _ = int.TryParse(reader["順序"]?.ToString(), out int sortOrder);
             _ = double.TryParse(reader["段取時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double setup);
             _ = double.TryParse(reader["作業時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double work);
-            var processName = nameDict.TryGetValue(destNumber, out var n) ? n : processCode;
+            var processName = nameDict.TryGetValue(destNumber, out var n) ? n : destNumber;
 
             definitions.Add(new ProcessDefinition
             {
