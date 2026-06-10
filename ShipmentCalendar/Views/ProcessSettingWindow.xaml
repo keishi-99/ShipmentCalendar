@@ -106,7 +106,7 @@
                 ToolTip="アプリ上で表示する品目名（初期値はCSVの品目名）" />
         </StackPanel>
 
-        <!--  工程リスト（順序・指示内容は読み取り専用、工程名・LT・設定は編集可）  -->
+        <!--  工程リスト（順序・指示先番号は読み取り専用、工程名・LT・設定は編集可）  -->
         <DataGrid
             Name="ProcessGrid"
             Height="310"
@@ -138,7 +138,7 @@
                 <DataGridTextColumn
                     Width="90"
                     Binding="{Binding CsvColumnName}"
-                    Header="指示内容"
+                    Header="指示先番号"
                     IsReadOnly="True">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">

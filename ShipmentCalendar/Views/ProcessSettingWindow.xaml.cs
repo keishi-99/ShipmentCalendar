@@ -101,7 +101,7 @@ public partial class ProcessSettingWindow : Window
             return;
         }
 
-        // ODBCから工程定義を取得（順序・指示内容コード・デフォルト工程名・LT）
+        // ODBCから工程定義を取得（順序・指示先番号・デフォルト工程名・LT）
         // ODBC呼び出しは実質同期処理のため、UIスレッドのフリーズを避けてバックグラウンドで実行する
         var csvRepo = new OdbcProcessDefinitionRepository(settings);
         var csvDefs = (await Task.Run(async () => await csvRepo.GetByItemNumberAsync(itemNumber))).ToList();
@@ -127,7 +127,7 @@ public partial class ProcessSettingWindow : Window
             .ToDictionary(d => d.CsvColumnName, d => d);
 
         // CSV構造 + DB設定をマージ
-        // 順序・指示内容はCSVが正、工程名・LT・表示・警告はDB設定を優先
+        // 順序・指示先番号はCSVが正、工程名・LT・表示・警告はDB設定を優先
         _currentDefinitions = new ObservableCollection<ProcessDefinition>(
             csvDefs.Select(csv =>
             {
