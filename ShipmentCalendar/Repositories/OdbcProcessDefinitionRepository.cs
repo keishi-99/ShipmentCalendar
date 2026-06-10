@@ -23,7 +23,7 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
 
         var definitions = new List<ProcessDefinition>();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = @"SELECT A.品目番号, A.指示先番号, A.順序, A.段取時間, A.作業時間, B.取引先名称
+        cmd.CommandText = @"SELECT A.品目番号 AS 品目番号, A.指示先番号 AS 指示先番号, A.順序 AS 順序, A.段取時間 AS 段取時間, A.作業時間 AS 作業時間, B.取引先名称 AS 取引先名称
             FROM VP_指示工程情報_YD A
             LEFT JOIN VP_取引先情報_YD B ON A.指示先番号 = B.取引先番号
             WHERE A.指示先番号 IS NOT NULL
@@ -66,7 +66,7 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
 
         var definitions = new List<ProcessDefinition>();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = @"SELECT A.指示先番号, A.順序, A.段取時間, A.作業時間, B.取引先名称
+        cmd.CommandText = @"SELECT A.指示先番号 AS 指示先番号, A.順序 AS 順序, A.段取時間 AS 段取時間, A.作業時間 AS 作業時間, B.取引先名称 AS 取引先名称
             FROM VP_指示工程情報_YD A
             LEFT JOIN VP_取引先情報_YD B ON A.指示先番号 = B.取引先番号
             WHERE A.品目番号 = ?
