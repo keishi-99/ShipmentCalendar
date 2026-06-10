@@ -37,7 +37,7 @@ public static class DatabaseInitializer
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 ItemNumber TEXT NOT NULL,
                 ProcessName TEXT NOT NULL,
-                LeadTimeMinutes REAL NOT NULL DEFAULT 0,
+                LeadTimeMinutes REAL,
                 SortOrder INTEGER NOT NULL DEFAULT 0,
                 IsVisible INTEGER NOT NULL DEFAULT 1,
                 CsvColumnName TEXT NOT NULL DEFAULT '',
@@ -98,6 +98,9 @@ public static class DatabaseInitializer
         MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "WarningDaysBeforeDeadline", "INTEGER NOT NULL DEFAULT 0");
         MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "DepartmentId", "INTEGER NOT NULL DEFAULT 0");
 
+        // LeadTimeMinutesをNULL許容に変更（0=明示的な当日完了、NULL=未設定/フォールバックを区別するため）
+        MigrateLeadTimeMinutesNullable(connection);
+
         // 既存DBのProcessDefinitions.ItemNumberをProductsテーブルに移行
         MigrateAddColumnIfNotExists(connection, "Products", "DisplayName", "TEXT NOT NULL DEFAULT ''");
         MigrateProductsFromProcessDefinitions(connection);
@@ -146,6 +149,65 @@ public static class DatabaseInitializer
             alter.CommandText = $"ALTER TABLE {table} RENAME COLUMN {oldColumn} TO {newColumn}";
             alter.ExecuteNonQuery();
         }
+    }
+
+    /// <summary>ProcessDefinitions.LeadTimeMinutesがNOT NULLの場合、NULL許容にテーブルを再作成する（既存の0はNULLに変換）</summary>
+    private static void MigrateLeadTimeMinutesNullable(SqliteConnection connection)
+    {
+        var check = connection.CreateCommand();
+        check.CommandText = "PRAGMA table_info(ProcessDefinitions)";
+        bool isNotNull = false;
+        using (var reader = check.ExecuteReader())
+        {
+            while (reader.Read())
+            {
+                if (reader.GetString(1) == "LeadTimeMinutes")
+                {
+                    isNotNull = reader.GetInt32(3) == 1;
+                    break;
+                }
+            }
+        }
+        if (!isNotNull) return;
+
+        using var transaction = connection.BeginTransaction();
+
+        var createNew = connection.CreateCommand();
+        createNew.Transaction = transaction;
+        createNew.CommandText = @"
+            CREATE TABLE ProcessDefinitions_new (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ItemNumber TEXT NOT NULL,
+                ProcessName TEXT NOT NULL,
+                LeadTimeMinutes REAL,
+                SortOrder INTEGER NOT NULL DEFAULT 0,
+                IsVisible INTEGER NOT NULL DEFAULT 1,
+                CsvColumnName TEXT NOT NULL DEFAULT '',
+                WarningDaysBeforeDeadline INTEGER NOT NULL DEFAULT 0,
+                DepartmentId INTEGER NOT NULL DEFAULT 0
+            )";
+        createNew.ExecuteNonQuery();
+
+        // 既存の0は「未設定（フォールバック対象）」として扱っていたためNULLに変換する
+        var copy = connection.CreateCommand();
+        copy.Transaction = transaction;
+        copy.CommandText = @"
+            INSERT INTO ProcessDefinitions_new (Id, ItemNumber, ProcessName, LeadTimeMinutes, SortOrder, IsVisible, CsvColumnName, WarningDaysBeforeDeadline, DepartmentId)
+            SELECT Id, ItemNumber, ProcessName, NULLIF(LeadTimeMinutes, 0), SortOrder, IsVisible, CsvColumnName, WarningDaysBeforeDeadline, DepartmentId
+            FROM ProcessDefinitions";
+        copy.ExecuteNonQuery();
+
+        var dropOld = connection.CreateCommand();
+        dropOld.Transaction = transaction;
+        dropOld.CommandText = "DROP TABLE ProcessDefinitions";
+        dropOld.ExecuteNonQuery();
+
+        var rename = connection.CreateCommand();
+        rename.Transaction = transaction;
+        rename.CommandText = "ALTER TABLE ProcessDefinitions_new RENAME TO ProcessDefinitions";
+        rename.ExecuteNonQuery();
+
+        transaction.Commit();
     }
 
     private static void MigrateAddColumnIfNotExists(SqliteConnection connection, string table, string column, string definition)

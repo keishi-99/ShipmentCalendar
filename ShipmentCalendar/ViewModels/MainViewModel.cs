@@ -226,7 +226,7 @@ public partial class MainViewModel : ObservableObject {
                     ProcessName = db.ProcessName,
                     CsvColumnName = csv.CsvColumnName,
                     SortOrder = csv.SortOrder,                               // 順序は常にCSV
-                    LeadTimeMinutes = db.LeadTimeMinutes > 0 ? db.LeadTimeMinutes : csv.LeadTimeMinutes,
+                    LeadTimeMinutes = db.LeadTimeMinutes ?? csv.LeadTimeMinutes,
                     IsVisible = db.IsVisible,
                     WarningDaysBeforeDeadline = db.WarningDaysBeforeDeadline,
                     DepartmentId = db.DepartmentId

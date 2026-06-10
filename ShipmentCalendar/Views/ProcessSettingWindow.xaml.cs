@@ -102,8 +102,9 @@ public partial class ProcessSettingWindow : Window
         }
 
         // ODBCから工程定義を取得（順序・指示内容コード・デフォルト工程名・LT）
+        // ODBC呼び出しは実質同期処理のため、UIスレッドのフリーズを避けてバックグラウンドで実行する
         var csvRepo = new OdbcProcessDefinitionRepository(settings);
-        var csvDefs = (await csvRepo.GetByItemNumberAsync(itemNumber)).ToList();
+        var csvDefs = (await Task.Run(async () => await csvRepo.GetByItemNumberAsync(itemNumber))).ToList();
 
         if (!csvDefs.Any())
         {
@@ -114,7 +115,7 @@ public partial class ProcessSettingWindow : Window
         // 品目名の初期値をDB未登録ならODBCから取得
         if (string.IsNullOrEmpty(TxtItemName.Text))
         {
-            var dbItemName = await LookupItemNameFromOdbcAsync(itemNumber, settings);
+            var dbItemName = await Task.Run(async () => await LookupItemNameFromOdbcAsync(itemNumber, settings));
             if (!string.IsNullOrEmpty(dbItemName))
                 TxtItemName.Text = dbItemName;
         }

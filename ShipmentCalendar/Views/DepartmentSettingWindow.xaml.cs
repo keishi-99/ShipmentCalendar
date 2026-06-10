@@ -31,9 +31,16 @@ public partial class DepartmentSettingWindow : Window
             return;
         }
 
-        await _repository.AddAsync(name);
-        TxtDeptName.Text = string.Empty;
-        await LoadAsync();
+        try
+        {
+            await _repository.AddAsync(name);
+            TxtDeptName.Text = string.Empty;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            TxtStatus.Text = $"追加エラー: {ex.Message}";
+        }
     }
 
     private async void BtnDelete_Click(object sender, RoutedEventArgs e)
@@ -45,8 +52,15 @@ public partial class DepartmentSettingWindow : Window
             "削除確認", MessageBoxButton.YesNo, MessageBoxImage.Warning);
         if (result != MessageBoxResult.Yes) return;
 
-        await _repository.DeleteAsync(dept.Id);
-        await LoadAsync();
+        try
+        {
+            await _repository.DeleteAsync(dept.Id);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            TxtStatus.Text = $"削除エラー: {ex.Message}";
+        }
     }
 
     private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();

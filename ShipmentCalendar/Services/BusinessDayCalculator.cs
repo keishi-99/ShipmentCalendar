@@ -49,7 +49,7 @@ public class BusinessDayCalculator {
         var chunks = new int[sorted.Count];
         for (int i = 0; i < sorted.Count; i++)
         {
-            double minutes = sorted[i].LeadTimeMinutes * order.PlannedQuantity;
+            double minutes = (sorted[i].LeadTimeMinutes ?? 0) * order.PlannedQuantity;
             running += minutes;
             if (minutes <= 0)
             {
@@ -71,7 +71,7 @@ public class BusinessDayCalculator {
         for (int i = 0; i < sorted.Count; i++)
         {
             var def = sorted[i];
-            double requiredMinutes = def.LeadTimeMinutes * order.PlannedQuantity;
+            double requiredMinutes = (def.LeadTimeMinutes ?? 0) * order.PlannedQuantity;
             var dueDate = SubtractBusinessDays(order.DeliveryDate, totalChunks - chunks[i]);
             // 480分超えの工程は複数日にまたがるため、開始日を別途計算する
             var daysSpan = requiredMinutes > 0 ? (int)Math.Ceiling(requiredMinutes / 480.0) - 1 : 0;

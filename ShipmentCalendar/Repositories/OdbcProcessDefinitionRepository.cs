@@ -43,8 +43,8 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
             if (string.IsNullOrEmpty(itemNumber) || string.IsNullOrEmpty(processCode)) continue;
 
             _ = int.TryParse(reader["順序"]?.ToString(), out int sortOrder);
-            _ = double.TryParse(reader["段取時間"]?.ToString(), out double setup);
-            _ = double.TryParse(reader["作業時間"]?.ToString(), out double work);
+            _ = double.TryParse(reader["段取時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double setup);
+            _ = double.TryParse(reader["作業時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double work);
             var processName = nameDict.TryGetValue(processCode, out var n) ? n : processCode;
 
             definitions.Add(new ProcessDefinition
@@ -88,8 +88,8 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
             if (string.IsNullOrEmpty(processCode)) continue;
 
             _ = int.TryParse(reader["順序"]?.ToString(), out int sortOrder);
-            _ = double.TryParse(reader["段取時間"]?.ToString(), out double setup);
-            _ = double.TryParse(reader["作業時間"]?.ToString(), out double work);
+            _ = double.TryParse(reader["段取時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double setup);
+            _ = double.TryParse(reader["作業時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double work);
             var processName = nameDict.TryGetValue(processCode, out var n) ? n : processCode;
 
             definitions.Add(new ProcessDefinition

@@ -55,7 +55,7 @@ public class OdbcOrderRepository : IOrderRepository
             // 同一製番が複数行ある場合は最初の行を採用
             if (orders.ContainsKey(seiban)) continue;
 
-            _ = double.TryParse(reader["計画数"]?.ToString(), out double plannedQty);
+            _ = double.TryParse(reader["計画数"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double plannedQty);
 
             orders[seiban] = new Order
             {

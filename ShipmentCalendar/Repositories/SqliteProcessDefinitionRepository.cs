@@ -63,7 +63,7 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
             VALUES ($in, $name, $days, $so, $vis, $csv, $warn, $dept)";
         command.Parameters.AddWithValue("$in", definition.ItemNumber);
         command.Parameters.AddWithValue("$name", definition.ProcessName);
-        command.Parameters.AddWithValue("$days", definition.LeadTimeMinutes);
+        command.Parameters.AddWithValue("$days", (object?)definition.LeadTimeMinutes ?? DBNull.Value);
         command.Parameters.AddWithValue("$so", definition.SortOrder);
         command.Parameters.AddWithValue("$vis", definition.IsVisible ? 1 : 0);
         command.Parameters.AddWithValue("$csv", definition.CsvColumnName);
@@ -82,7 +82,7 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
             UPDATE ProcessDefinitions SET ProcessName=$name, LeadTimeMinutes=$days, SortOrder=$so, IsVisible=$vis, CsvColumnName=$csv, WarningDaysBeforeDeadline=$warn, DepartmentId=$dept
             WHERE Id=$id";
         command.Parameters.AddWithValue("$name", definition.ProcessName);
-        command.Parameters.AddWithValue("$days", definition.LeadTimeMinutes);
+        command.Parameters.AddWithValue("$days", (object?)definition.LeadTimeMinutes ?? DBNull.Value);
         command.Parameters.AddWithValue("$so", definition.SortOrder);
         command.Parameters.AddWithValue("$vis", definition.IsVisible ? 1 : 0);
         command.Parameters.AddWithValue("$csv", definition.CsvColumnName);
@@ -108,7 +108,7 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
         Id = reader.GetInt32(0),
         ItemNumber = reader.GetString(1),
         ProcessName = reader.GetString(2),
-        LeadTimeMinutes = reader.GetDouble(3),
+        LeadTimeMinutes = reader.IsDBNull(3) ? null : reader.GetDouble(3),
         SortOrder = reader.GetInt32(4),
         IsVisible = reader.GetInt32(5) == 1,
         CsvColumnName = reader.GetString(6),
