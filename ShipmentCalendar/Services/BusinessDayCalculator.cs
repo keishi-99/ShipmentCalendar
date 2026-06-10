@@ -39,25 +39,21 @@ public class BusinessDayCalculator {
     /// <summary>
     /// completedByDestNumber: 完了済み指示先番号→受入日 のマッピング（指示先番号は工程ごとに一意）
     /// </summary>
-    public List<OrderProcess> BuildProcesses(Order order, IEnumerable<ProcessDefinition> definitions, Dictionary<string, DateOnly?> completedByDestNumber)
-    {
+    public List<OrderProcess> BuildProcesses(Order order, IEnumerable<ProcessDefinition> definitions, Dictionary<string, DateOnly?> completedByDestNumber) {
         var sorted = definitions.OrderBy(d => d.SortOrder).ToList();
         if (!sorted.Any()) return new List<OrderProcess>();
 
         // 前向きに累積分数を計算し、480分ごとの日チャンク番号を割り当て
         double running = 0;
         var chunks = new int[sorted.Count];
-        for (int i = 0; i < sorted.Count; i++)
-        {
+        for (int i = 0; i < sorted.Count; i++) {
             double minutes = (sorted[i].LeadTimeMinutes ?? 0) * order.PlannedQuantity;
             running += minutes;
-            if (minutes <= 0)
-            {
+            if (minutes <= 0) {
                 // 0分の工程は前の工程と同じチャンク（または1）
                 chunks[i] = i > 0 ? chunks[i - 1] : 1;
             }
-            else
-            {
+            else {
                 chunks[i] = (int)Math.Ceiling(running / 480.0);
                 // 1日以上かかる工程はチャンク末尾にrunningを揃え、後続工程を次の日へ押し出す
                 if (minutes >= 480)
@@ -66,24 +62,24 @@ public class BusinessDayCalculator {
 
             // クールタイム（数量に依存しない固定の待機時間）を加算。
             // 単独では翌日に繰り越さず、その日のチャンク上限で切り詰める
-            if (sorted[i].CoolTimeMinutes > 0)
-            {
+            if (sorted[i].CoolTimeMinutes > 0) {
                 running += sorted[i].CoolTimeMinutes;
                 var dayLimit = chunks[i] * 480.0;
                 if (running > dayLimit)
                     running = dayLimit;
             }
 
-            // TODO(human): 外注リードタイム（OutsourceLeadDays、営業日単位）の反映
-            // この工程の後にOutsourceLeadDays日分の外注待ちが発生する場合、
-            // 後続工程の開始基準(running)をその日数分だけ後ろ倒しする。
+            // 外注リードタイム（数量に依存しない営業日単位の待機）。
+            // この工程の完了日からOutsourceLeadDays日分後ろ倒しし、後続工程を繰り越す
+            if (sorted[i].OutsourceLeadDays > 0) {
+                running = (chunks[i] + sorted[i].OutsourceLeadDays) * 480.0;
+            }
         }
         int totalChunks = Math.Max(1, chunks.Max());
 
         // 各工程の予定日 = 完了日 - (totalChunks - chunk) 営業日
         var results = new List<OrderProcess>(sorted.Count);
-        for (int i = 0; i < sorted.Count; i++)
-        {
+        for (int i = 0; i < sorted.Count; i++) {
             var def = sorted[i];
             double requiredMinutes = (def.LeadTimeMinutes ?? 0) * order.PlannedQuantity;
             var dueDate = SubtractBusinessDays(order.CompletionDate, totalChunks - chunks[i]);
