@@ -52,20 +52,23 @@ public class AppSettingsService
 
     public void Save(AppSettings settings)
     {
-        var plainUserId = settings.OdbcUserId;
-        var plainPassword = settings.OdbcPassword;
-        try
+        // 呼び出し元のオブジェクトを変更しないよう、暗号化済みの値を持つコピーを作成してから保存する
+        var toSave = new AppSettings
         {
-            settings.OdbcUserId = Protect(plainUserId);
-            settings.OdbcPassword = Protect(plainPassword);
-            var json = JsonSerializer.Serialize(settings, JsonOptions);
-            File.WriteAllText(SettingsPath, json);
-        }
-        finally
-        {
-            settings.OdbcUserId = plainUserId;
-            settings.OdbcPassword = plainPassword;
-        }
+            OdbcConnectionMode = settings.OdbcConnectionMode,
+            OdbcDsn = settings.OdbcDsn,
+            OdbcServer = settings.OdbcServer,
+            OdbcPort = settings.OdbcPort,
+            OdbcDatabase = settings.OdbcDatabase,
+            OdbcUserId = Protect(settings.OdbcUserId),
+            OdbcPassword = Protect(settings.OdbcPassword),
+            AutoRefreshMinutes = settings.AutoRefreshMinutes,
+            DeliveryDateRangeDays = settings.DeliveryDateRangeDays,
+            DeliveryDatePastDays = settings.DeliveryDatePastDays
+        };
+
+        var json = JsonSerializer.Serialize(toSave, JsonOptions);
+        File.WriteAllText(SettingsPath, json);
     }
 
     /// <summary>DPAPI（CurrentUserスコープ）で文字列を暗号化する</summary>
