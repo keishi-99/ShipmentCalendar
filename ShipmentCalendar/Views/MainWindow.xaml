@@ -212,6 +212,10 @@
                     Binding="{Binding DeliveryDate, StringFormat=yyyy/MM/dd}"
                     Header="出荷日" />
                 <DataGridTextColumn
+                    Width="100"
+                    Binding="{Binding CompletionDate, StringFormat=yyyy/MM/dd}"
+                    Header="完了日" />
+                <DataGridTextColumn
                     Width="150"
                     Binding="{Binding ItemNumber}"
                     Header="品目番号" />

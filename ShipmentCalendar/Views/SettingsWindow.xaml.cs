@@ -24,6 +24,7 @@ public partial class SettingsWindow : Window
         TxtRefreshMinutes.Text = settings.AutoRefreshMinutes.ToString();
         TxtPastDays.Text = settings.DeliveryDatePastDays.ToString();
         TxtRangeDays.Text = settings.DeliveryDateRangeDays.ToString();
+        TxtCompletionLeadDays.Text = settings.CompletionDateLeadDays.ToString();
 
         if (settings.OdbcConnectionMode == "Direct")
             RbModeDirect.IsChecked = true;
@@ -89,6 +90,7 @@ public partial class SettingsWindow : Window
         _viewModel.Settings.AutoRefreshMinutes = int.TryParse(TxtRefreshMinutes.Text, out var min) ? min : 5;
         _viewModel.Settings.DeliveryDatePastDays = int.TryParse(TxtPastDays.Text, out var past) ? past : 0;
         _viewModel.Settings.DeliveryDateRangeDays = int.TryParse(TxtRangeDays.Text, out var days) ? days : 90;
+        _viewModel.Settings.CompletionDateLeadDays = int.TryParse(TxtCompletionLeadDays.Text, out var leadDays) && leadDays >= 0 && leadDays <= 365 ? leadDays : 1;
 
         _viewModel.SaveSettings();
         DialogResult = true;

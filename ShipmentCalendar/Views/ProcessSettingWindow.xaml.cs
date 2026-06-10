@@ -143,7 +143,8 @@ public partial class ProcessSettingWindow : Window
                     LeadTimeMinutes = db.LeadTimeMinutes,
                     IsVisible = db.IsVisible,
                     WarningDaysBeforeDeadline = db.WarningDaysBeforeDeadline,
-                    DepartmentId = db.DepartmentId
+                    DepartmentId = db.DepartmentId,
+                    CoolTimeMinutes = db.CoolTimeMinutes
                 };
             })
         );

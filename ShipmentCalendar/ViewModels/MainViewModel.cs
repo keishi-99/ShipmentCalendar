@@ -229,7 +229,8 @@ public partial class MainViewModel : ObservableObject {
                     LeadTimeMinutes = db.LeadTimeMinutes ?? csv.LeadTimeMinutes,
                     IsVisible = db.IsVisible,
                     WarningDaysBeforeDeadline = db.WarningDaysBeforeDeadline,
-                    DepartmentId = db.DepartmentId
+                    DepartmentId = db.DepartmentId,
+                    CoolTimeMinutes = db.CoolTimeMinutes
                 };
             }).ToList();
 
@@ -245,6 +246,8 @@ public partial class MainViewModel : ObservableObject {
                     .Where(g => order.ItemNumber.Equals(g.ItemNumber, StringComparison.OrdinalIgnoreCase))
                     .SelectMany(g => g.Defs)
                     .ToList();
+
+                order.CompletionDate = calculator.SubtractBusinessDays(order.DeliveryDate, Settings.CompletionDateLeadDays);
 
                 if (!productDefs.Any())
                     continue;

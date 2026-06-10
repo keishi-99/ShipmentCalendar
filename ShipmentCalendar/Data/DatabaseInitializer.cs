@@ -41,7 +41,9 @@ public static class DatabaseInitializer
                 SortOrder INTEGER NOT NULL DEFAULT 0,
                 IsVisible INTEGER NOT NULL DEFAULT 1,
                 CsvColumnName TEXT NOT NULL DEFAULT '',
-                WarningDaysBeforeDeadline INTEGER NOT NULL DEFAULT 0
+                WarningDaysBeforeDeadline INTEGER NOT NULL DEFAULT 0,
+                DepartmentId INTEGER NOT NULL DEFAULT 0,
+                CoolTimeMinutes REAL NOT NULL DEFAULT 0
             );
 
             CREATE TABLE IF NOT EXISTS Holidays (
@@ -101,6 +103,9 @@ public static class DatabaseInitializer
         // LeadTimeMinutesをNULL許容に変更（0=明示的な当日完了、NULL=未設定/フォールバックを区別するため）
         MigrateLeadTimeMinutesNullable(connection);
 
+        // CoolTimeMinutesはMigrateLeadTimeMinutesNullableのテーブル再作成後に追加する（再作成時に列が失われないようにするため）
+        MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "CoolTimeMinutes", "REAL NOT NULL DEFAULT 0");
+
         // 既存DBのProcessDefinitions.ItemNumberをProductsテーブルに移行
         MigrateAddColumnIfNotExists(connection, "Products", "DisplayName", "TEXT NOT NULL DEFAULT ''");
         MigrateProductsFromProcessDefinitions(connection);
@@ -129,26 +134,6 @@ public static class DatabaseInitializer
             SELECT DISTINCT ItemNumber, COALESCE(ItemNumber, '') FROM ProcessDefinitions
             WHERE ItemNumber != ''";
         migrate.ExecuteNonQuery();
-    }
-
-    private static void MigrateRenameColumnIfExists(SqliteConnection connection, string table, string oldColumn, string newColumn)
-    {
-        var check = connection.CreateCommand();
-        check.CommandText = $"PRAGMA table_info({table})";
-        using var reader = check.ExecuteReader();
-        bool hasOld = false, hasNew = false;
-        while (reader.Read())
-        {
-            var name = reader.GetString(1);
-            if (name == oldColumn) hasOld = true;
-            if (name == newColumn) hasNew = true;
-        }
-        if (hasOld && !hasNew)
-        {
-            var alter = connection.CreateCommand();
-            alter.CommandText = $"ALTER TABLE {table} RENAME COLUMN {oldColumn} TO {newColumn}";
-            alter.ExecuteNonQuery();
-        }
     }
 
     /// <summary>ProcessDefinitions.LeadTimeMinutesがNOT NULLの場合、NULL許容にテーブルを再作成する（既存の0はNULLに変換）</summary>

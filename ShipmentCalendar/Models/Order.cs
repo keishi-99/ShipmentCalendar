@@ -9,6 +9,8 @@ public class Order
     public string ManufactureNumber { get; set; } = string.Empty;
     public string OrderNumber { get; set; } = string.Empty;
     public DateOnly DeliveryDate { get; set; }
+    /// <summary>完了日（出荷日から設定の営業日数だけ前の日）</summary>
+    public DateOnly CompletionDate { get; set; }
     public int PlannedQuantity { get; set; }
     public List<OrderProcess> Processes { get; set; } = new();
 }

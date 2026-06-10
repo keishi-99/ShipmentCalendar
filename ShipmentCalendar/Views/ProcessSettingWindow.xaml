@@ -151,6 +151,10 @@
                     Width="90"
                     Binding="{Binding LeadTimeMinutes, UpdateSourceTrigger=PropertyChanged}"
                     Header="標準時間（分）" />
+                <DataGridTextColumn
+                    Width="90"
+                    Binding="{Binding CoolTimeMinutes, UpdateSourceTrigger=PropertyChanged}"
+                    Header="クールタイム（分）" />
                 <DataGridCheckBoxColumn
                     Width="45"
                     Binding="{Binding IsVisible, UpdateSourceTrigger=PropertyChanged}"
