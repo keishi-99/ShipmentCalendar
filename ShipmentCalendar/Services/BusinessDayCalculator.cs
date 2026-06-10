@@ -66,13 +66,13 @@ public class BusinessDayCalculator {
         }
         int totalChunks = Math.Max(1, chunks.Max());
 
-        // 各工程の予定日 = 納期 - (totalChunks - chunk) 営業日
+        // 各工程の予定日 = 完了日 - (totalChunks - chunk) 営業日
         var results = new List<OrderProcess>(sorted.Count);
         for (int i = 0; i < sorted.Count; i++)
         {
             var def = sorted[i];
             double requiredMinutes = (def.LeadTimeMinutes ?? 0) * order.PlannedQuantity;
-            var dueDate = SubtractBusinessDays(order.DeliveryDate, totalChunks - chunks[i]);
+            var dueDate = SubtractBusinessDays(order.CompletionDate, totalChunks - chunks[i]);
             // 480分超えの工程は複数日にまたがるため、開始日を別途計算する
             var daysSpan = requiredMinutes > 0 ? (int)Math.Ceiling(requiredMinutes / 480.0) - 1 : 0;
             var startDate = SubtractBusinessDays(dueDate, daysSpan);

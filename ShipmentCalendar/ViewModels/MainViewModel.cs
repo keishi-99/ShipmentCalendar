@@ -246,6 +246,8 @@ public partial class MainViewModel : ObservableObject {
                     .SelectMany(g => g.Defs)
                     .ToList();
 
+                order.CompletionDate = calculator.SubtractBusinessDays(order.DeliveryDate, Settings.CompletionDateLeadDays);
+
                 if (!productDefs.Any())
                     continue;
 

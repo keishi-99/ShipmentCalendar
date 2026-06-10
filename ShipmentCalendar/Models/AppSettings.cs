@@ -23,6 +23,8 @@ public class AppSettings
     public int DeliveryDateRangeDays { get; set; } = 90;
     /// <summary>表示する納期の範囲（今日から何日前まで）</summary>
     public int DeliveryDatePastDays { get; set; } = 0;
+    /// <summary>完了日の算出に使う、出荷日からの営業日数（出荷日からこの日数だけ前の営業日を完了日とする）</summary>
+    public int CompletionDateLeadDays { get; set; } = 1;
 
     /// <summary>ODBC接続設定が入力済みか（接続方式に応じて必須項目を判定）</summary>
     public bool IsOdbcConfigured =>

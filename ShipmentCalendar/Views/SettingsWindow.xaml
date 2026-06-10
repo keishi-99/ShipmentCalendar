@@ -29,6 +29,7 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="140"/>
@@ -94,10 +95,16 @@
                 <TextBlock Text="　※ 今日から何日前まで表示するか" VerticalAlignment="Center" Foreground="#888" Margin="8,0,0,0"/>
             </StackPanel>
 
-            <TextBlock Grid.Row="10" Grid.Column="0" Text="未来の表示範囲（日）：" VerticalAlignment="Center"/>
-            <StackPanel Grid.Row="10" Grid.Column="1" Orientation="Horizontal">
+            <TextBlock Grid.Row="10" Grid.Column="0" Text="未来の表示範囲（日）：" VerticalAlignment="Center" Margin="0,0,0,12"/>
+            <StackPanel Grid.Row="10" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,12">
                 <TextBox Name="TxtRangeDays" Width="60" VerticalContentAlignment="Center" Padding="4"/>
                 <TextBlock Text="　※ 今日から何日先まで表示するか" VerticalAlignment="Center" Foreground="#888" Margin="8,0,0,0"/>
+            </StackPanel>
+
+            <TextBlock Grid.Row="11" Grid.Column="0" Text="完了日までの営業日数：" VerticalAlignment="Center"/>
+            <StackPanel Grid.Row="11" Grid.Column="1" Orientation="Horizontal">
+                <TextBox Name="TxtCompletionLeadDays" Width="60" VerticalContentAlignment="Center" Padding="4"/>
+                <TextBlock Text="　※ 出荷日の何営業日前を完了日とするか" VerticalAlignment="Center" Foreground="#888" Margin="8,0,0,0"/>
             </StackPanel>
         </Grid>
     </DockPanel>
