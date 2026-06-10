@@ -256,7 +256,7 @@ public partial class MainViewModel : ObservableObject {
                 // 仮登録した完了済み指示先番号→受入日のマッピング（指示先番号は工程ごとに一意。重複は先着優先）
                 var completedByDestNumber = order.Processes
                     .Where(p => p.Status == ProcessStatus.Completed)
-                    .GroupBy(p => p.ProcessName)
+                    .GroupBy(p => p.CsvColumnName)
                     .ToDictionary(g => g.Key, g => g.First().ActualDate);
 
                 order.Processes = calculator.BuildProcesses(order, productDefs.Where(d => d.IsVisible), completedByDestNumber);

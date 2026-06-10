@@ -50,8 +50,9 @@ public class BusinessDayCalculator {
             double minutes = (sorted[i].LeadTimeMinutes ?? 0) * order.PlannedQuantity;
             running += minutes;
             if (minutes <= 0) {
-                // 0分の工程は前の工程と同じチャンク（または1）
-                chunks[i] = i > 0 ? chunks[i - 1] : 1;
+                // 0分の工程は、現在の累積時間（running）から算出されるチャンク（最低1）
+                // 前工程の外注待ち等によるrunningの後ろ倒しを反映するため、chunks[i-1]の単純コピーは使わない
+                chunks[i] = Math.Max(1, (int)Math.Ceiling(running / 480.0));
             }
             else {
                 chunks[i] = (int)Math.Ceiling(running / 480.0);
@@ -92,6 +93,7 @@ public class BusinessDayCalculator {
             var isCompleted = completedByDestNumber.TryGetValue(def.CsvColumnName, out var actualDate);
             results.Add(new OrderProcess {
                 ProcessName = def.ProcessName,
+                CsvColumnName = def.CsvColumnName,
                 StartDate = startDate,
                 DueDate = dueDate,
                 ActualDate = isCompleted ? actualDate : null,
