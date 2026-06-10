@@ -187,14 +187,10 @@ public class ProcessIndexToDueDateConverter : System.Windows.Data.IMultiValueCon
         if (process.Status == ProcessStatus.Completed)
             return process.ActualDate.HasValue ? $"✓{process.ActualDate.Value:MM/dd}" : string.Empty;
 
-        // 未着手工程は設定により完了予定日を表示
-        if (_showDueDateForNotStarted && process.Status == ProcessStatus.NotStarted) {
-            return $"→{process.DueDate:MM/dd}";
-        }
-
-        // 未完了工程は着手予定日 + 必要時間（時間単位、小数1桁）
+        // 未完了工程は 着手必須日/完了必須日（設定により切り替え） + 必要時間（時間単位、小数1桁）
+        var date = _showDueDateForNotStarted ? process.DueDate : process.StartDate;
         var hours = process.RequiredMinutes / 60.0;
-        return $"{process.StartDate:MM/dd} ({hours:F1}h)";
+        return $"{date:MM/dd} ({hours:F1}h)";
     }
 
     public object[] ConvertBack(object value, Type[] targetTypes, object parameter, System.Globalization.CultureInfo culture)

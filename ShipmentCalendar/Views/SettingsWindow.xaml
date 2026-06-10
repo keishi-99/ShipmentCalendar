@@ -108,10 +108,10 @@
                 <TextBlock Text="　※ 出荷日の何営業日前を完了日とするか" VerticalAlignment="Center" Foreground="#888" Margin="8,0,0,0"/>
             </StackPanel>
 
-            <TextBlock Grid.Row="12" Grid.Column="0" Text="未着手工程の表示日：" VerticalAlignment="Center"/>
+            <TextBlock Grid.Row="12" Grid.Column="0" Text="未完了工程の表示日：" VerticalAlignment="Center"/>
             <StackPanel Grid.Row="12" Grid.Column="1" Grid.ColumnSpan="2" Orientation="Horizontal">
-                <CheckBox Name="ChkShowDueDateForNotStarted" Content="完了予定日を表示する" VerticalAlignment="Center"/>
-                <TextBlock Text="　※ オフの場合は着手予定日を表示" VerticalAlignment="Center" Foreground="#888" Margin="8,0,0,0"/>
+                <CheckBox Name="ChkShowDueDateForNotStarted" Content="完了必須日を表示する" VerticalAlignment="Center"/>
+                <TextBlock Text="　※ オフの場合は着手必須日を表示" VerticalAlignment="Center" Foreground="#888" Margin="8,0,0,0"/>
             </StackPanel>
         </Grid>
     </DockPanel>
