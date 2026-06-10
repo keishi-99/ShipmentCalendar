@@ -29,7 +29,7 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
 
         var definitions = new List<ProcessDefinition>();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = @"SELECT 品目番号, 指示内容, 順序, 段取時間, 作業時間
+        cmd.CommandText = @"SELECT 品目番号, 指示内容, 指示先番号, 順序, 段取時間, 作業時間
             FROM VP_指示工程情報_YD
             WHERE 指示内容 IS NOT NULL
               AND 指示内容 <> '< NULL >'";
@@ -39,6 +39,7 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
         {
             var itemNumber = reader["品目番号"]?.ToString()?.Trim() ?? string.Empty;
             var processCode = reader["指示内容"]?.ToString()?.Trim() ?? string.Empty;
+            var destNumber = reader["指示先番号"]?.ToString()?.Trim() ?? string.Empty;
             if (string.IsNullOrEmpty(itemNumber) || string.IsNullOrEmpty(processCode)) continue;
 
             _ = int.TryParse(reader["順序"]?.ToString(), out int sortOrder);
@@ -50,7 +51,7 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
             {
                 ItemNumber = itemNumber,
                 ProcessName = processName,
-                CsvColumnName = processCode,
+                CsvColumnName = destNumber,
                 LeadTimeMinutes = setup + work,
                 SortOrder = sortOrder,
                 IsVisible = true,
@@ -72,7 +73,7 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
 
         var definitions = new List<ProcessDefinition>();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = @"SELECT 指示内容, 順序, 段取時間, 作業時間
+        cmd.CommandText = @"SELECT 指示内容, 指示先番号, 順序, 段取時間, 作業時間
             FROM VP_指示工程情報_YD
             WHERE 品目番号 = ?
               AND 指示内容 IS NOT NULL
@@ -83,6 +84,7 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
         while (await reader.ReadAsync())
         {
             var processCode = reader["指示内容"]?.ToString()?.Trim() ?? string.Empty;
+            var destNumber = reader["指示先番号"]?.ToString()?.Trim() ?? string.Empty;
             if (string.IsNullOrEmpty(processCode)) continue;
 
             _ = int.TryParse(reader["順序"]?.ToString(), out int sortOrder);
@@ -94,7 +96,7 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
             {
                 ItemNumber = itemNumber,
                 ProcessName = processName,
-                CsvColumnName = processCode,
+                CsvColumnName = destNumber,
                 LeadTimeMinutes = setup + work,
                 SortOrder = sortOrder,
                 IsVisible = true,

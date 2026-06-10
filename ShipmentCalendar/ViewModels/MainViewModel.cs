@@ -211,7 +211,7 @@ public partial class MainViewModel : ObservableObject {
             }
 
             // DB のユーザー設定（工程名カスタマイズ・LT・表示・警告）をマージ
-            // キー: "ItemNumber|CsvColumnName(=指示内容コード)"
+            // キー: "ItemNumber|CsvColumnName(=指示先番号)"
             var dbDefs = await new SqliteProcessDefinitionRepository().GetAllAsync();
             var dbDict = dbDefs
                 .Where(d => !string.IsNullOrEmpty(d.CsvColumnName))

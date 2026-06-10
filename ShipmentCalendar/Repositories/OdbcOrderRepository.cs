@@ -87,20 +87,20 @@ public class OdbcOrderRepository : IOrderRepository
             var seibanList = string.Join(",", batchKeys.Select(s => $"'{s.Replace("'", "''")}'"));
 
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = $@"SELECT 製番, 指示内容, 受入日 FROM VP_受入実績情報_YD
+            cmd.CommandText = $@"SELECT 製番, 指示先番号, 受入日 FROM VP_受入実績情報_YD
                 WHERE 製番 IN ({seibanList})
-                  AND 指示内容 IS NOT NULL
-                  AND 指示内容 <> '< NULL >'";
+                  AND 指示先番号 IS NOT NULL
+                  AND 指示先番号 <> '< NULL >'";
 
             using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
                 var seiban = reader["製番"]?.ToString()?.Trim() ?? string.Empty;
-                var processCode = reader["指示内容"]?.ToString()?.Trim() ?? string.Empty;
+                var processCode = reader["指示先番号"]?.ToString()?.Trim() ?? string.Empty;
                 if (string.IsNullOrEmpty(seiban) || string.IsNullOrEmpty(processCode)) continue;
                 if (!orders.TryGetValue(seiban, out var order)) continue;
 
-                // 完了工程を仮登録（ProcessName = 指示内容コード。BuildProcessesで変換される）
+                // 完了工程を仮登録（ProcessName = 指示先番号。BuildProcessesで変換される）
                 if (!order.Processes.Any(p => p.ProcessName == processCode))
                 {
                     order.Processes.Add(new OrderProcess
