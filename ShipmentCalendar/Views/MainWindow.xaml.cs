@@ -24,6 +24,7 @@ public partial class MainWindow : Window {
                 BuildProcessColumns();
         };
         UpdateDueDateDisplayButtonText();
+        UpdateSortModeButtonText();
     }
 
     /// <summary>表示日切り替えボタンの文言を現在の設定に合わせて更新する</summary>
@@ -33,11 +34,24 @@ public partial class MainWindow : Window {
             : "表示中：着手必須日";
     }
 
+    /// <summary>並び順切り替えボタンの文言を現在の設定に合わせて更新する</summary>
+    private void UpdateSortModeButtonText() {
+        BtnToggleSortMode.Content = _viewModel.Settings.SortByProcessDeadline
+            ? "並び順：工程期限"
+            : "並び順：出荷日";
+    }
+
     private void BtnToggleDueDateDisplay_Click(object sender, RoutedEventArgs e) {
         _viewModel.Settings.ShowDueDateForNotStarted = !_viewModel.Settings.ShowDueDateForNotStarted;
         UpdateDueDateDisplayButtonText();
         _viewModel.SaveSettings();
         BuildProcessColumns();
+        _viewModel.ApplyFilter();
+    }
+
+    private void BtnToggleSortMode_Click(object sender, RoutedEventArgs e) {
+        _viewModel.ToggleSortMode();
+        UpdateSortModeButtonText();
     }
 
     /// <summary>工程列をインデックスベースで動的生成する（列ヘッダー: 1, 2, 3...）</summary>

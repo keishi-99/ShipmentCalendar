@@ -74,7 +74,18 @@ public partial class MainViewModel : ObservableObject {
         FilterRegistrationStatus = "両方";
     }
 
-    private void ApplyFilter() {
+    /// <summary>注文の「次の未完了工程」の必須日（表示設定に応じてDueDate/StartDate）を返す。
+    /// 全工程完了済みならDateOnly.MaxValue</summary>
+    private DateOnly GetNextProcessSortDate(Order o) {
+        var next = o.Processes
+            .Where(p => p.Status != ProcessStatus.Completed)
+            .OrderBy(p => p.SortOrder)
+            .FirstOrDefault();
+        if (next == null) return DateOnly.MaxValue;
+        return Settings.ShowDueDateForNotStarted ? next.DueDate : next.StartDate;
+    }
+
+    public void ApplyFilter() {
         var result = _allOrders.AsEnumerable();
 
         if (!string.IsNullOrEmpty(FilterItemNumber))
@@ -110,17 +121,11 @@ public partial class MainViewModel : ObservableObject {
                     .FirstOrDefault();
                 return next?.DepartmentId == FilterDepartmentId;
             });
-            // 担当工程の DueDate 順でソート
-            Orders = new ObservableCollection<Order>(result.OrderBy(o =>
-                o.Processes
-                    .Where(p => p.Status != ProcessStatus.Completed)
-                    .OrderBy(p => p.SortOrder)
-                    .FirstOrDefault()?.DueDate ?? DateOnly.MaxValue));
         }
-        else
-        {
-            Orders = new ObservableCollection<Order>(result.OrderBy(o => o.DeliveryDate));
-        }
+
+        Orders = new ObservableCollection<Order>(Settings.SortByProcessDeadline
+            ? result.OrderBy(GetNextProcessSortDate)
+            : result.OrderBy(o => o.DeliveryDate));
         UpdateStatusMessage();
     }
 
@@ -304,6 +309,13 @@ public partial class MainViewModel : ObservableObject {
         } finally {
             IsLoading = false;
         }
+    }
+
+    /// <summary>注文一覧の並び順（出荷日順/工程期限順）を切り替える</summary>
+    public void ToggleSortMode() {
+        Settings.SortByProcessDeadline = !Settings.SortByProcessDeadline;
+        SaveSettings();
+        ApplyFilter();
     }
 
     public void SaveSettings() {

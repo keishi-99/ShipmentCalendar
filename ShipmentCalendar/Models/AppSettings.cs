@@ -27,6 +27,8 @@ public class AppSettings
     public int CompletionDateLeadDays { get; set; } = 1;
     /// <summary>未完了工程の表示日付を完了必須日にするか（false=着手必須日を表示）</summary>
     public bool ShowDueDateForNotStarted { get; set; } = false;
+    /// <summary>注文一覧の並び順を「次の未完了工程の期限日」にするか（false=出荷日順）</summary>
+    public bool SortByProcessDeadline { get; set; } = false;
 
     /// <summary>ODBC接続設定が入力済みか（接続方式に応じて必須項目を判定）</summary>
     public bool IsOdbcConfigured =>
