@@ -9,31 +9,55 @@ using System.Windows.Media;
 
 namespace ShipmentCalendar.Views;
 
-public partial class MainWindow : Window
-{
+public partial class MainWindow : Window {
     private readonly MainViewModel _viewModel;
 
-    public MainWindow()
-    {
+    public MainWindow() {
         InitializeComponent();
         _viewModel = new MainViewModel(
             new SqliteHolidayRepository(),
             new AppSettingsService());
         DataContext = _viewModel;
         Loaded += async (_, _) => await _viewModel.LoadOrdersAsync();
-        _viewModel.PropertyChanged += (_, e) =>
-        {
+        _viewModel.PropertyChanged += (_, e) => {
             if (e.PropertyName == nameof(_viewModel.Orders))
                 BuildProcessColumns();
         };
+        UpdateDueDateDisplayButtonText();
+        UpdateSortModeButtonText();
+    }
+
+    /// <summary>表示日切り替えボタンの文言を現在の設定に合わせて更新する</summary>
+    private void UpdateDueDateDisplayButtonText() {
+        BtnToggleDueDateDisplay.Content = _viewModel.Settings.ShowDueDateForNotStarted
+            ? "表示中：完了必須日"
+            : "表示中：着手必須日";
+    }
+
+    /// <summary>並び順切り替えボタンの文言を現在の設定に合わせて更新する</summary>
+    private void UpdateSortModeButtonText() {
+        BtnToggleSortMode.Content = _viewModel.Settings.SortByProcessDeadline
+            ? "並び順：工程期限"
+            : "並び順：出荷日";
+    }
+
+    private void BtnToggleDueDateDisplay_Click(object sender, RoutedEventArgs e) {
+        _viewModel.Settings.ShowDueDateForNotStarted = !_viewModel.Settings.ShowDueDateForNotStarted;
+        UpdateDueDateDisplayButtonText();
+        _viewModel.SaveSettings();
+        _viewModel.ApplyFilter();
+    }
+
+    private void BtnToggleSortMode_Click(object sender, RoutedEventArgs e) {
+        _viewModel.ToggleSortMode();
+        UpdateSortModeButtonText();
     }
 
     /// <summary>工程列をインデックスベースで動的生成する（列ヘッダー: 1, 2, 3...）</summary>
-    private void BuildProcessColumns()
-    {
-        // 固定列（出荷日・品目番号・品目名・製番・計画数）以外を削除
-        while (OrderGrid.Columns.Count > 5)
-            OrderGrid.Columns.RemoveAt(5);
+    private void BuildProcessColumns() {
+        // 固定列（出荷日・完了日・品目番号・品目名・製番・計画数）以外を削除
+        while (OrderGrid.Columns.Count > 6)
+            OrderGrid.Columns.RemoveAt(6);
 
         if (!_viewModel.Orders.Any()) return;
 
@@ -41,11 +65,9 @@ public partial class MainWindow : Window
         var maxProcessCount = _viewModel.Orders.Max(o => o.Processes.Count);
         if (maxProcessCount == 0) return;
 
-        for (int i = 0; i < maxProcessCount; i++)
-        {
+        for (int i = 0; i < maxProcessCount; i++) {
             var index = i;
-            var column = new DataGridTemplateColumn
-            {
+            var column = new DataGridTemplateColumn {
                 Header = (index + 1).ToString(),
                 Width = 110
             };
@@ -78,7 +100,7 @@ public partial class MainWindow : Window
 
             // 期限日テキスト
             var dateFactory = new FrameworkElementFactory(typeof(TextBlock));
-            var dateBinding = new MultiBinding { Converter = new ProcessIndexToDueDateConverter() };
+            var dateBinding = new MultiBinding { Converter = new ProcessIndexToDueDateConverter(_viewModel.Settings.ShowDueDateForNotStarted) };
             dateBinding.Bindings.Add(new Binding("Processes"));
             dateBinding.Bindings.Add(new Binding() { Source = index });
             dateFactory.SetBinding(TextBlock.TextProperty, dateBinding);
@@ -94,30 +116,26 @@ public partial class MainWindow : Window
         }
     }
 
-    private void BtnSettings_Click(object sender, RoutedEventArgs e)
-    {
+    private void BtnSettings_Click(object sender, RoutedEventArgs e) {
         var window = new SettingsWindow(_viewModel);
         window.Owner = this;
         window.ShowDialog();
     }
 
-    private async void BtnProcess_Click(object sender, RoutedEventArgs e)
-    {
+    private async void BtnProcess_Click(object sender, RoutedEventArgs e) {
         var window = new ProcessSettingWindow();
         window.Owner = this;
         window.ShowDialog();
         await _viewModel.LoadOrdersAsync();
     }
 
-    private void BtnHoliday_Click(object sender, RoutedEventArgs e)
-    {
+    private void BtnHoliday_Click(object sender, RoutedEventArgs e) {
         var window = new HolidaySettingWindow();
         window.Owner = this;
         window.ShowDialog();
     }
 
-    private async void BtnDeptSetting_Click(object sender, RoutedEventArgs e)
-    {
+    private async void BtnDeptSetting_Click(object sender, RoutedEventArgs e) {
         var window = new DepartmentSettingWindow();
         window.Owner = this;
         window.ShowDialog();
@@ -125,22 +143,18 @@ public partial class MainWindow : Window
         await _viewModel.RefreshDepartmentFiltersAsync();
     }
 
-    private void BtnClearFilter_Click(object sender, RoutedEventArgs e)
-    {
+    private void BtnClearFilter_Click(object sender, RoutedEventArgs e) {
         _viewModel.ClearFilter();
     }
 
-    private void OrderRow_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
-    {
+    private void OrderRow_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e) {
         // 将来：詳細表示ウィンドウ
     }
 }
 
 /// <summary>ProcessStatusを色ブラシに変換するコンバーター</summary>
-public class StatusToColorConverter : System.Windows.Data.IValueConverter
-{
-    public static Brush StatusToBrush(ProcessStatus status) => status switch
-    {
+public class StatusToColorConverter : System.Windows.Data.IValueConverter {
+    public static Brush StatusToBrush(ProcessStatus status) => status switch {
         ProcessStatus.Completed => new SolidColorBrush(Color.FromRgb(102, 187, 106)),
         ProcessStatus.InProgress => new SolidColorBrush(Color.FromRgb(255, 224, 102)),
         ProcessStatus.Warning => new SolidColorBrush(Color.FromRgb(255, 152, 0)),
@@ -149,8 +163,7 @@ public class StatusToColorConverter : System.Windows.Data.IValueConverter
         _ => Brushes.Transparent
     };
 
-    public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
-    {
+    public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture) {
         if (value is not ProcessStatus status) return Brushes.Transparent;
         return StatusToBrush(status);
     }
@@ -160,10 +173,8 @@ public class StatusToColorConverter : System.Windows.Data.IValueConverter
 }
 
 /// <summary>インデックスでProcessリストを検索して背景色を返すコンバーター</summary>
-public class ProcessIndexToStatusColorConverter : System.Windows.Data.IMultiValueConverter
-{
-    public object Convert(object[] values, Type targetType, object parameter, System.Globalization.CultureInfo culture)
-    {
+public class ProcessIndexToStatusColorConverter : System.Windows.Data.IMultiValueConverter {
+    public object Convert(object[] values, Type targetType, object parameter, System.Globalization.CultureInfo culture) {
         if (values[0] is not IEnumerable<OrderProcess> processes) return Brushes.Transparent;
         if (values[1] is not int index) return Brushes.Transparent;
         var process = processes.ElementAtOrDefault(index);
@@ -176,10 +187,8 @@ public class ProcessIndexToStatusColorConverter : System.Windows.Data.IMultiValu
 }
 
 /// <summary>インデックスでProcessリストを検索して工程名を返すコンバーター</summary>
-public class ProcessIndexToNameConverter : System.Windows.Data.IMultiValueConverter
-{
-    public object Convert(object[] values, Type targetType, object parameter, System.Globalization.CultureInfo culture)
-    {
+public class ProcessIndexToNameConverter : System.Windows.Data.IMultiValueConverter {
+    public object Convert(object[] values, Type targetType, object parameter, System.Globalization.CultureInfo culture) {
         if (values[0] is not IEnumerable<OrderProcess> processes) return string.Empty;
         if (values[1] is not int index) return string.Empty;
         return processes.ElementAtOrDefault(index)?.ProcessName ?? string.Empty;
@@ -190,10 +199,14 @@ public class ProcessIndexToNameConverter : System.Windows.Data.IMultiValueConver
 }
 
 /// <summary>インデックスでProcessリストを検索して期限日テキストを返すコンバーター</summary>
-public class ProcessIndexToDueDateConverter : System.Windows.Data.IMultiValueConverter
-{
-    public object Convert(object[] values, Type targetType, object parameter, System.Globalization.CultureInfo culture)
-    {
+public class ProcessIndexToDueDateConverter : System.Windows.Data.IMultiValueConverter {
+    private readonly bool _showDueDateForNotStarted;
+
+    public ProcessIndexToDueDateConverter(bool showDueDateForNotStarted) {
+        _showDueDateForNotStarted = showDueDateForNotStarted;
+    }
+
+    public object Convert(object[] values, Type targetType, object parameter, System.Globalization.CultureInfo culture) {
         if (values[0] is not IEnumerable<OrderProcess> processes) return string.Empty;
         if (values[1] is not int index) return string.Empty;
         var process = processes.ElementAtOrDefault(index);
@@ -201,9 +214,13 @@ public class ProcessIndexToDueDateConverter : System.Windows.Data.IMultiValueCon
         // 完了工程は受入日を表示（受入日不明は空白）
         if (process.Status == ProcessStatus.Completed)
             return process.ActualDate.HasValue ? $"✓{process.ActualDate.Value:MM/dd}" : string.Empty;
-        // 未完了工程は着手予定日 + 必要時間（時間単位、小数1桁）
+
+        // 未完了工程は 着手必須日/完了必須日（設定により切り替え） + 必要時間（時間単位、小数1桁）
+        // 完了必須日は「この日までに完了」=矢印を日付の前に、着手必須日は「この日から着手」=矢印を日付の後に付与
         var hours = process.RequiredMinutes / 60.0;
-        return $"{process.StartDate:MM/dd} ({hours:F1}h)";
+        if (_showDueDateForNotStarted)
+            return $"→{process.DueDate:MM/dd} ({hours:F1}h)";
+        return $"{process.StartDate:MM/dd}→ ({hours:F1}h)";
     }
 
     public object[] ConvertBack(object value, Type[] targetTypes, object parameter, System.Globalization.CultureInfo culture)

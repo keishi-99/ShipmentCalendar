@@ -10,6 +10,7 @@
     <Window.Resources>
         <local:DeptIdToNameConverter x:Key="DeptIdToNameConverter" />
     </Window.Resources>
+    <Grid>
     <DockPanel Margin="16">
         <!--  ボタン・ステータスを先に宣言しないと高さ不足で隠れる  -->
         <StackPanel
@@ -106,7 +107,7 @@
                 ToolTip="アプリ上で表示する品目名（初期値はCSVの品目名）" />
         </StackPanel>
 
-        <!--  工程リスト（順序・指示内容は読み取り専用、工程名・LT・設定は編集可）  -->
+        <!--  工程リスト（順序・指示先番号は読み取り専用、工程名・LT・設定は編集可）  -->
         <DataGrid
             Name="ProcessGrid"
             Height="310"
@@ -137,8 +138,8 @@
                     Header="工程名（変更可）" />
                 <DataGridTextColumn
                     Width="90"
-                    Binding="{Binding CsvColumnName}"
-                    Header="指示内容"
+                    Binding="{Binding DestinationCode}"
+                    Header="指示先番号"
                     IsReadOnly="True">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
@@ -155,6 +156,10 @@
                     Width="90"
                     Binding="{Binding CoolTimeMinutes, UpdateSourceTrigger=PropertyChanged}"
                     Header="クールタイム（分）" />
+                <DataGridTextColumn
+                    Width="90"
+                    Binding="{Binding OutsourceLeadDays, UpdateSourceTrigger=PropertyChanged}"
+                    Header="外注待ち（営業日）" />
                 <DataGridCheckBoxColumn
                     Width="45"
                     Binding="{Binding IsVisible, UpdateSourceTrigger=PropertyChanged}"
@@ -201,4 +206,46 @@
         </DataGrid>
 
     </DockPanel>
+
+    <!--  PRONESS取得中のローディングオーバーレイ  -->
+    <Grid Name="LoadingOverlay" Visibility="Collapsed" IsHitTestVisible="True">
+        <Rectangle Fill="#88000000"/>
+        <Border Background="White" CornerRadius="10"
+                Width="140" Height="110"
+                HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="16" ShadowDepth="0" Opacity="0.3"/>
+            </Border.Effect>
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Ellipse Width="40" Height="40"
+                         StrokeThickness="4"
+                         StrokeDashArray="6 3"
+                         Stroke="#1976D2"
+                         RenderTransformOrigin="0.5,0.5">
+                    <Ellipse.RenderTransform>
+                        <RotateTransform x:Name="SpinnerRotate"/>
+                    </Ellipse.RenderTransform>
+                    <Ellipse.Triggers>
+                        <EventTrigger RoutedEvent="Loaded">
+                            <BeginStoryboard>
+                                <Storyboard RepeatBehavior="Forever">
+                                    <DoubleAnimation
+                                        Storyboard.TargetName="SpinnerRotate"
+                                        Storyboard.TargetProperty="Angle"
+                                        From="0" To="360"
+                                        Duration="0:0:0.8"/>
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                    </Ellipse.Triggers>
+                </Ellipse>
+                <TextBlock Text="取得中..."
+                           Margin="0,10,0,0"
+                           HorizontalAlignment="Center"
+                           Foreground="#444444"
+                           FontSize="13"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+    </Grid>
 </Window>

@@ -32,64 +32,70 @@ public class BusinessDayCalculator {
 
     /// <summary>
     /// 工程定義から期限日を計算する。
-    /// 全工程の累積必要時間を前向きに集計し、480分（8時間）単位の日チャンクに割り当て、
-    /// 納期から逆算して各工程の予定日を決定する。
-    /// 例: 作業A=120分, B=100分, C=300分 → A,B は同日、C は翌日（=納期当日）
+    /// 末尾工程（完了日に近い工程）から逆向きに残り所要時間を累積し、480分（8時間）単位の
+    /// 日チャンクに割り当てることで、各工程の「着手必須日（startBucket）」と
+    /// 「完了必須日（finishBucket）」を別々に算出する。
+    /// 工程自身の所要時間が日をまたぐ場合（例: 当日の残り枠に収まらず前営業日から
+    /// 着手しないと完了できない場合）、着手必須日と完了必須日が異なる日になる。
     /// </summary>
     /// <summary>
     /// completedByDestNumber: 完了済み指示先番号→受入日 のマッピング（指示先番号は工程ごとに一意）
     /// </summary>
-    public List<OrderProcess> BuildProcesses(Order order, IEnumerable<ProcessDefinition> definitions, Dictionary<string, DateOnly?> completedByDestNumber)
-    {
+    public List<OrderProcess> BuildProcesses(Order order, IEnumerable<ProcessDefinition> definitions, Dictionary<string, DateOnly?> completedByDestNumber) {
         var sorted = definitions.OrderBy(d => d.SortOrder).ToList();
         if (!sorted.Any()) return new List<OrderProcess>();
 
-        // 前向きに累積分数を計算し、480分ごとの日チャンク番号を割り当て
-        double running = 0;
-        var chunks = new int[sorted.Count];
-        for (int i = 0; i < sorted.Count; i++)
-        {
-            double minutes = (sorted[i].LeadTimeMinutes ?? 0) * order.PlannedQuantity;
-            running += minutes;
-            if (minutes <= 0)
-            {
-                // 0分の工程は前の工程と同じチャンク（または1）
-                chunks[i] = i > 0 ? chunks[i - 1] : 1;
+        // 末尾工程から逆向きに、完了日から数えた日チャンク番号
+        // （1=完了日当日、2=その前営業日…）で着手・完了それぞれの必須バケットを求める
+        double runningIn = 0;
+        var startBucket = new int[sorted.Count];
+        var finishBucket = new int[sorted.Count];
+        for (int i = sorted.Count - 1; i >= 0; i--) {
+            var def = sorted[i];
+            double minutes = (def.LeadTimeMinutes ?? 0) * order.PlannedQuantity;
+            double adjusted = runningIn;
+            bool spansBoundary = minutes >= 480;
+
+            // 外注リードタイム（数量に依存しない営業日単位の待機）。
+            // この工程の後にOutsourceLeadDays日分の空白が入るため、その分だけ前倒しで締め切る
+            if (def.OutsourceLeadDays > 0) {
+                var daysSoFar = Math.Max(1, (int)Math.Ceiling(runningIn / 480.0));
+                adjusted = (daysSoFar + def.OutsourceLeadDays) * 480.0;
+                spansBoundary = true;
             }
-            else
-            {
-                chunks[i] = (int)Math.Ceiling(running / 480.0);
-                // 1日以上かかる工程はチャンク末尾にrunningを揃え、後続工程を次の日へ押し出す
-                if (minutes >= 480)
-                    running = chunks[i] * 480.0;
+            // クールタイム（数量に依存しない固定の待機時間）。
+            // 単独では前営業日へ繰り越さず、その日のチャンク上限で切り詰める
+            else if (def.CoolTimeMinutes > 0) {
+                var dayBoundary = Math.Ceiling(runningIn / 480.0) * 480.0;
+                adjusted = Math.Min(runningIn + def.CoolTimeMinutes, dayBoundary);
             }
 
-            // クールタイム（数量に依存しない固定の待機時間）を加算。
-            // 単独では翌日に繰り越さず、その日のチャンク上限で切り詰める
-            if (sorted[i].CoolTimeMinutes > 0)
-            {
-                running += sorted[i].CoolTimeMinutes;
-                var dayLimit = chunks[i] * 480.0;
-                if (running > dayLimit)
-                    running = dayLimit;
+            if (spansBoundary) {
+                // 外注待ち・480分超の工程は前後の工程と日をまたいで共有しないため、
+                // 完了必須バケットは「後続工程群のバケットの次」から始まる
+                finishBucket[i] = (int)Math.Ceiling(adjusted / 480.0) + 1;
+                startBucket[i] = Math.Max(finishBucket[i], (int)Math.Ceiling(adjusted / 480.0) + (int)Math.Ceiling(minutes / 480.0));
+                runningIn = startBucket[i] * 480.0;
+            }
+            else {
+                finishBucket[i] = Math.Max(1, (int)Math.Ceiling(adjusted / 480.0));
+                runningIn = adjusted + minutes;
+                startBucket[i] = Math.Max(1, (int)Math.Ceiling(runningIn / 480.0));
             }
         }
-        int totalChunks = Math.Max(1, chunks.Max());
 
-        // 各工程の予定日 = 完了日 - (totalChunks - chunk) 営業日
+        // 各工程の必須日 = 完了日 - (バケット番号 - 1) 営業日（バケット1=完了日当日）
         var results = new List<OrderProcess>(sorted.Count);
-        for (int i = 0; i < sorted.Count; i++)
-        {
+        for (int i = 0; i < sorted.Count; i++) {
             var def = sorted[i];
             double requiredMinutes = (def.LeadTimeMinutes ?? 0) * order.PlannedQuantity;
-            var dueDate = SubtractBusinessDays(order.CompletionDate, totalChunks - chunks[i]);
-            // 480分超えの工程は複数日にまたがるため、開始日を別途計算する
-            var daysSpan = requiredMinutes > 0 ? (int)Math.Ceiling(requiredMinutes / 480.0) - 1 : 0;
-            var startDate = SubtractBusinessDays(dueDate, daysSpan);
+            var dueDate = SubtractBusinessDays(order.CompletionDate, finishBucket[i] - 1);
+            var startDate = SubtractBusinessDays(order.CompletionDate, startBucket[i] - 1);
             // 指示先番号（一意）で完了判定。指示内容（表示名）の重複の影響を受けない
-            var isCompleted = completedByDestNumber.TryGetValue(def.CsvColumnName, out var actualDate);
+            var isCompleted = completedByDestNumber.TryGetValue(def.DestinationCode, out var actualDate);
             results.Add(new OrderProcess {
                 ProcessName = def.ProcessName,
+                DestinationCode = def.DestinationCode,
                 StartDate = startDate,
                 DueDate = dueDate,
                 ActualDate = isCompleted ? actualDate : null,

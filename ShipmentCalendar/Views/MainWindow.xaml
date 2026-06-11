@@ -44,6 +44,17 @@
                 </MenuItem>
             </Menu>
             <Separator />
+            <!--  未完了工程の表示日切り替え（クリックで着手必須日/完了必須日を切り替え）  -->
+            <Button Name="BtnToggleDueDateDisplay"
+                    Padding="8,4" Background="Transparent" BorderThickness="0"
+                    Foreground="White" FontSize="14"
+                    Click="BtnToggleDueDateDisplay_Click"/>
+            <!--  注文一覧の並び順切り替え（出荷日順/工程期限順）  -->
+            <Button Name="BtnToggleSortMode"
+                    Padding="8,4" Background="Transparent" BorderThickness="0"
+                    Foreground="White" FontSize="14"
+                    Click="BtnToggleSortMode_Click"/>
+            <Separator />
             <!--  担当部署フィルターボタン（動的生成）  -->
             <ItemsControl ItemsSource="{Binding DepartmentFilters}">
                 <ItemsControl.ItemsPanel>

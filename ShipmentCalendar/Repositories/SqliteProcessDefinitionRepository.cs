@@ -12,8 +12,8 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
-        var command = connection.CreateCommand();
-        command.CommandText = "SELECT Id, ItemNumber, ProcessName, LeadTimeMinutes, SortOrder, IsVisible, CsvColumnName, WarningDaysBeforeDeadline, DepartmentId, CoolTimeMinutes FROM ProcessDefinitions ORDER BY ItemNumber, SortOrder";
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT Id, ItemNumber, ProcessName, LeadTimeMinutes, SortOrder, IsVisible, DestinationCode, WarningDaysBeforeDeadline, DepartmentId, CoolTimeMinutes, OutsourceLeadDays FROM ProcessDefinitions ORDER BY ItemNumber, SortOrder";
         using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
             definitions.Add(ReadDefinition(reader));
@@ -27,8 +27,8 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
-        var command = connection.CreateCommand();
-        command.CommandText = "SELECT Id, ItemNumber, ProcessName, LeadTimeMinutes, SortOrder, IsVisible, CsvColumnName, WarningDaysBeforeDeadline, DepartmentId, CoolTimeMinutes FROM ProcessDefinitions WHERE ItemNumber = $in ORDER BY SortOrder";
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT Id, ItemNumber, ProcessName, LeadTimeMinutes, SortOrder, IsVisible, DestinationCode, WarningDaysBeforeDeadline, DepartmentId, CoolTimeMinutes, OutsourceLeadDays FROM ProcessDefinitions WHERE ItemNumber = $in ORDER BY SortOrder";
         command.Parameters.AddWithValue("$in", itemNumber);
         using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
@@ -57,19 +57,20 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
-        var command = connection.CreateCommand();
+        using var command = connection.CreateCommand();
         command.CommandText = @"
-            INSERT INTO ProcessDefinitions (ItemNumber, ProcessName, LeadTimeMinutes, SortOrder, IsVisible, CsvColumnName, WarningDaysBeforeDeadline, DepartmentId, CoolTimeMinutes)
-            VALUES ($in, $name, $days, $so, $vis, $csv, $warn, $dept, $cool)";
+            INSERT INTO ProcessDefinitions (ItemNumber, ProcessName, LeadTimeMinutes, SortOrder, IsVisible, DestinationCode, WarningDaysBeforeDeadline, DepartmentId, CoolTimeMinutes, OutsourceLeadDays)
+            VALUES ($in, $name, $days, $so, $vis, $dest, $warn, $dept, $cool, $outsource)";
         command.Parameters.AddWithValue("$in", definition.ItemNumber);
         command.Parameters.AddWithValue("$name", definition.ProcessName);
         command.Parameters.AddWithValue("$days", (object?)definition.LeadTimeMinutes ?? DBNull.Value);
         command.Parameters.AddWithValue("$so", definition.SortOrder);
         command.Parameters.AddWithValue("$vis", definition.IsVisible ? 1 : 0);
-        command.Parameters.AddWithValue("$csv", definition.CsvColumnName);
+        command.Parameters.AddWithValue("$dest", definition.DestinationCode);
         command.Parameters.AddWithValue("$warn", definition.WarningDaysBeforeDeadline);
         command.Parameters.AddWithValue("$dept", definition.DepartmentId);
         command.Parameters.AddWithValue("$cool", definition.CoolTimeMinutes);
+        command.Parameters.AddWithValue("$outsource", definition.OutsourceLeadDays);
         await command.ExecuteNonQueryAsync();
     }
 
@@ -78,18 +79,19 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
-        var command = connection.CreateCommand();
+        using var command = connection.CreateCommand();
         command.CommandText = @"
-            UPDATE ProcessDefinitions SET ProcessName=$name, LeadTimeMinutes=$days, SortOrder=$so, IsVisible=$vis, CsvColumnName=$csv, WarningDaysBeforeDeadline=$warn, DepartmentId=$dept, CoolTimeMinutes=$cool
+            UPDATE ProcessDefinitions SET ProcessName=$name, LeadTimeMinutes=$days, SortOrder=$so, IsVisible=$vis, DestinationCode=$dest, WarningDaysBeforeDeadline=$warn, DepartmentId=$dept, CoolTimeMinutes=$cool, OutsourceLeadDays=$outsource
             WHERE Id=$id";
         command.Parameters.AddWithValue("$name", definition.ProcessName);
         command.Parameters.AddWithValue("$days", (object?)definition.LeadTimeMinutes ?? DBNull.Value);
         command.Parameters.AddWithValue("$so", definition.SortOrder);
         command.Parameters.AddWithValue("$vis", definition.IsVisible ? 1 : 0);
-        command.Parameters.AddWithValue("$csv", definition.CsvColumnName);
+        command.Parameters.AddWithValue("$dest", definition.DestinationCode);
         command.Parameters.AddWithValue("$warn", definition.WarningDaysBeforeDeadline);
         command.Parameters.AddWithValue("$dept", definition.DepartmentId);
         command.Parameters.AddWithValue("$cool", definition.CoolTimeMinutes);
+        command.Parameters.AddWithValue("$outsource", definition.OutsourceLeadDays);
         command.Parameters.AddWithValue("$id", definition.Id);
         await command.ExecuteNonQueryAsync();
     }
@@ -113,9 +115,10 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
         LeadTimeMinutes = reader.IsDBNull(3) ? null : reader.GetDouble(3),
         SortOrder = reader.GetInt32(4),
         IsVisible = reader.GetInt32(5) == 1,
-        CsvColumnName = reader.GetString(6),
+        DestinationCode = reader.GetString(6),
         WarningDaysBeforeDeadline = reader.GetInt32(7),
         DepartmentId = reader.GetInt32(8),
-        CoolTimeMinutes = reader.GetDouble(9)
+        CoolTimeMinutes = reader.GetDouble(9),
+        OutsourceLeadDays = reader.GetInt32(10)
     };
 }

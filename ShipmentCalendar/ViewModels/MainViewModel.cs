@@ -74,7 +74,18 @@ public partial class MainViewModel : ObservableObject {
         FilterRegistrationStatus = "両方";
     }
 
-    private void ApplyFilter() {
+    /// <summary>注文の「次の未完了工程」の必須日（表示設定に応じてDueDate/StartDate）を返す。
+    /// 全工程完了済みならDateOnly.MaxValue</summary>
+    private DateOnly GetNextProcessSortDate(Order o) {
+        var next = o.Processes
+            .Where(p => p.Status != ProcessStatus.Completed)
+            .OrderBy(p => p.SortOrder)
+            .FirstOrDefault();
+        if (next == null) return DateOnly.MaxValue;
+        return Settings.ShowDueDateForNotStarted ? next.DueDate : next.StartDate;
+    }
+
+    public void ApplyFilter() {
         var result = _allOrders.AsEnumerable();
 
         if (!string.IsNullOrEmpty(FilterItemNumber))
@@ -110,17 +121,11 @@ public partial class MainViewModel : ObservableObject {
                     .FirstOrDefault();
                 return next?.DepartmentId == FilterDepartmentId;
             });
-            // 担当工程の DueDate 順でソート
-            Orders = new ObservableCollection<Order>(result.OrderBy(o =>
-                o.Processes
-                    .Where(p => p.Status != ProcessStatus.Completed)
-                    .OrderBy(p => p.SortOrder)
-                    .FirstOrDefault()?.DueDate ?? DateOnly.MaxValue));
         }
-        else
-        {
-            Orders = new ObservableCollection<Order>(result.OrderBy(o => o.DeliveryDate));
-        }
+
+        Orders = new ObservableCollection<Order>(Settings.SortByProcessDeadline
+            ? result.OrderBy(GetNextProcessSortDate)
+            : result.OrderBy(o => o.DeliveryDate));
         UpdateStatusMessage();
     }
 
@@ -189,7 +194,7 @@ public partial class MainViewModel : ObservableObject {
         try {
             // ODBCはasync内部実装が同期のためTask.Runでスレッドプールに逃がす
             var settings = Settings;
-            var (orders, allCsvDefs) = await Task.Run(async () =>
+            var (orders, allOdbcDefs) = await Task.Run(async () =>
             {
                 var repo = new OdbcOrderRepository(settings);
                 var o = (await repo.GetAllAsync()).ToList();
@@ -211,26 +216,27 @@ public partial class MainViewModel : ObservableObject {
             }
 
             // DB のユーザー設定（工程名カスタマイズ・LT・表示・警告）をマージ
-            // キー: "ItemNumber|CsvColumnName(=指示先番号)"
+            // キー: "ItemNumber|DestinationCode(=指示先番号)"
             var dbDefs = await new SqliteProcessDefinitionRepository().GetAllAsync();
             var dbDict = dbDefs
-                .Where(d => !string.IsNullOrEmpty(d.CsvColumnName))
-                .GroupBy(d => $"{d.ItemNumber}|{d.CsvColumnName}")
-                .ToDictionary(g => g.Key, g => g.First());
+                .Where(d => !string.IsNullOrEmpty(d.DestinationCode))
+                .GroupBy(d => $"{d.ItemNumber}|{d.DestinationCode}", StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
-            var allDefs = allCsvDefs.Select(csv => {
-                var key = $"{csv.ItemNumber}|{csv.CsvColumnName}";
-                if (!dbDict.TryGetValue(key, out var db)) return csv;
+            var allDefs = allOdbcDefs.Select(odbcDef => {
+                var key = $"{odbcDef.ItemNumber}|{odbcDef.DestinationCode}";
+                if (!dbDict.TryGetValue(key, out var db)) return odbcDef;
                 return new ProcessDefinition {
-                    ItemNumber = csv.ItemNumber,
+                    ItemNumber = odbcDef.ItemNumber,
                     ProcessName = db.ProcessName,
-                    CsvColumnName = csv.CsvColumnName,
-                    SortOrder = csv.SortOrder,                               // 順序は常にCSV
-                    LeadTimeMinutes = db.LeadTimeMinutes ?? csv.LeadTimeMinutes,
+                    DestinationCode = odbcDef.DestinationCode,
+                    SortOrder = odbcDef.SortOrder,                           // 順序は常にODBC
+                    LeadTimeMinutes = db.LeadTimeMinutes ?? odbcDef.LeadTimeMinutes,
                     IsVisible = db.IsVisible,
                     WarningDaysBeforeDeadline = db.WarningDaysBeforeDeadline,
                     DepartmentId = db.DepartmentId,
-                    CoolTimeMinutes = db.CoolTimeMinutes
+                    CoolTimeMinutes = db.CoolTimeMinutes,
+                    OutsourceLeadDays = db.OutsourceLeadDays
                 };
             }).ToList();
 
@@ -255,7 +261,7 @@ public partial class MainViewModel : ObservableObject {
                 // 仮登録した完了済み指示先番号→受入日のマッピング（指示先番号は工程ごとに一意。重複は先着優先）
                 var completedByDestNumber = order.Processes
                     .Where(p => p.Status == ProcessStatus.Completed)
-                    .GroupBy(p => p.ProcessName)
+                    .GroupBy(p => p.DestinationCode)
                     .ToDictionary(g => g.Key, g => g.First().ActualDate);
 
                 order.Processes = calculator.BuildProcesses(order, productDefs.Where(d => d.IsVisible), completedByDestNumber);
@@ -271,7 +277,7 @@ public partial class MainViewModel : ObservableObject {
                 // ステータスを警告日数込みで確定
                 foreach (var process in order.Processes) {
                     var warningDays = productDefs
-                        .FirstOrDefault(d => d.ProcessName == process.ProcessName)
+                        .FirstOrDefault(d => d.DestinationCode == process.DestinationCode)
                         ?.WarningDaysBeforeDeadline ?? 0;
                     process.Status = calculator.DetermineStatus(process, today, warningDays);
                 }
@@ -303,6 +309,13 @@ public partial class MainViewModel : ObservableObject {
         } finally {
             IsLoading = false;
         }
+    }
+
+    /// <summary>注文一覧の並び順（出荷日順/工程期限順）を切り替える</summary>
+    public void ToggleSortMode() {
+        Settings.SortByProcessDeadline = !Settings.SortByProcessDeadline;
+        SaveSettings();
+        ApplyFilter();
     }
 
     public void SaveSettings() {
