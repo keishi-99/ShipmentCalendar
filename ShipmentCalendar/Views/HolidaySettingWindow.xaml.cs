@@ -92,6 +92,8 @@ public partial class HolidaySettingWindow : Window
 
         var year = (int)(CmbYear.SelectedItem ?? DateTime.Today.Year);
         TxtStatus.Text = "休日データを取得中...";
+        BtnFetchHolidays.IsEnabled = false;
+        LoadingOverlay.Visibility = Visibility.Visible;
 
         try
         {
@@ -123,6 +125,11 @@ public partial class HolidaySettingWindow : Window
         catch (Exception ex)
         {
             TxtStatus.Text = $"取得失敗：{ex.Message}";
+        }
+        finally
+        {
+            BtnFetchHolidays.IsEnabled = true;
+            LoadingOverlay.Visibility = Visibility.Collapsed;
         }
     }
 
