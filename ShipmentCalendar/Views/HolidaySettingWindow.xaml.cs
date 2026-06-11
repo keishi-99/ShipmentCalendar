@@ -88,13 +88,15 @@ public partial class HolidaySettingWindow : Window
             return;
         }
 
+        _settingsService.Save(settings);
+
         var year = (int)(CmbYear.SelectedItem ?? DateTime.Today.Year);
         TxtStatus.Text = "休日データを取得中...";
 
         try
         {
             var calendarRepo = new OdbcCalendarRepository(settings);
-            var dates = await Task.Run(async () => await calendarRepo.GetHolidaysAsync(year));
+            var dates = await Task.Run(() => calendarRepo.GetHolidaysAsync(year));
 
             var added = 0;
             var skipped = 0;

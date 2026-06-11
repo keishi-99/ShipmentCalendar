@@ -26,7 +26,7 @@ public class OdbcCalendarRepository
               AND 稼働区分 = '01'
               AND 日付_数値 BETWEEN ? AND ?";
         cmd.Parameters.Add("@FactoryNumber", System.Data.Odbc.OdbcType.VarChar).Value = _settings.OdbcFactoryNumber;
-        cmd.Parameters.Add("@From", System.Data.Odbc.OdbcType.Int).Value = year * 10000 + 0101;
+        cmd.Parameters.Add("@From", System.Data.Odbc.OdbcType.Int).Value = year * 10000 + 101;
         cmd.Parameters.Add("@To", System.Data.Odbc.OdbcType.Int).Value = year * 10000 + 1231;
 
         using var reader = await cmd.ExecuteReaderAsync();
