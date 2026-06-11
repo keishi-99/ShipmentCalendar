@@ -19,6 +19,8 @@ public class OrderProcess
     public int DepartmentId { get; set; } = 0;
     /// <summary>必要時間（分）= (段取時間 + 作業時間) × 計画数。0=未設定</summary>
     public double RequiredMinutes { get; set; } = 0;
+    /// <summary>この工程の後に発生する外注待ち日数（営業日）。0=外注待ちなし</summary>
+    public int OutsourceLeadDays { get; set; } = 0;
 }
 
 public enum ProcessStatus

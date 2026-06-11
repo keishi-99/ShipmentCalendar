@@ -127,7 +127,8 @@ public partial class ProcessSettingWindow : Window
             var dbDefs = (await _dbRepository.GetByItemNumberAsync(itemNumber)).ToList();
             var dbDict = dbDefs
                 .Where(d => !string.IsNullOrEmpty(d.DestinationCode))
-                .ToDictionary(d => d.DestinationCode, d => d, StringComparer.OrdinalIgnoreCase);
+                .GroupBy(d => d.DestinationCode, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
             // ODBC構造 + DB設定をマージ
             // 順序・指示先番号はODBCが正、工程名・LT・表示・警告はDB設定を優先
