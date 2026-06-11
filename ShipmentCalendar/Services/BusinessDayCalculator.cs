@@ -102,7 +102,8 @@ public class BusinessDayCalculator {
                 Status = isCompleted ? ProcessStatus.Completed : ProcessStatus.NotStarted,
                 SortOrder = def.SortOrder,
                 DepartmentId = def.DepartmentId,
-                RequiredMinutes = requiredMinutes
+                RequiredMinutes = requiredMinutes,
+                OutsourceLeadDays = def.OutsourceLeadDays
             });
         }
         return results;

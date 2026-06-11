@@ -82,11 +82,21 @@ public partial class MainWindow : Window {
             colorBinding.Bindings.Add(new Binding() { Source = index });
             factory.SetBinding(Border.BackgroundProperty, colorBinding);
 
+            // Grid（左: 工程名+期限日、右: 外注待ちギャップ表示）
+            var gridFactory = new FrameworkElementFactory(typeof(Grid));
+            var mainColumn = new FrameworkElementFactory(typeof(ColumnDefinition));
+            mainColumn.SetValue(ColumnDefinition.WidthProperty, new GridLength(1, GridUnitType.Star));
+            var gapColumn = new FrameworkElementFactory(typeof(ColumnDefinition));
+            gapColumn.SetValue(ColumnDefinition.WidthProperty, GridLength.Auto);
+            gridFactory.AppendChild(mainColumn);
+            gridFactory.AppendChild(gapColumn);
+
             // StackPanel（工程名 + 期限日を縦に並べる）
             var stackFactory = new FrameworkElementFactory(typeof(StackPanel));
             stackFactory.SetValue(StackPanel.OrientationProperty, Orientation.Vertical);
             stackFactory.SetValue(StackPanel.HorizontalAlignmentProperty, HorizontalAlignment.Center);
             stackFactory.SetValue(StackPanel.VerticalAlignmentProperty, VerticalAlignment.Center);
+            stackFactory.SetValue(Grid.ColumnProperty, 0);
 
             // 工程名テキスト
             var nameFactory = new FrameworkElementFactory(typeof(TextBlock));
@@ -105,11 +115,37 @@ public partial class MainWindow : Window {
             dateBinding.Bindings.Add(new Binding() { Source = index });
             dateFactory.SetBinding(TextBlock.TextProperty, dateBinding);
             dateFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+            dateFactory.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
             dateFactory.SetValue(TextBlock.FontSizeProperty, 11.0);
 
             stackFactory.AppendChild(nameFactory);
             stackFactory.AppendChild(dateFactory);
-            factory.AppendChild(stackFactory);
+
+            // 外注待ち日数表示（OutsourceLeadDaysが設定されている工程のみ、区切り線付きの別セル風に表示）
+            var gapBorderFactory = new FrameworkElementFactory(typeof(Border));
+            gapBorderFactory.SetValue(Border.BorderBrushProperty, Brushes.LightGray);
+            gapBorderFactory.SetValue(Border.BorderThicknessProperty, new Thickness(1, 0, 0, 0));
+            gapBorderFactory.SetValue(Border.PaddingProperty, new Thickness(2, 0, 0, 0));
+            gapBorderFactory.SetValue(Grid.ColumnProperty, 1);
+            var gapVisibilityBinding = new MultiBinding { Converter = new ProcessIndexToOutsourceLeadDaysVisibilityConverter() };
+            gapVisibilityBinding.Bindings.Add(new Binding("Processes"));
+            gapVisibilityBinding.Bindings.Add(new Binding() { Source = index });
+            gapBorderFactory.SetBinding(Border.VisibilityProperty, gapVisibilityBinding);
+
+            var gapFactory = new FrameworkElementFactory(typeof(TextBlock));
+            var gapTextBinding = new MultiBinding { Converter = new ProcessIndexToOutsourceLeadDaysConverter() };
+            gapTextBinding.Bindings.Add(new Binding("Processes"));
+            gapTextBinding.Bindings.Add(new Binding() { Source = index });
+            gapFactory.SetBinding(TextBlock.TextProperty, gapTextBinding);
+            gapFactory.SetValue(TextBlock.FontSizeProperty, 9.0);
+            gapFactory.SetValue(TextBlock.ForegroundProperty, Brushes.Gray);
+            gapFactory.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
+            gapFactory.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
+            gapBorderFactory.AppendChild(gapFactory);
+
+            gridFactory.AppendChild(stackFactory);
+            gridFactory.AppendChild(gapBorderFactory);
+            factory.AppendChild(gridFactory);
             template.VisualTree = factory;
             column.CellTemplate = template;
             OrderGrid.Columns.Add(column);
@@ -219,8 +255,35 @@ public class ProcessIndexToDueDateConverter : System.Windows.Data.IMultiValueCon
         // 完了必須日は「この日までに完了」=矢印を日付の前に、着手必須日は「この日から着手」=矢印を日付の後に付与
         var hours = process.RequiredMinutes / 60.0;
         if (_showDueDateForNotStarted)
-            return $"→{process.DueDate:MM/dd} ({hours:F1}h)";
-        return $"{process.StartDate:MM/dd}→ ({hours:F1}h)";
+            return $"→{process.DueDate:MM/dd}\n({hours:F1}h)";
+        return $"{process.StartDate:MM/dd}→\n({hours:F1}h)";
+    }
+
+    public object[] ConvertBack(object value, Type[] targetTypes, object parameter, System.Globalization.CultureInfo culture)
+        => throw new NotImplementedException();
+}
+
+/// <summary>インデックスでProcessリストを検索して外注待ち日数テキストを返すコンバーター</summary>
+public class ProcessIndexToOutsourceLeadDaysConverter : System.Windows.Data.IMultiValueConverter {
+    public object Convert(object[] values, Type targetType, object parameter, System.Globalization.CultureInfo culture) {
+        if (values[0] is not IEnumerable<OrderProcess> processes) return string.Empty;
+        if (values[1] is not int index) return string.Empty;
+        var process = processes.ElementAtOrDefault(index);
+        if (process == null || process.OutsourceLeadDays <= 0) return string.Empty;
+        return $"⏳\n{process.OutsourceLeadDays}日";
+    }
+
+    public object[] ConvertBack(object value, Type[] targetTypes, object parameter, System.Globalization.CultureInfo culture)
+        => throw new NotImplementedException();
+}
+
+/// <summary>インデックスでProcessリストを検索し、外注待ち日数表示の表示/非表示を返すコンバーター</summary>
+public class ProcessIndexToOutsourceLeadDaysVisibilityConverter : System.Windows.Data.IMultiValueConverter {
+    public object Convert(object[] values, Type targetType, object parameter, System.Globalization.CultureInfo culture) {
+        if (values[0] is not IEnumerable<OrderProcess> processes) return Visibility.Collapsed;
+        if (values[1] is not int index) return Visibility.Collapsed;
+        var process = processes.ElementAtOrDefault(index);
+        return process != null && process.OutsourceLeadDays > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     public object[] ConvertBack(object value, Type[] targetTypes, object parameter, System.Globalization.CultureInfo culture)
