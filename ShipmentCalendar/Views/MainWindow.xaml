@@ -4,7 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:models="clr-namespace:ShipmentCalendar.Models"
     Title="出荷カレンダー"
-    Width="1100"
+    Width="1500"
     Height="700"
     WindowStartupLocation="CenterScreen">
 
@@ -116,9 +116,9 @@
             <TextBlock Text="製番：" VerticalAlignment="Center" Margin="0,0,2,0"/>
             <TextBox Text="{Binding FilterManufactureNumber, UpdateSourceTrigger=PropertyChanged}"
                      Width="140" Margin="0,0,10,0" Padding="3,2" VerticalContentAlignment="Center"/>
-            <TextBlock Text="工程登録：" VerticalAlignment="Center" Margin="0,0,2,0"/>
-            <ComboBox ItemsSource="{Binding RegistrationStatusOptions}"
-                      SelectedItem="{Binding FilterRegistrationStatus}"
+            <TextBlock Text="区分：" VerticalAlignment="Center" Margin="0,0,2,0"/>
+            <ComboBox ItemsSource="{Binding ProductCategoryOptions}"
+                      SelectedItem="{Binding FilterProductCategory}"
                       Width="120" Margin="0,0,10,0"/>
             <CheckBox Content="完了済みを非表示" VerticalAlignment="Center" Margin="0,0,10,0"
                       IsChecked="{Binding FilterHideCompleted}"/>

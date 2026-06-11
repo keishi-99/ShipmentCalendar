@@ -11,7 +11,9 @@
         <local:DeptIdToNameConverter x:Key="DeptIdToNameConverter" />
     </Window.Resources>
     <Grid>
-    <DockPanel Margin="16">
+    <TabControl Margin="16">
+    <TabItem Header="半製品">
+    <DockPanel Margin="8">
         <!--  ボタン・ステータスを先に宣言しないと高さ不足で隠れる  -->
         <StackPanel
             Margin="0,8,0,0"
@@ -212,6 +214,82 @@
         </DataGrid>
 
     </DockPanel>
+    </TabItem>
+
+    <TabItem Header="製品">
+    <DockPanel Margin="8">
+        <StackPanel
+            Margin="0,8,0,0"
+            HorizontalAlignment="Right"
+            DockPanel.Dock="Bottom"
+            Orientation="Horizontal">
+            <Button
+                Margin="0,0,8,0"
+                Padding="8,4"
+                Click="BtnAddFinishedProduct_Click"
+                Content="追加" />
+            <Button
+                Margin="0,0,8,0"
+                Padding="16,6"
+                Background="#1976D2"
+                BorderThickness="0"
+                Click="BtnSaveFinishedProducts_Click"
+                Content="保存"
+                Foreground="White" />
+            <Button
+                Padding="16,6"
+                Click="BtnClose_Click"
+                Content="閉じる" />
+        </StackPanel>
+        <TextBlock
+            Name="TxtFinishedProductStatus"
+            Margin="0,4,0,0"
+            DockPanel.Dock="Bottom"
+            Foreground="#666666" />
+
+        <TextBlock
+            Margin="0,0,0,12"
+            DockPanel.Dock="Top"
+            FontSize="16"
+            FontWeight="Bold"
+            Text="製品（品目番号 先頭一致）の登録" />
+
+        <DataGrid
+            Name="FinishedProductGrid"
+            AutoGenerateColumns="False"
+            CanUserAddRows="False"
+            CanUserDeleteRows="False"
+            HeadersVisibility="Column"
+            SelectionMode="Single"
+            SelectionUnit="Cell">
+            <DataGrid.Columns>
+                <DataGridTextColumn
+                    Width="*"
+                    Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                    Header="表示名" />
+                <DataGridTextColumn
+                    Width="200"
+                    Binding="{Binding ItemNumberPrefix, UpdateSourceTrigger=PropertyChanged}"
+                    Header="品目番号（先頭一致）" />
+                <DataGridTemplateColumn Width="44" Header="">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button
+                                Padding="4,2"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Click="BtnDeleteFinishedProductRow_Click"
+                                Content="✕"
+                                FontSize="11"
+                                Foreground="#D32F2F" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+    </DockPanel>
+    </TabItem>
+    </TabControl>
 
     <!--  PRONESS取得中のローディングオーバーレイ  -->
     <Grid Name="LoadingOverlay" Visibility="Collapsed" IsHitTestVisible="True">

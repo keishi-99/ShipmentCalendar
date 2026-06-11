@@ -58,6 +58,13 @@ public static class DatabaseInitializer
                 Name TEXT NOT NULL UNIQUE,
                 SortOrder INTEGER NOT NULL DEFAULT 0
             );
+
+            CREATE TABLE IF NOT EXISTS FinishedProducts (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                Name TEXT NOT NULL DEFAULT '',
+                ItemNumberPrefix TEXT NOT NULL UNIQUE,
+                SortOrder INTEGER NOT NULL DEFAULT 0
+            );
         ";
         command.ExecuteNonQuery();
 

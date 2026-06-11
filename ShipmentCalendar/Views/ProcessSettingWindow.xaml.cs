@@ -2,6 +2,7 @@ using ShipmentCalendar.Models;
 using ShipmentCalendar.Repositories;
 using ShipmentCalendar.Services;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
@@ -30,15 +31,26 @@ public partial class ProcessSettingWindow : Window
     private readonly IProcessDefinitionRepository _dbRepository = new SqliteProcessDefinitionRepository();
     private readonly AppSettingsService _settingsService = new AppSettingsService();
     private readonly SqliteProductDisplayNameRepository _nameRepository = new SqliteProductDisplayNameRepository();
+    private readonly IFinishedProductRepository _finishedProductRepository = new SqliteFinishedProductRepository();
     private ObservableCollection<ProcessDefinition> _currentDefinitions = new();
+    private ObservableCollection<FinishedProductDefinition> _finishedProducts = new();
 
     /// <summary>XAML の DataTemplate から参照できる静的な部署リスト</summary>
     public static IReadOnlyList<Department>? DepartmentsSource { get; private set; }
+
+    /// <summary>工程グリッドの表示順を「順序」昇順に固定する</summary>
+    private void ApplyProcessGridDefaultSort()
+    {
+        ProcessGrid.Items.SortDescriptions.Clear();
+        ProcessGrid.Items.SortDescriptions.Add(new SortDescription(nameof(ProcessDefinition.SortOrder), ListSortDirection.Ascending));
+    }
 
     public ProcessSettingWindow()
     {
         InitializeComponent();
         ProcessGrid.ItemsSource = _currentDefinitions;
+        ApplyProcessGridDefaultSort();
+        FinishedProductGrid.ItemsSource = _finishedProducts;
         Loaded += async (_, _) =>
         {
             // 部署リストをDBから読み込んでDataGrid.Tag経由でCellEditingTemplateに渡す
@@ -50,7 +62,48 @@ public partial class ProcessSettingWindow : Window
             ProcessGrid.Tag = allDepts;
 
             await RefreshRegisteredListAsync();
+            await RefreshFinishedProductsAsync();
         };
+    }
+
+    /// <summary>製品マスタをDBから読み込む</summary>
+    private async Task RefreshFinishedProductsAsync()
+    {
+        var products = await _finishedProductRepository.GetAllAsync();
+        _finishedProducts = new ObservableCollection<FinishedProductDefinition>(products);
+        FinishedProductGrid.ItemsSource = _finishedProducts;
+    }
+
+    /// <summary>「追加」ボタン：製品一覧に新しい行を追加する</summary>
+    private void BtnAddFinishedProduct_Click(object sender, RoutedEventArgs e)
+    {
+        _finishedProducts.Add(new FinishedProductDefinition { SortOrder = _finishedProducts.Count });
+    }
+
+    /// <summary>製品一覧の行削除ボタン：選択行をコレクションから除去する（保存まで確定しない）</summary>
+    private void BtnDeleteFinishedProductRow_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is FinishedProductDefinition def)
+            _finishedProducts.Remove(def);
+    }
+
+    /// <summary>「保存」ボタン：製品一覧をDBの内容と全置換する</summary>
+    private async void BtnSaveFinishedProducts_Click(object sender, RoutedEventArgs e)
+    {
+        var existing = await _finishedProductRepository.GetAllAsync();
+        foreach (var def in existing)
+            await _finishedProductRepository.DeleteAsync(def.Id);
+
+        var sortOrder = 0;
+        foreach (var def in _finishedProducts)
+        {
+            if (string.IsNullOrWhiteSpace(def.ItemNumberPrefix)) continue;
+            def.SortOrder = sortOrder++;
+            await _finishedProductRepository.AddAsync(def);
+        }
+
+        await RefreshFinishedProductsAsync();
+        TxtFinishedProductStatus.Text = $"保存しました（{_finishedProducts.Count} 件）";
     }
 
     /// <summary>DB に登録済みの品目番号一覧を保持する（一覧選択ウィンドウ用）</summary>
@@ -108,6 +161,7 @@ public partial class ProcessSettingWindow : Window
             .ToList();
         _currentDefinitions = new System.Collections.ObjectModel.ObservableCollection<ProcessDefinition>(dbDefs);
         ProcessGrid.ItemsSource = _currentDefinitions;
+        ApplyProcessGridDefaultSort();
         TxtStatus.Text = $"{dbDefs.Count} 件の登録済み工程を表示しています";
     }
 
@@ -184,6 +238,7 @@ public partial class ProcessSettingWindow : Window
                 })
             );
             ProcessGrid.ItemsSource = _currentDefinitions;
+            ApplyProcessGridDefaultSort();
             TxtStatus.Text = $"{odbcDefs.Count} 件の工程を取り込みました";
         }
         finally

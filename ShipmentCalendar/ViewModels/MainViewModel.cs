@@ -17,6 +17,8 @@ public partial class MainViewModel : ObservableObject {
     private List<Order> _allOrders = new();
     // DB登録済み品目番号セット（フィルター用）
     private HashSet<string> _registeredItemNumbers = new();
+    // 製品マスタの品目番号先頭一致パターン一覧（フィルター用）
+    private List<string> _finishedProductPrefixes = new();
     // 最終更新日時
     private DateTime? _lastLoaded;
 
@@ -35,11 +37,12 @@ public partial class MainViewModel : ObservableObject {
     [ObservableProperty] private DateTime? _filterDeliveryFrom;
     [ObservableProperty] private DateTime? _filterDeliveryTo;
     [ObservableProperty] private bool _filterHideCompleted;
-    /// <summary>工程登録フィルター: "両方" / "登録済みのみ" / "登録無しのみ"</summary>
-    [ObservableProperty] private string _filterRegistrationStatus = "両方";
 
-    public static IReadOnlyList<string> RegistrationStatusOptions { get; } =
-        new[] { "両方", "登録済みのみ", "登録無しのみ" };
+    /// <summary>製品/半製品フィルター: "全て" / "半製品" / "製品"</summary>
+    [ObservableProperty] private string _filterProductCategory = "全て";
+
+    public static IReadOnlyList<string> ProductCategoryOptions { get; } =
+        new[] { "全て", "製品", "半製品", "どちらでもない" };
 
     /// <summary>ツールバー部署フィルターボタン用リスト（「全て」含む）</summary>
     public ObservableCollection<DepartmentFilterItem> DepartmentFilters { get; } = new();
@@ -53,7 +56,7 @@ public partial class MainViewModel : ObservableObject {
     partial void OnFilterDeliveryFromChanged(DateTime? value) => ApplyFilter();
     partial void OnFilterDeliveryToChanged(DateTime? value) => ApplyFilter();
     partial void OnFilterHideCompletedChanged(bool value) => ApplyFilter();
-    partial void OnFilterRegistrationStatusChanged(string value) => ApplyFilter();
+    partial void OnFilterProductCategoryChanged(string value) => ApplyFilter();
     partial void OnFilterDepartmentIdChanged(int value)
     {
         // 各ボタンの選択状態を同期してからフィルターを適用
@@ -71,7 +74,7 @@ public partial class MainViewModel : ObservableObject {
         FilterManufactureNumber = string.Empty;
         FilterDeliveryFrom = null;
         FilterDeliveryTo = null;
-        FilterRegistrationStatus = "両方";
+        FilterProductCategory = "全て";
     }
 
     /// <summary>注文の「次の未完了工程」の必須日（表示設定に応じてDueDate/StartDate）を返す。
@@ -106,10 +109,18 @@ public partial class MainViewModel : ObservableObject {
         if (FilterHideCompleted)
             result = result.Where(o => !o.Processes.Any() || o.Processes.Last().Status != ProcessStatus.Completed);
 
-        if (FilterRegistrationStatus == "登録済みのみ")
+        // 製品/半製品/どちらでもないフィルター
+        // 製品：品目番号が製品マスタのいずれかの先頭一致パターンに該当する
+        // 半製品：品目番号が半製品（工程設定）に登録済み
+        // どちらでもない：上記のいずれにも該当しない
+        if (FilterProductCategory == "製品")
+            result = result.Where(o => _finishedProductPrefixes.Any(p => o.ItemNumber.StartsWith(p, StringComparison.OrdinalIgnoreCase)));
+        else if (FilterProductCategory == "半製品")
             result = result.Where(o => _registeredItemNumbers.Contains(o.ItemNumber));
-        else if (FilterRegistrationStatus == "登録無しのみ")
-            result = result.Where(o => !_registeredItemNumbers.Contains(o.ItemNumber));
+        else if (FilterProductCategory == "どちらでもない")
+            result = result.Where(o =>
+                !_finishedProductPrefixes.Any(p => o.ItemNumber.StartsWith(p, StringComparison.OrdinalIgnoreCase))
+                && !_registeredItemNumbers.Contains(o.ItemNumber));
 
         // 担当部署フィルター：未完了工程のうち SortOrder 最小のものが選択部署の行のみ表示
         if (FilterDepartmentId > 0)
@@ -295,6 +306,9 @@ public partial class MainViewModel : ObservableObject {
             _allOrders = orders.OrderBy(o => o.DeliveryDate).ToList();
             var registeredNumbers = await new SqliteProcessDefinitionRepository().GetItemNumbersAsync();
             _registeredItemNumbers = new HashSet<string>(registeredNumbers, StringComparer.OrdinalIgnoreCase);
+
+            var finishedProducts = await new SqliteFinishedProductRepository().GetAllAsync();
+            _finishedProductPrefixes = finishedProducts.Select(p => p.ItemNumberPrefix).ToList();
 
             // 部署フィルターボタンリストを更新
             await RefreshDepartmentFiltersAsync();
