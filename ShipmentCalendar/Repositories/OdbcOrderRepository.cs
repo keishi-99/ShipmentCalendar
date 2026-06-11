@@ -7,7 +7,7 @@ namespace ShipmentCalendar.Repositories;
 /// <summary>
 /// ODBC経由でVP_生産計画情報_YD / VP_受入実績情報_YD から注文データを取得するリポジトリ。
 /// </summary>
-public class OdbcOrderRepository : IOrderRepository
+public class OdbcOrderRepository
 {
     private readonly AppSettings _settings;
 
@@ -16,31 +16,31 @@ public class OdbcOrderRepository : IOrderRepository
         _settings = settings;
     }
 
-    public async Task<IEnumerable<Order>> GetAllAsync()
+    public IEnumerable<Order> GetAll()
     {
         var today = DateOnly.FromDateTime(DateTime.Today);
         var rangeStart = today.AddDays(-_settings.DeliveryDatePastDays);
         var rangeEnd = today.AddDays(_settings.DeliveryDateRangeDays);
 
-        var orders = await LoadSeisanKeikakuAsync(rangeStart, rangeEnd);
-        await LoadUkeireJissekiAsync(orders);
+        var orders = LoadSeisanKeikaku(rangeStart, rangeEnd);
+        LoadUkeireJisseki(orders);
 
         return orders.Values;
     }
 
     /// <summary>生産計画ビューから注文を取得し、日付フィルターはC#側で適用する（ドライバーの型差異を回避）</summary>
-    private async Task<Dictionary<string, Order>> LoadSeisanKeikakuAsync(DateOnly rangeStart, DateOnly rangeEnd)
+    private Dictionary<string, Order> LoadSeisanKeikaku(DateOnly rangeStart, DateOnly rangeEnd)
     {
         var orders = new Dictionary<string, Order>();
 
         using var conn = OdbcConnectionFactory.Create(_settings);
-        await conn.OpenAsync();
+        conn.Open();
 
         using var cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT 製番, 品目番号, 品目名, 納期, 計画数 FROM VP_生産計画情報_YD";
 
-        using var reader = await cmd.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
         {
             var seiban = reader["製番"]?.ToString()?.Trim() ?? string.Empty;
             var itemNumber = reader["品目番号"]?.ToString()?.Trim() ?? string.Empty;
@@ -71,12 +71,12 @@ public class OdbcOrderRepository : IOrderRepository
     }
 
     /// <summary>受入実績ビューから完了工程を取得して注文に仮登録する（製番リストを1000件ずつバッチ処理）</summary>
-    private async Task LoadUkeireJissekiAsync(Dictionary<string, Order> orders)
+    private void LoadUkeireJisseki(Dictionary<string, Order> orders)
     {
         if (orders.Count == 0) return;
 
         using var conn = OdbcConnectionFactory.Create(_settings);
-        await conn.OpenAsync();
+        conn.Open();
 
         var keys = orders.Keys.ToList();
         const int batchSize = 1000;
@@ -92,8 +92,8 @@ public class OdbcOrderRepository : IOrderRepository
                   AND 指示先番号 IS NOT NULL
                   AND 指示先番号 <> '< NULL >'";
 
-            using var reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
             {
                 var seiban = reader["製番"]?.ToString()?.Trim() ?? string.Empty;
                 var processCode = reader["指示先番号"]?.ToString()?.Trim() ?? string.Empty;
@@ -125,11 +125,4 @@ public class OdbcOrderRepository : IOrderRepository
             return DateOnly.FromDateTime(parsed);
         return null;
     }
-
-    public Task<Order?> GetByIdAsync(int id) => Task.FromResult<Order?>(null);
-    public Task AddAsync(Order order) => Task.CompletedTask;
-    public Task UpdateAsync(Order order) => Task.CompletedTask;
-    public Task DeleteAsync(int id) => Task.CompletedTask;
-    public Task AddRangeAsync(IEnumerable<Order> orders) => Task.CompletedTask;
-    public Task DeleteAllAsync() => Task.CompletedTask;
 }
