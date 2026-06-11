@@ -6,7 +6,7 @@
     <DockPanel Margin="16">
         <!-- ボタン・ステータスを先に宣言しないと高さ不足で隠れる -->
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-            <Button Content="祝日を自動取得" Padding="12,6" Click="BtnFetchHolidays_Click" Margin="0,0,8,0"/>
+            <Button Content="DBから休日を取得" Padding="12,6" Click="BtnFetchHolidays_Click" Margin="0,0,8,0"/>
             <Button Content="選択を削除" Padding="12,6" Click="BtnDelete_Click" Margin="0,0,8,0"/>
             <Button Content="閉じる" Padding="12,6" Click="BtnClose_Click"/>
         </StackPanel>
@@ -19,6 +19,14 @@
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
             <TextBlock Text="年：" VerticalAlignment="Center"/>
             <ComboBox Name="CmbYear" Width="80" SelectionChanged="CmbYear_SelectionChanged" Margin="4,0"/>
+        </StackPanel>
+
+        <!-- 工場番号（DBからの休日取得 VP_カレンダ情報_YD の絞り込みに使用） -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBlock Text="工場番号：" VerticalAlignment="Center"/>
+            <TextBox Name="TxtFactoryNumber" Width="100" Margin="4,0" Padding="4,2"
+                     VerticalContentAlignment="Center" LostFocus="TxtFactoryNumber_LostFocus"
+                     ToolTip="DBから休日を取得する際の絞り込みに使用する工場番号"/>
         </StackPanel>
 
         <!-- 休日追加 -->
