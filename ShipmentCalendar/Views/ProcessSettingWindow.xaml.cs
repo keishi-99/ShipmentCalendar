@@ -137,7 +137,7 @@ public partial class ProcessSettingWindow : Window
             // ODBCから工程定義を取得（順序・指示先番号・デフォルト工程名・LT）
             // ODBC呼び出しは実質同期処理のため、UIスレッドのフリーズを避けてバックグラウンドで実行する
             var odbcRepo = new OdbcProcessDefinitionRepository(settings);
-            var odbcDefs = (await Task.Run(async () => await odbcRepo.GetByItemNumberAsync(itemNumber))).ToList();
+            var odbcDefs = (await Task.Run(() => odbcRepo.GetByItemNumber(itemNumber))).ToList();
 
             if (!odbcDefs.Any())
             {

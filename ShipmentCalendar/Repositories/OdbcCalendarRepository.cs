@@ -14,10 +14,10 @@ public class OdbcCalendarRepository
     }
 
     /// <summary>指定年・工場番号の休日（稼働区分='01'）の日付一覧を取得する</summary>
-    public async Task<IEnumerable<DateOnly>> GetHolidaysAsync(int year)
+    public IEnumerable<DateOnly> GetHolidays(int year)
     {
         using var conn = OdbcConnectionFactory.Create(_settings);
-        await conn.OpenAsync();
+        conn.Open();
 
         var dates = new List<DateOnly>();
         using var cmd = conn.CreateCommand();
@@ -29,8 +29,8 @@ public class OdbcCalendarRepository
         cmd.Parameters.Add("@From", System.Data.Odbc.OdbcType.Int).Value = year * 10000 + 101;
         cmd.Parameters.Add("@To", System.Data.Odbc.OdbcType.Int).Value = year * 10000 + 1231;
 
-        using var reader = await cmd.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
         {
             // 日付列はTIMESTAMP型（DateTime）として取得されるため、直接キャストしてDateOnlyに変換する
             if (reader["日付"] is DateTime dateTime)

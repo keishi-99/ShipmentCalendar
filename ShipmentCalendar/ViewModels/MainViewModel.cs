@@ -192,15 +192,15 @@ public partial class MainViewModel : ObservableObject {
         IsLoading = true;
 
         try {
-            // ODBCはasync内部実装が同期のためTask.Runでスレッドプールに逃がす
+            // ODBC呼び出しは同期処理のためTask.Runでスレッドプールに逃がす
             var settings = Settings;
-            var (orders, allOdbcDefs) = await Task.Run(async () =>
+            var (orders, allOdbcDefs) = await Task.Run(() =>
             {
                 var repo = new OdbcOrderRepository(settings);
-                var o = (await repo.GetAllAsync()).ToList();
+                var o = repo.GetAll().ToList();
 
-                IProcessDefinitionRepository processRepo = new OdbcProcessDefinitionRepository(settings);
-                var defs = (await processRepo.GetAllAsync()).ToList();
+                var processRepo = new OdbcProcessDefinitionRepository(settings);
+                var defs = processRepo.GetAll().ToList();
                 return (o, defs);
             });
 

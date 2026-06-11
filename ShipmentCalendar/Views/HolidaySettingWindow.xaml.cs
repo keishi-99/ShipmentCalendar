@@ -98,7 +98,7 @@ public partial class HolidaySettingWindow : Window
         try
         {
             var calendarRepo = new OdbcCalendarRepository(settings);
-            var dates = await Task.Run(() => calendarRepo.GetHolidaysAsync(year));
+            var dates = await Task.Run(() => calendarRepo.GetHolidays(year));
 
             var added = 0;
             var skipped = 0;

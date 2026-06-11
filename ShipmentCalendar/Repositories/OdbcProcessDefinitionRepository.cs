@@ -7,7 +7,7 @@ namespace ShipmentCalendar.Repositories;
 /// ODBC経由でVP_指示工程情報_YD + VP_取引先情報_YD から工程定義を取得するリポジトリ。
 /// V_指示工程情報_YD（ビュー）は使用しない。
 /// </summary>
-public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
+public class OdbcProcessDefinitionRepository
 {
     private readonly AppSettings _settings;
 
@@ -16,10 +16,10 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
         _settings = settings;
     }
 
-    public async Task<IEnumerable<ProcessDefinition>> GetAllAsync()
+    public IEnumerable<ProcessDefinition> GetAll()
     {
         using var conn = OdbcConnectionFactory.Create(_settings);
-        await conn.OpenAsync();
+        conn.Open();
 
         var definitions = new List<ProcessDefinition>();
         using var cmd = conn.CreateCommand();
@@ -29,8 +29,8 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
             WHERE A.指示先番号 IS NOT NULL
               AND A.指示先番号 <> '< NULL >'";
 
-        using var reader = await cmd.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
         {
             var itemNumber = reader["品目番号"]?.ToString()?.Trim() ?? string.Empty;
             var destNumber = reader["指示先番号"]?.ToString()?.Trim() ?? string.Empty;
@@ -57,12 +57,12 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
         return definitions;
     }
 
-    public async Task<IEnumerable<ProcessDefinition>> GetByItemNumberAsync(string itemNumber)
+    public IEnumerable<ProcessDefinition> GetByItemNumber(string itemNumber)
     {
         if (string.IsNullOrEmpty(itemNumber)) return Enumerable.Empty<ProcessDefinition>();
 
         using var conn = OdbcConnectionFactory.Create(_settings);
-        await conn.OpenAsync();
+        conn.Open();
 
         var definitions = new List<ProcessDefinition>();
         using var cmd = conn.CreateCommand();
@@ -74,8 +74,8 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
               AND A.指示先番号 <> '< NULL >'";
         cmd.Parameters.Add("@ItemNumber", System.Data.Odbc.OdbcType.VarChar).Value = itemNumber;
 
-        using var reader = await cmd.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
         {
             var destNumber = reader["指示先番号"]?.ToString()?.Trim() ?? string.Empty;
             if (string.IsNullOrEmpty(destNumber)) continue;
@@ -101,10 +101,10 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
         return definitions;
     }
 
-    public async Task<IEnumerable<string>> GetItemNumbersAsync()
+    public IEnumerable<string> GetItemNumbers()
     {
         using var conn = OdbcConnectionFactory.Create(_settings);
-        await conn.OpenAsync();
+        conn.Open();
 
         var itemNumbers = new List<string>();
         using var cmd = conn.CreateCommand();
@@ -113,8 +113,8 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
             WHERE 品目番号 IS NOT NULL
             ORDER BY 品目番号";
 
-        using var reader = await cmd.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
         {
             var item = reader["品目番号"]?.ToString()?.Trim();
             if (!string.IsNullOrEmpty(item))
@@ -123,8 +123,4 @@ public class OdbcProcessDefinitionRepository : IProcessDefinitionRepository
 
         return itemNumbers;
     }
-
-    public Task AddAsync(ProcessDefinition definition) => Task.CompletedTask;
-    public Task UpdateAsync(ProcessDefinition definition) => Task.CompletedTask;
-    public Task DeleteAsync(int id) => Task.CompletedTask;
 }
