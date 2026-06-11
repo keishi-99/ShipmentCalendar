@@ -48,6 +48,7 @@ public class BusinessDayCalculator {
         // 末尾工程から逆向きに、完了日から数えた日チャンク番号
         // （1=完了日当日、2=その前営業日…）で着手・完了それぞれの必須バケットを求める
         double runningIn = 0;
+        double cumulativeMinutes = 0;
         var startBucket = new int[sorted.Count];
         var finishBucket = new int[sorted.Count];
         for (int i = sorted.Count - 1; i >= 0; i--) {
@@ -59,7 +60,7 @@ public class BusinessDayCalculator {
             // 外注リードタイム（数量に依存しない営業日単位の待機）。
             // この工程の後にOutsourceLeadDays日分の空白が入るため、その分だけ前倒しで締め切る
             if (def.OutsourceLeadDays > 0) {
-                var daysSoFar = Math.Max(1, (int)Math.Ceiling(runningIn / 480.0));
+                var daysSoFar = Math.Max(1, (int)Math.Ceiling(cumulativeMinutes / 480.0));
                 adjusted = (daysSoFar + def.OutsourceLeadDays) * 480.0;
                 spansBoundary = true;
             }
@@ -82,6 +83,8 @@ public class BusinessDayCalculator {
                 runningIn = adjusted + minutes;
                 startBucket[i] = Math.Max(1, (int)Math.Ceiling(runningIn / 480.0));
             }
+
+            cumulativeMinutes = adjusted + minutes;
         }
 
         // 各工程の必須日 = 完了日 - (バケット番号 - 1) 営業日（バケット1=完了日当日）
