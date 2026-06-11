@@ -61,11 +61,19 @@
                 Width="70"
                 VerticalAlignment="Center"
                 Text="登録済み：" />
-            <ComboBox
-                Name="CmbRegistered"
+            <TextBox
+                Name="TxtRegisteredDisplay"
                 Width="220"
-                SelectionChanged="CmbRegistered_SelectionChanged"
+                Padding="4,2"
+                IsReadOnly="True"
+                VerticalContentAlignment="Center"
+                Background="#F5F5F5"
                 ToolTip="DB に保存済みの品目番号" />
+            <Button
+                Margin="8,0,0,0"
+                Padding="8,4"
+                Click="BtnSelectItem_Click"
+                Content="一覧から選択" />
         </StackPanel>
 
         <!--  品目番号入力 + 取り込みボタン  -->
@@ -110,12 +118,10 @@
         <!--  工程リスト（順序・指示先番号は読み取り専用、工程名・LT・設定は編集可）  -->
         <DataGrid
             Name="ProcessGrid"
-            Height="310"
             Margin="0,0,0,8"
             AutoGenerateColumns="False"
             CanUserAddRows="False"
             CanUserDeleteRows="False"
-            DockPanel.Dock="Top"
             HeadersVisibility="Column"
             SelectionMode="Single"
             SelectionUnit="Cell">
