@@ -76,6 +76,7 @@ public partial class HolidaySettingWindow : Window
     private async void BtnFetchHolidays_Click(object sender, RoutedEventArgs e)
     {
         var settings = _settingsService.Load();
+        settings.OdbcFactoryNumber = TxtFactoryNumber.Text.Trim();
         if (!settings.IsOdbcConfigured)
         {
             TxtStatus.Text = "設定からODBC接続情報を入力してください";

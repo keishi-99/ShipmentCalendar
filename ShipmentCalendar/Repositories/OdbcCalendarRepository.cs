@@ -32,8 +32,8 @@ public class OdbcCalendarRepository
         using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
-            // 日付列はTIMESTAMP型で時刻が付与されるため、DateOnly.TryParseではなくDateTime.TryParse経由で変換する
-            if (DateTime.TryParse(reader["日付"]?.ToString(), out var dateTime))
+            // 日付列はTIMESTAMP型（DateTime）として取得されるため、直接キャストしてDateOnlyに変換する
+            if (reader["日付"] is DateTime dateTime)
                 dates.Add(DateOnly.FromDateTime(dateTime));
         }
 
