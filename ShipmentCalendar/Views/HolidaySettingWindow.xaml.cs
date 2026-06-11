@@ -1,7 +1,6 @@
 using ShipmentCalendar.Models;
 using ShipmentCalendar.Repositories;
-using System.Net.Http;
-using System.Text;
+using ShipmentCalendar.Services;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -10,6 +9,7 @@ namespace ShipmentCalendar.Views;
 public partial class HolidaySettingWindow : Window
 {
     private readonly IHolidayRepository _repository = new SqliteHolidayRepository();
+    private readonly AppSettingsService _settingsService = new AppSettingsService();
     private List<Holiday> _holidays = new();
 
     public HolidaySettingWindow()
@@ -21,7 +21,17 @@ public partial class HolidaySettingWindow : Window
         CmbYear.ItemsSource = Enumerable.Range(currentYear - 1, 4).ToList();
         CmbYear.SelectedItem = currentYear;
 
+        TxtFactoryNumber.Text = _settingsService.Load().OdbcFactoryNumber;
+
         Loaded += async (_, _) => await LoadHolidaysAsync();
+    }
+
+    /// <summary>工場番号の入力欄からフォーカスが外れたタイミングで設定を保存する</summary>
+    private void TxtFactoryNumber_LostFocus(object sender, RoutedEventArgs e)
+    {
+        var settings = _settingsService.Load();
+        settings.OdbcFactoryNumber = TxtFactoryNumber.Text.Trim();
+        _settingsService.Save(settings);
     }
 
     private async Task LoadHolidaysAsync()
@@ -62,20 +72,33 @@ public partial class HolidaySettingWindow : Window
         await LoadHolidaysAsync();
     }
 
-    /// <summary>内閣府公開CSVから祝日を取得してDBに登録する</summary>
+    /// <summary>VP_カレンダ情報_YD（稼働区分='01'）から選択中の年の休日を取得してDBに登録する</summary>
     private async void BtnFetchHolidays_Click(object sender, RoutedEventArgs e)
     {
-        TxtStatus.Text = "祝日データを取得中...";
+        var settings = _settingsService.Load();
+        settings.OdbcFactoryNumber = TxtFactoryNumber.Text.Trim();
+        if (!settings.IsOdbcConfigured)
+        {
+            TxtStatus.Text = "設定からODBC接続情報を入力してください";
+            return;
+        }
+        if (string.IsNullOrEmpty(settings.OdbcFactoryNumber))
+        {
+            TxtStatus.Text = "設定から工場番号を入力してください";
+            return;
+        }
+
+        _settingsService.Save(settings);
+
+        var year = (int)(CmbYear.SelectedItem ?? DateTime.Today.Year);
+        TxtStatus.Text = "休日データを取得中...";
+        BtnFetchHolidays.IsEnabled = false;
+        LoadingOverlay.Visibility = Visibility.Visible;
 
         try
         {
-            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
-            var bytes = await client.GetByteArrayAsync(
-                "https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv");
-
-            // 内閣府CSVはShift-JIS
-            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-            var csv = Encoding.GetEncoding("shift_jis").GetString(bytes);
+            var calendarRepo = new OdbcCalendarRepository(settings);
+            var dates = await Task.Run(() => calendarRepo.GetHolidaysAsync(year));
 
             var added = 0;
             var skipped = 0;
@@ -83,20 +106,14 @@ public partial class HolidaySettingWindow : Window
                 .Select(h => h.Date)
                 .ToHashSet();
 
-            foreach (var line in csv.Split('\n').Skip(1))
+            foreach (var date in dates)
             {
-                var cols = line.Trim().Split(',');
-                if (cols.Length < 2) continue;
-                if (!DateOnly.TryParseExact(cols[0].Trim(), "yyyy/M/d",
-                        System.Globalization.CultureInfo.InvariantCulture,
-                        System.Globalization.DateTimeStyles.None, out var date)) continue;
-
                 if (existing.Contains(date)) { skipped++; continue; }
 
                 await _repository.AddAsync(new Holiday
                 {
                     Date = date,
-                    Description = cols[1].Trim()
+                    Description = string.Empty
                 });
                 existing.Add(date);
                 added++;
@@ -108,6 +125,11 @@ public partial class HolidaySettingWindow : Window
         catch (Exception ex)
         {
             TxtStatus.Text = $"取得失敗：{ex.Message}";
+        }
+        finally
+        {
+            BtnFetchHolidays.IsEnabled = true;
+            LoadingOverlay.Visibility = Visibility.Collapsed;
         }
     }
 

@@ -17,6 +17,8 @@ public class AppSettings
     public string OdbcUserId { get; set; } = string.Empty;
     /// <summary>ODBCパスワード（保存時はDPAPIで暗号化される）</summary>
     public string OdbcPassword { get; set; } = string.Empty;
+    /// <summary>休日取得（VP_カレンダ情報_YD）の絞り込みに使う工場番号</summary>
+    public string OdbcFactoryNumber { get; set; } = string.Empty;
     /// <summary>自動更新間隔（分）。0=自動更新なし</summary>
     public int AutoRefreshMinutes { get; set; } = 5;
     /// <summary>表示する納期の範囲（今日から何日先まで）</summary>
