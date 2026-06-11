@@ -53,21 +53,51 @@ public partial class ProcessSettingWindow : Window
         };
     }
 
-    /// <summary>DB に登録済みの品目番号をコンボボックスに読み込む</summary>
-    private async Task RefreshRegisteredListAsync()
+    /// <summary>DB に登録済みの品目番号一覧を保持する（一覧選択ウィンドウ用）</summary>
+    private List<ItemPickerEntry> _registeredItems = new();
+
+    /// <summary>登録済み品目一覧の読み込みタスク（一覧選択ウィンドウを開く前に完了を待機する）</summary>
+    private Task? _refreshTask;
+
+    /// <summary>DB に登録済みの品目番号一覧を読み込む</summary>
+    private Task RefreshRegisteredListAsync()
     {
-        var names = (await _dbRepository.GetItemNumbersAsync())
-            .OrderBy(n => n)
-            .ToList();
-        CmbRegistered.ItemsSource = names;
+        return _refreshTask = RefreshRegisteredListInternalAsync();
     }
 
-    /// <summary>コンボボックスで選択した品目番号を入力欄にセットしてDB設定をグリッドに表示</summary>
-    private async void CmbRegistered_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    private async Task RefreshRegisteredListInternalAsync()
     {
-        if (CmbRegistered.SelectedItem is not string itemNumber) return;
+        var itemNumbers = (await _dbRepository.GetItemNumbersAsync())
+            .OrderBy(n => n)
+            .ToList();
+        var displayNames = await _nameRepository.GetAllDisplayNamesAsync();
 
+        _registeredItems = itemNumbers
+            .Select(n => new ItemPickerEntry
+            {
+                ItemNumber = n,
+                DisplayName = displayNames.TryGetValue(n, out var name) ? name : string.Empty
+            })
+            .ToList();
+    }
+
+    /// <summary>「一覧から選択」ボタン。検索ボックス付きの一覧から品目番号を選択する</summary>
+    private async void BtnSelectItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (_refreshTask != null)
+            await _refreshTask;
+
+        var picker = new ItemNumberPickerWindow(_registeredItems) { Owner = this };
+        if (picker.ShowDialog() != true || picker.SelectedItemNumber is not string itemNumber) return;
+
+        await LoadRegisteredItemAsync(itemNumber);
+    }
+
+    /// <summary>選択した品目番号の内容を入力欄・グリッドに表示する</summary>
+    private async Task LoadRegisteredItemAsync(string itemNumber)
+    {
         TxtItemNumber.Text = itemNumber;
+        TxtRegisteredDisplay.Text = itemNumber;
 
         // DB登録済みの品目名を表示
         TxtItemName.Text = await _nameRepository.GetDisplayNameAsync(itemNumber) ?? string.Empty;
@@ -198,7 +228,7 @@ public partial class ProcessSettingWindow : Window
 
         // 登録済みリストを更新
         await RefreshRegisteredListAsync();
-        CmbRegistered.SelectedItem = itemNumber;
+        TxtRegisteredDisplay.Text = itemNumber;
     }
 
     /// <summary>VP_生産計画情報_YD から品目番号に対応する品目名をODBC経由で取得する</summary>
@@ -253,7 +283,7 @@ public partial class ProcessSettingWindow : Window
         TxtStatus.Text = $"品目番号 '{itemNumber}' を削除しました";
 
         await RefreshRegisteredListAsync();
-        CmbRegistered.SelectedItem = null;
+        TxtRegisteredDisplay.Text = string.Empty;
         TxtItemNumber.Text = string.Empty;
     }
 
