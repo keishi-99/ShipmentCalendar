@@ -101,56 +101,64 @@ public partial class ProcessSettingWindow : Window
             return;
         }
 
-        // ODBCから工程定義を取得（順序・指示先番号・デフォルト工程名・LT）
-        // ODBC呼び出しは実質同期処理のため、UIスレッドのフリーズを避けてバックグラウンドで実行する
-        var odbcRepo = new OdbcProcessDefinitionRepository(settings);
-        var odbcDefs = (await Task.Run(async () => await odbcRepo.GetByItemNumberAsync(itemNumber))).ToList();
-
-        if (!odbcDefs.Any())
+        LoadingOverlay.Visibility = Visibility.Visible;
+        try
         {
-            TxtStatus.Text = $"品目番号 '{itemNumber}' の工程データが見つかりませんでした";
-            return;
-        }
+            // ODBCから工程定義を取得（順序・指示先番号・デフォルト工程名・LT）
+            // ODBC呼び出しは実質同期処理のため、UIスレッドのフリーズを避けてバックグラウンドで実行する
+            var odbcRepo = new OdbcProcessDefinitionRepository(settings);
+            var odbcDefs = (await Task.Run(async () => await odbcRepo.GetByItemNumberAsync(itemNumber))).ToList();
 
-        // 品目名の初期値をDB未登録ならODBCから取得
-        if (string.IsNullOrEmpty(TxtItemName.Text))
-        {
-            var dbItemName = await Task.Run(async () => await LookupItemNameFromOdbcAsync(itemNumber, settings));
-            if (!string.IsNullOrEmpty(dbItemName))
-                TxtItemName.Text = dbItemName;
-        }
-
-        // DB既存設定を取得（品目番号 = ProductName として保存済みのもの）
-        var dbDefs = (await _dbRepository.GetByItemNumberAsync(itemNumber)).ToList();
-        var dbDict = dbDefs
-            .Where(d => !string.IsNullOrEmpty(d.DestinationCode))
-            .ToDictionary(d => d.DestinationCode, d => d);
-
-        // ODBC構造 + DB設定をマージ
-        // 順序・指示先番号はODBCが正、工程名・LT・表示・警告はDB設定を優先
-        _currentDefinitions = new ObservableCollection<ProcessDefinition>(
-            odbcDefs.Select(odbcDef =>
+            if (!odbcDefs.Any())
             {
-                if (!dbDict.TryGetValue(odbcDef.DestinationCode, out var db))
-                    return odbcDef;  // DB未登録 → ODBC既定値をそのまま使用
+                TxtStatus.Text = $"品目番号 '{itemNumber}' の工程データが見つかりませんでした";
+                return;
+            }
 
-                return new ProcessDefinition
+            // 品目名の初期値をDB未登録ならODBCから取得
+            if (string.IsNullOrEmpty(TxtItemName.Text))
+            {
+                var dbItemName = await Task.Run(async () => await LookupItemNameFromOdbcAsync(itemNumber, settings));
+                if (!string.IsNullOrEmpty(dbItemName))
+                    TxtItemName.Text = dbItemName;
+            }
+
+            // DB既存設定を取得（品目番号 = ProductName として保存済みのもの）
+            var dbDefs = (await _dbRepository.GetByItemNumberAsync(itemNumber)).ToList();
+            var dbDict = dbDefs
+                .Where(d => !string.IsNullOrEmpty(d.DestinationCode))
+                .ToDictionary(d => d.DestinationCode, d => d);
+
+            // ODBC構造 + DB設定をマージ
+            // 順序・指示先番号はODBCが正、工程名・LT・表示・警告はDB設定を優先
+            _currentDefinitions = new ObservableCollection<ProcessDefinition>(
+                odbcDefs.Select(odbcDef =>
                 {
-                    ItemNumber = itemNumber,
-                    ProcessName = db.ProcessName,
-                    DestinationCode = odbcDef.DestinationCode,
-                    SortOrder = odbcDef.SortOrder,                          // 順序は常にODBC
-                    LeadTimeMinutes = db.LeadTimeMinutes,
-                    IsVisible = db.IsVisible,
-                    WarningDaysBeforeDeadline = db.WarningDaysBeforeDeadline,
-                    DepartmentId = db.DepartmentId,
-                    CoolTimeMinutes = db.CoolTimeMinutes,
-                    OutsourceLeadDays = db.OutsourceLeadDays
-                };
-            })
-        );
-        ProcessGrid.ItemsSource = _currentDefinitions;
-        TxtStatus.Text = $"{odbcDefs.Count} 件の工程を取り込みました";
+                    if (!dbDict.TryGetValue(odbcDef.DestinationCode, out var db))
+                        return odbcDef;  // DB未登録 → ODBC既定値をそのまま使用
+
+                    return new ProcessDefinition
+                    {
+                        ItemNumber = itemNumber,
+                        ProcessName = db.ProcessName,
+                        DestinationCode = odbcDef.DestinationCode,
+                        SortOrder = odbcDef.SortOrder,                          // 順序は常にODBC
+                        LeadTimeMinutes = db.LeadTimeMinutes,
+                        IsVisible = db.IsVisible,
+                        WarningDaysBeforeDeadline = db.WarningDaysBeforeDeadline,
+                        DepartmentId = db.DepartmentId,
+                        CoolTimeMinutes = db.CoolTimeMinutes,
+                        OutsourceLeadDays = db.OutsourceLeadDays
+                    };
+                })
+            );
+            ProcessGrid.ItemsSource = _currentDefinitions;
+            TxtStatus.Text = $"{odbcDefs.Count} 件の工程を取り込みました";
+        }
+        finally
+        {
+            LoadingOverlay.Visibility = Visibility.Collapsed;
+        }
     }
 
     /// <summary>
