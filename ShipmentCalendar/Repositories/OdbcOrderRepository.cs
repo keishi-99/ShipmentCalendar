@@ -22,19 +22,19 @@ public class OdbcOrderRepository
         var rangeStart = today.AddDays(-_settings.DeliveryDatePastDays);
         var rangeEnd = today.AddDays(_settings.DeliveryDateRangeDays);
 
-        var orders = LoadSeisanKeikaku(rangeStart, rangeEnd);
-        LoadUkeireJisseki(orders);
+        using var conn = OdbcConnectionFactory.Create(_settings);
+        conn.Open();
+
+        var orders = LoadSeisanKeikaku(conn, rangeStart, rangeEnd);
+        LoadUkeireJisseki(conn, orders);
 
         return orders.Values;
     }
 
     /// <summary>生産計画ビューから注文を取得し、日付フィルターはC#側で適用する（ドライバーの型差異を回避）</summary>
-    private Dictionary<string, Order> LoadSeisanKeikaku(DateOnly rangeStart, DateOnly rangeEnd)
+    private static Dictionary<string, Order> LoadSeisanKeikaku(OdbcConnection conn, DateOnly rangeStart, DateOnly rangeEnd)
     {
         var orders = new Dictionary<string, Order>();
-
-        using var conn = OdbcConnectionFactory.Create(_settings);
-        conn.Open();
 
         using var cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT 製番, 品目番号, 品目名, 納期, 計画数 FROM VP_生産計画情報_YD";
@@ -71,12 +71,9 @@ public class OdbcOrderRepository
     }
 
     /// <summary>受入実績ビューから完了工程を取得して注文に仮登録する（製番リストを1000件ずつバッチ処理）</summary>
-    private void LoadUkeireJisseki(Dictionary<string, Order> orders)
+    private static void LoadUkeireJisseki(OdbcConnection conn, Dictionary<string, Order> orders)
     {
         if (orders.Count == 0) return;
-
-        using var conn = OdbcConnectionFactory.Create(_settings);
-        conn.Open();
 
         var keys = orders.Keys.ToList();
         const int batchSize = 1000;
