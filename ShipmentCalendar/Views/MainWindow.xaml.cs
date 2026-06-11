@@ -45,7 +45,6 @@ public partial class MainWindow : Window {
         _viewModel.Settings.ShowDueDateForNotStarted = !_viewModel.Settings.ShowDueDateForNotStarted;
         UpdateDueDateDisplayButtonText();
         _viewModel.SaveSettings();
-        BuildProcessColumns();
         _viewModel.ApplyFilter();
     }
 

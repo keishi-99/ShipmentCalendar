@@ -214,7 +214,7 @@ public static class DatabaseInitializer
     /// <summary>旧列名が存在すれば新列名にリネームし、どちらも存在しなければ新列名で追加する</summary>
     private static void MigrateRenameOrAddColumn(SqliteConnection connection, string table, string oldColumn, string newColumn, string definition)
     {
-        var check = connection.CreateCommand();
+        using var check = connection.CreateCommand();
         check.CommandText = $"PRAGMA table_info({table})";
         bool hasOld = false, hasNew = false;
         using (var reader = check.ExecuteReader())
@@ -228,7 +228,7 @@ public static class DatabaseInitializer
         }
         if (hasNew) return;
 
-        var alter = connection.CreateCommand();
+        using var alter = connection.CreateCommand();
         alter.CommandText = hasOld
             ? $"ALTER TABLE {table} RENAME COLUMN {oldColumn} TO {newColumn}"
             : $"ALTER TABLE {table} ADD COLUMN {newColumn} {definition}";

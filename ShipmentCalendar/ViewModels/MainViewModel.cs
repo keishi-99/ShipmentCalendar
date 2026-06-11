@@ -220,8 +220,8 @@ public partial class MainViewModel : ObservableObject {
             var dbDefs = await new SqliteProcessDefinitionRepository().GetAllAsync();
             var dbDict = dbDefs
                 .Where(d => !string.IsNullOrEmpty(d.DestinationCode))
-                .GroupBy(d => $"{d.ItemNumber}|{d.DestinationCode}")
-                .ToDictionary(g => g.Key, g => g.First());
+                .GroupBy(d => $"{d.ItemNumber}|{d.DestinationCode}", StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
             var allDefs = allOdbcDefs.Select(odbcDef => {
                 var key = $"{odbcDef.ItemNumber}|{odbcDef.DestinationCode}";

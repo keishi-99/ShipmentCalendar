@@ -59,7 +59,7 @@ public class BusinessDayCalculator {
             // 外注リードタイム（数量に依存しない営業日単位の待機）。
             // この工程の後にOutsourceLeadDays日分の空白が入るため、その分だけ前倒しで締め切る
             if (def.OutsourceLeadDays > 0) {
-                var daysSoFar = (int)Math.Ceiling(runningIn / 480.0);
+                var daysSoFar = Math.Max(1, (int)Math.Ceiling(runningIn / 480.0));
                 adjusted = (daysSoFar + def.OutsourceLeadDays) * 480.0;
                 spansBoundary = true;
             }
