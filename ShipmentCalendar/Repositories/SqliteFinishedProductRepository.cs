@@ -57,7 +57,7 @@ public class SqliteFinishedProductRepository : IFinishedProductRepository
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
-        var command = connection.CreateCommand();
+        using var command = connection.CreateCommand();
         command.CommandText = "DELETE FROM FinishedProducts WHERE Id = $id";
         command.Parameters.AddWithValue("$id", id);
         await command.ExecuteNonQueryAsync();

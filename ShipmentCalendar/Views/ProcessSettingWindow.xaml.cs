@@ -90,20 +90,34 @@ public partial class ProcessSettingWindow : Window
     /// <summary>「保存」ボタン：製品一覧をDBの内容と全置換する</summary>
     private async void BtnSaveFinishedProducts_Click(object sender, RoutedEventArgs e)
     {
+        // 品目番号（先頭一致）の重複チェック（DBのUNIQUE制約違反による全削除後のデータ消失を防ぐ）
+        var duplicates = _finishedProducts
+            .Where(p => !string.IsNullOrWhiteSpace(p.ItemNumberPrefix))
+            .GroupBy(p => p.ItemNumberPrefix.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
+
+        if (duplicates.Any())
+        {
+            MessageBox.Show($"品目番号（先頭一致）が重複しています:\n{string.Join("\n", duplicates)}", "入力エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
         var existing = await _finishedProductRepository.GetAllAsync();
         foreach (var def in existing)
             await _finishedProductRepository.DeleteAsync(def.Id);
 
-        var sortOrder = 0;
+        var savedCount = 0;
         foreach (var def in _finishedProducts)
         {
             if (string.IsNullOrWhiteSpace(def.ItemNumberPrefix)) continue;
-            def.SortOrder = sortOrder++;
+            def.SortOrder = savedCount++;
             await _finishedProductRepository.AddAsync(def);
         }
 
         await RefreshFinishedProductsAsync();
-        TxtFinishedProductStatus.Text = $"保存しました（{_finishedProducts.Count} 件）";
+        TxtFinishedProductStatus.Text = $"保存しました（{savedCount} 件）";
     }
 
     /// <summary>DB に登録済みの品目番号一覧を保持する（一覧選択ウィンドウ用）</summary>
