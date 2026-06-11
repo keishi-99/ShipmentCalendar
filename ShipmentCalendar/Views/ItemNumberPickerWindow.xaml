@@ -29,11 +29,13 @@
                 BorderThickness="0"
                 Click="BtnSelect_Click"
                 Content="選択"
-                Foreground="White" />
+                Foreground="White"
+                IsDefault="True" />
             <Button
                 Padding="16,6"
                 Click="BtnCancel_Click"
-                Content="キャンセル" />
+                Content="キャンセル"
+                IsCancel="True" />
         </StackPanel>
 
         <!--  品目一覧（品目番号・品目名を列で表示）  -->

@@ -215,7 +215,7 @@
             CanUserSortColumns="False"
             SelectionUnit="Cell" SelectionMode="Single"
             ItemsSource="{Binding Orders}"
-            RowHeight="60"
+            RowHeight="64"
             SelectedItem="{Binding SelectedOrder}">
             <DataGrid.Columns>
                 <DataGridTextColumn

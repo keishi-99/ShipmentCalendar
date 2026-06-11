@@ -56,8 +56,16 @@ public partial class ProcessSettingWindow : Window
     /// <summary>DB に登録済みの品目番号一覧を保持する（一覧選択ウィンドウ用）</summary>
     private List<ItemPickerEntry> _registeredItems = new();
 
+    /// <summary>登録済み品目一覧の読み込みタスク（一覧選択ウィンドウを開く前に完了を待機する）</summary>
+    private Task? _refreshTask;
+
     /// <summary>DB に登録済みの品目番号一覧を読み込む</summary>
-    private async Task RefreshRegisteredListAsync()
+    private Task RefreshRegisteredListAsync()
+    {
+        return _refreshTask = RefreshRegisteredListInternalAsync();
+    }
+
+    private async Task RefreshRegisteredListInternalAsync()
     {
         var itemNumbers = (await _dbRepository.GetItemNumbersAsync())
             .OrderBy(n => n)
@@ -76,6 +84,9 @@ public partial class ProcessSettingWindow : Window
     /// <summary>「一覧から選択」ボタン。検索ボックス付きの一覧から品目番号を選択する</summary>
     private async void BtnSelectItem_Click(object sender, RoutedEventArgs e)
     {
+        if (_refreshTask != null)
+            await _refreshTask;
+
         var picker = new ItemNumberPickerWindow(_registeredItems) { Owner = this };
         if (picker.ShowDialog() != true || picker.SelectedItemNumber is not string itemNumber) return;
 
