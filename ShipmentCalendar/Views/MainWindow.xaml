@@ -138,83 +138,81 @@
             <Button Content="クリア" Padding="8,3" Click="BtnClearFilter_Click"/>
         </StackPanel>
 
-        <!--  ステータスバー  -->
+        <!--  ステータスバー（左：状態メッセージ、右：凡例）  -->
         <StatusBar Background="#EEEEEE" DockPanel.Dock="Bottom">
-            <TextBlock Padding="4" Text="{Binding StatusMessage}" />
+            <StatusBarItem DockPanel.Dock="Right">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock
+                        Margin="0,0,8,0"
+                        VerticalAlignment="Center"
+                        Text="凡例：" />
+                    <Border
+                        Width="80"
+                        Height="20"
+                        Margin="2"
+                        Background="{StaticResource StatusNotStarted}"
+                        CornerRadius="3">
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            FontSize="11"
+                            Text="未着手" />
+                    </Border>
+                    <Border
+                        Width="80"
+                        Height="20"
+                        Margin="2"
+                        Background="{StaticResource StatusInProgress}"
+                        CornerRadius="3">
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            FontSize="11"
+                            Text="進行中" />
+                    </Border>
+                    <Border
+                        Width="80"
+                        Height="20"
+                        Margin="2"
+                        Background="#FF9800"
+                        CornerRadius="3">
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            FontSize="11"
+                            Text="警告" />
+                    </Border>
+                    <Border
+                        Width="80"
+                        Height="20"
+                        Margin="2"
+                        Background="{StaticResource StatusCompleted}"
+                        CornerRadius="3">
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            FontSize="11"
+                            Text="完了" />
+                    </Border>
+                    <Border
+                        Width="80"
+                        Height="20"
+                        Margin="2"
+                        Background="{StaticResource StatusOverdue}"
+                        CornerRadius="3">
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            FontSize="11"
+                            Foreground="White"
+                            Text="超過" />
+                    </Border>
+                </StackPanel>
+            </StatusBarItem>
+            <StatusBarItem>
+                <TextBlock Padding="4" Text="{Binding StatusMessage}" />
+            </StatusBarItem>
         </StatusBar>
-
-        <!--  凡例  -->
-        <StackPanel
-            Margin="8,4"
-            Background="#FAFAFA"
-            DockPanel.Dock="Bottom"
-            Orientation="Horizontal">
-            <TextBlock
-                Margin="0,0,8,0"
-                VerticalAlignment="Center"
-                Text="凡例：" />
-            <Border
-                Width="80"
-                Height="20"
-                Margin="2"
-                Background="{StaticResource StatusNotStarted}"
-                CornerRadius="3">
-                <TextBlock
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    FontSize="11"
-                    Text="未着手" />
-            </Border>
-            <Border
-                Width="80"
-                Height="20"
-                Margin="2"
-                Background="{StaticResource StatusInProgress}"
-                CornerRadius="3">
-                <TextBlock
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    FontSize="11"
-                    Text="進行中" />
-            </Border>
-            <Border
-                Width="80"
-                Height="20"
-                Margin="2"
-                Background="#FF9800"
-                CornerRadius="3">
-                <TextBlock
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    FontSize="11"
-                    Text="警告" />
-            </Border>
-            <Border
-                Width="80"
-                Height="20"
-                Margin="2"
-                Background="{StaticResource StatusCompleted}"
-                CornerRadius="3">
-                <TextBlock
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    FontSize="11"
-                    Text="完了" />
-            </Border>
-            <Border
-                Width="80"
-                Height="20"
-                Margin="2"
-                Background="{StaticResource StatusOverdue}"
-                CornerRadius="3">
-                <TextBlock
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    FontSize="11"
-                    Foreground="White"
-                    Text="超過" />
-            </Border>
-        </StackPanel>
 
         <!--  メインリスト  -->
         <DataGrid
