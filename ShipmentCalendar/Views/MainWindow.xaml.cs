@@ -69,15 +69,16 @@ public partial class MainWindow : Window {
         BtnToggleFullScreen.Content = _isFullScreen ? "ウィンドウ表示" : "フルスクリーン";
     }
 
-    // 列表示設定チェックボックスと対応するDataGridColumn・設定プロパティの組み合わせ
-    private (CheckBox CheckBox, DataGridColumn Column, Func<AppSettings, bool> Getter, Action<AppSettings, bool> Setter)[] ColumnVisibilityMappings => new[] {
-        (ChkColDeliveryDate,      (DataGridColumn)ColDeliveryDate,      (Func<AppSettings, bool>)(s => s.ShowColumnDeliveryDate),      (Action<AppSettings, bool>)((s, v) => s.ShowColumnDeliveryDate = v)),
-        (ChkColCompletionDate,    (DataGridColumn)ColCompletionDate,    (Func<AppSettings, bool>)(s => s.ShowColumnCompletionDate),    (Action<AppSettings, bool>)((s, v) => s.ShowColumnCompletionDate = v)),
-        (ChkColItemNumber,        (DataGridColumn)ColItemNumber,        (Func<AppSettings, bool>)(s => s.ShowColumnItemNumber),        (Action<AppSettings, bool>)((s, v) => s.ShowColumnItemNumber = v)),
-        (ChkColModelCode,         (DataGridColumn)ColModelCode,         (Func<AppSettings, bool>)(s => s.ShowColumnModelCode),         (Action<AppSettings, bool>)((s, v) => s.ShowColumnModelCode = v)),
-        (ChkColProductName,       (DataGridColumn)ColProductName,       (Func<AppSettings, bool>)(s => s.ShowColumnProductName),       (Action<AppSettings, bool>)((s, v) => s.ShowColumnProductName = v)),
-        (ChkColManufactureNumber, (DataGridColumn)ColManufactureNumber, (Func<AppSettings, bool>)(s => s.ShowColumnManufactureNumber), (Action<AppSettings, bool>)((s, v) => s.ShowColumnManufactureNumber = v)),
-        (ChkColPlannedQuantity,   (DataGridColumn)ColPlannedQuantity,   (Func<AppSettings, bool>)(s => s.ShowColumnPlannedQuantity),    (Action<AppSettings, bool>)((s, v) => s.ShowColumnPlannedQuantity = v)),
+    // 列表示設定チェックボックスと対応するDataGridColumn・設定プロパティの組み合わせ（初回アクセス時に生成してキャッシュする）
+    private (CheckBox CheckBox, DataGridColumn Column, Func<AppSettings, bool> Getter, Action<AppSettings, bool> Setter)[]? _columnVisibilityMappings;
+    private (CheckBox CheckBox, DataGridColumn Column, Func<AppSettings, bool> Getter, Action<AppSettings, bool> Setter)[] ColumnVisibilityMappings => _columnVisibilityMappings ??= new (CheckBox, DataGridColumn, Func<AppSettings, bool>, Action<AppSettings, bool>)[] {
+        (ChkColDeliveryDate,      ColDeliveryDate,      s => s.ShowColumnDeliveryDate,      (s, v) => s.ShowColumnDeliveryDate = v),
+        (ChkColCompletionDate,    ColCompletionDate,    s => s.ShowColumnCompletionDate,    (s, v) => s.ShowColumnCompletionDate = v),
+        (ChkColItemNumber,        ColItemNumber,        s => s.ShowColumnItemNumber,        (s, v) => s.ShowColumnItemNumber = v),
+        (ChkColModelCode,         ColModelCode,         s => s.ShowColumnModelCode,         (s, v) => s.ShowColumnModelCode = v),
+        (ChkColProductName,       ColProductName,       s => s.ShowColumnProductName,       (s, v) => s.ShowColumnProductName = v),
+        (ChkColManufactureNumber, ColManufactureNumber, s => s.ShowColumnManufactureNumber, (s, v) => s.ShowColumnManufactureNumber = v),
+        (ChkColPlannedQuantity,   ColPlannedQuantity,   s => s.ShowColumnPlannedQuantity,   (s, v) => s.ShowColumnPlannedQuantity = v),
     };
 
     // チェックボックスのChecked/Uncheckedイベントを設定値の反映として処理するか（初期化中はfalseにして保存を抑制する）
