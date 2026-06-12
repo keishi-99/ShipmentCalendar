@@ -151,10 +151,10 @@ public partial class MainWindow : Window {
         UpdateRowHeight();
     }
 
-    /// <summary>工程列の表示行数（工程名＋期限日＋標準時間の設定状況）と各列のフォントサイズから行の高さを計算する</summary>
+    /// <summary>工程列の表示行数（工程名＋期限日/標準時間の設定状況）と各列のフォントサイズから行の高さを計算する</summary>
     private void UpdateRowHeight() {
         var settings = _viewModel.Settings;
-        var processLineCount = 1 + (settings.ShowProcessDate ? 1 : 0) + (settings.ShowProcessRequiredHours ? 1 : 0);
+        var processLineCount = 1 + (settings.ShowProcessDate || settings.ShowProcessRequiredHours ? 1 : 0);
         var processHeight = processLineCount * (settings.ProcessColumnFontSize * 1.8) + 10;
         var fixedHeight = settings.FixedColumnFontSize * 1.8 + 8;
         OrderGrid.RowHeight = Math.Max(processHeight, fixedHeight);
@@ -219,30 +219,22 @@ public partial class MainWindow : Window {
 
             stackFactory.AppendChild(nameFactory);
 
-            // 期限日テキスト（設定でOFFの場合は生成しない）
-            if (_viewModel.Settings.ShowProcessDate) {
-                var dateFactory = new FrameworkElementFactory(typeof(TextBlock));
-                var dateBinding = new MultiBinding { Converter = new ProcessIndexToDueDateConverter(_viewModel.Settings.ShowDueDateForNotStarted) };
-                dateBinding.Bindings.Add(new Binding("Processes"));
-                dateBinding.Bindings.Add(new Binding() { Source = index });
-                dateFactory.SetBinding(TextBlock.TextProperty, dateBinding);
-                dateFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-                dateFactory.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
-                dateFactory.SetValue(TextBlock.FontSizeProperty, _viewModel.Settings.ProcessColumnFontSize);
-                stackFactory.AppendChild(dateFactory);
-            }
-
-            // 標準時間（必要時間）テキスト（設定でOFFの場合は生成しない）
-            if (_viewModel.Settings.ShowProcessRequiredHours) {
-                var hoursFactory = new FrameworkElementFactory(typeof(TextBlock));
-                var hoursBinding = new MultiBinding { Converter = new ProcessIndexToRequiredHoursConverter() };
-                hoursBinding.Bindings.Add(new Binding("Processes"));
-                hoursBinding.Bindings.Add(new Binding() { Source = index });
-                hoursFactory.SetBinding(TextBlock.TextProperty, hoursBinding);
-                hoursFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-                hoursFactory.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
-                hoursFactory.SetValue(TextBlock.FontSizeProperty, _viewModel.Settings.ProcessColumnFontSize);
-                stackFactory.AppendChild(hoursFactory);
+            // 期限日・標準時間テキスト（両方OFFの場合は生成しない、1行にまとめて表示）
+            if (_viewModel.Settings.ShowProcessDate || _viewModel.Settings.ShowProcessRequiredHours) {
+                var dateHoursFactory = new FrameworkElementFactory(typeof(TextBlock));
+                var dateHoursBinding = new MultiBinding {
+                    Converter = new ProcessIndexToDateAndHoursConverter(
+                        _viewModel.Settings.ShowDueDateForNotStarted,
+                        _viewModel.Settings.ShowProcessDate,
+                        _viewModel.Settings.ShowProcessRequiredHours)
+                };
+                dateHoursBinding.Bindings.Add(new Binding("Processes"));
+                dateHoursBinding.Bindings.Add(new Binding() { Source = index });
+                dateHoursFactory.SetBinding(TextBlock.TextProperty, dateHoursBinding);
+                dateHoursFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+                dateHoursFactory.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
+                dateHoursFactory.SetValue(TextBlock.FontSizeProperty, _viewModel.Settings.ProcessColumnFontSize);
+                stackFactory.AppendChild(dateHoursFactory);
             }
 
             // 外注待ち日数表示（OutsourceLeadDaysが設定されている工程のみ、区切り線付きの別セル風に表示）
@@ -367,12 +359,16 @@ public class ProcessIndexToNameConverter : System.Windows.Data.IMultiValueConver
         => throw new NotImplementedException();
 }
 
-/// <summary>インデックスでProcessリストを検索して期限日テキストを返すコンバーター</summary>
-public class ProcessIndexToDueDateConverter : System.Windows.Data.IMultiValueConverter {
+/// <summary>インデックスでProcessリストを検索して期限日・標準時間（必要時間）テキストを1行にまとめて返すコンバーター</summary>
+public class ProcessIndexToDateAndHoursConverter : System.Windows.Data.IMultiValueConverter {
     private readonly bool _showDueDateForNotStarted;
+    private readonly bool _showDate;
+    private readonly bool _showHours;
 
-    public ProcessIndexToDueDateConverter(bool showDueDateForNotStarted) {
+    public ProcessIndexToDateAndHoursConverter(bool showDueDateForNotStarted, bool showDate, bool showHours) {
         _showDueDateForNotStarted = showDueDateForNotStarted;
+        _showDate = showDate;
+        _showHours = showHours;
     }
 
     public object Convert(object[] values, Type targetType, object parameter, System.Globalization.CultureInfo culture) {
@@ -380,6 +376,15 @@ public class ProcessIndexToDueDateConverter : System.Windows.Data.IMultiValueCon
         if (values[1] is not int index) return string.Empty;
         var process = processes.ElementAtOrDefault(index);
         if (process == null) return string.Empty;
+
+        var dateText = _showDate ? GetDateText(process) : string.Empty;
+        var hoursText = _showHours ? GetHoursText(process) : string.Empty;
+
+        return string.Join(" ", new[] { dateText, hoursText }.Where(s => !string.IsNullOrEmpty(s)));
+    }
+
+    /// <summary>完了工程は受入日（✓付き）、未完了工程は着手必須日/完了必須日（設定により切り替え）を返す</summary>
+    private string GetDateText(OrderProcess process) {
         // 完了工程は受入日を表示（受入日不明は空白）
         if (process.Status == ProcessStatus.Completed)
             return process.ActualDate.HasValue ? $"✓{process.ActualDate.Value:MM/dd}" : string.Empty;
@@ -391,18 +396,8 @@ public class ProcessIndexToDueDateConverter : System.Windows.Data.IMultiValueCon
         return $"{process.StartDate:MM/dd}→";
     }
 
-    public object[] ConvertBack(object value, Type[] targetTypes, object parameter, System.Globalization.CultureInfo culture)
-        => throw new NotImplementedException();
-}
-
-/// <summary>インデックスでProcessリストを検索して標準時間（必要時間）テキストを返すコンバーター</summary>
-public class ProcessIndexToRequiredHoursConverter : System.Windows.Data.IMultiValueConverter {
-    public object Convert(object[] values, Type targetType, object parameter, System.Globalization.CultureInfo culture) {
-        if (values[0] is not IEnumerable<OrderProcess> processes) return string.Empty;
-        if (values[1] is not int index) return string.Empty;
-        var process = processes.ElementAtOrDefault(index);
-        if (process == null) return string.Empty;
-        // 完了工程は標準時間を表示しない
+    /// <summary>完了工程は標準時間を表示しない</summary>
+    private static string GetHoursText(OrderProcess process) {
         if (process.Status == ProcessStatus.Completed) return string.Empty;
 
         var hours = process.RequiredMinutes / 60.0;
