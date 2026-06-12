@@ -150,11 +150,11 @@ public partial class MainWindow : Window {
         UpdateRowHeight();
     }
 
-    /// <summary>工程列の表示行数（工程名＋期限日＋標準時間の設定状況）と固定列のフォントサイズから行の高さを計算する</summary>
+    /// <summary>工程列の表示行数（工程名＋期限日＋標準時間の設定状況）と各列のフォントサイズから行の高さを計算する</summary>
     private void UpdateRowHeight() {
         var settings = _viewModel.Settings;
         var processLineCount = 1 + (settings.ShowProcessDate ? 1 : 0) + (settings.ShowProcessRequiredHours ? 1 : 0);
-        var processHeight = processLineCount * 20 + 10;
+        var processHeight = processLineCount * (settings.ProcessColumnFontSize * 1.8) + 10;
         var fixedHeight = settings.FixedColumnFontSize * 1.8 + 8;
         OrderGrid.RowHeight = Math.Max(processHeight, fixedHeight);
     }
@@ -213,7 +213,7 @@ public partial class MainWindow : Window {
             nameBinding.Bindings.Add(new Binding() { Source = index });
             nameFactory.SetBinding(TextBlock.TextProperty, nameBinding);
             nameFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-            nameFactory.SetValue(TextBlock.FontSizeProperty, 11.0);
+            nameFactory.SetValue(TextBlock.FontSizeProperty, _viewModel.Settings.ProcessColumnFontSize);
             nameFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.SemiBold);
 
             stackFactory.AppendChild(nameFactory);
@@ -227,7 +227,7 @@ public partial class MainWindow : Window {
                 dateFactory.SetBinding(TextBlock.TextProperty, dateBinding);
                 dateFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
                 dateFactory.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
-                dateFactory.SetValue(TextBlock.FontSizeProperty, 11.0);
+                dateFactory.SetValue(TextBlock.FontSizeProperty, _viewModel.Settings.ProcessColumnFontSize);
                 stackFactory.AppendChild(dateFactory);
             }
 
@@ -240,7 +240,7 @@ public partial class MainWindow : Window {
                 hoursFactory.SetBinding(TextBlock.TextProperty, hoursBinding);
                 hoursFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
                 hoursFactory.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
-                hoursFactory.SetValue(TextBlock.FontSizeProperty, 11.0);
+                hoursFactory.SetValue(TextBlock.FontSizeProperty, _viewModel.Settings.ProcessColumnFontSize);
                 stackFactory.AppendChild(hoursFactory);
             }
 

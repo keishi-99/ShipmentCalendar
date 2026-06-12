@@ -49,6 +49,8 @@ public class AppSettings
 
     /// <summary>メイン画面の固定列（出荷日〜計画数）のフォントサイズ</summary>
     public double FixedColumnFontSize { get; set; } = 12;
+    /// <summary>メイン画面の工程列（工程名・期限日・標準時間）のフォントサイズ</summary>
+    public double ProcessColumnFontSize { get; set; } = 11;
     /// <summary>工程列に「期限日」行を表示するか</summary>
     public bool ShowProcessDate { get; set; } = true;
     /// <summary>工程列に「標準時間（必要時間）」行を表示するか</summary>
