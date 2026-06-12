@@ -64,11 +64,12 @@ public class BusinessDayCalculator {
                 adjusted = (daysSoFar + def.OutsourceLeadDays) * 480.0;
                 spansBoundary = true;
             }
-            // クールタイム（数量に依存しない固定の待機時間）。
-            // 単独では前営業日へ繰り越さず、その日のチャンク上限で切り詰める
-            else if (def.CoolTimeMinutes > 0) {
-                var dayBoundary = Math.Ceiling(runningIn / 480.0) * 480.0;
-                adjusted = Math.Min(runningIn + def.CoolTimeMinutes, dayBoundary);
+
+            // クールタイム（数量に依存しない固定の待機時間）。外注リードタイムや末尾工程など
+            // どのケースでも、adjustedの基準値に上乗せする。
+            // 480分を超える分は、後段のceil計算により自動的に前営業日以前へ繰り越される
+            if (def.CoolTimeMinutes > 0) {
+                adjusted += def.CoolTimeMinutes;
             }
 
             if (spansBoundary) {
