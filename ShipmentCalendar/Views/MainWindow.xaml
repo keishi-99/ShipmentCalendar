@@ -16,6 +16,10 @@
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        <!--  固定列のセル内テキストを縦中央に揃えるスタイル  -->
+        <Style x:Key="FixedColumnCellStyle" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
     </Window.Resources>
 
     <!--  ルートを Grid にして DockPanel の上にスピナーオーバーレイを重ねる  -->
@@ -41,8 +45,18 @@
                     <MenuItem Header="工程設定"          Click="BtnProcess_Click"/>
                     <MenuItem Header="休日設定"          Click="BtnHoliday_Click"/>
                     <MenuItem Header="部署設定"          Click="BtnDeptSetting_Click"/>
+                    <MenuItem Header="表示設定"          Click="BtnDisplaySettings_Click"/>
                 </MenuItem>
             </Menu>
+            <Separator />
+            <!--  列の表示/非表示設定  -->
+            <Button Name="BtnColumnVisibility"
+                    Padding="8,4" Background="Transparent" BorderThickness="0"
+                    Foreground="White" FontSize="14"
+                    Click="BtnColumnVisibility_Click"
+                    PreviewMouseLeftButtonDown="BtnColumnVisibility_PreviewMouseLeftButtonDown">
+                列表示設定 ▾
+            </Button>
             <Separator />
             <!--  未完了工程の表示日切り替え（クリックで着手必須日/完了必須日を切り替え）  -->
             <Button Name="BtnToggleDueDateDisplay"
@@ -94,6 +108,14 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+            <Separator />
+            <!--  フルスクリーン表示の切り替え（F11キーと同じ動作）  -->
+            <Button Name="BtnToggleFullScreen"
+                    Padding="8,4" Background="Transparent" BorderThickness="0"
+                    Foreground="White" FontSize="14"
+                    Click="BtnToggleFullScreen_Click">
+                フルスクリーン
+            </Button>
         </ToolBar>
 
         <!--  フィルターバー  -->
@@ -125,83 +147,81 @@
             <Button Content="クリア" Padding="8,3" Click="BtnClearFilter_Click"/>
         </StackPanel>
 
-        <!--  ステータスバー  -->
+        <!--  ステータスバー（左：状態メッセージ、右：凡例）  -->
         <StatusBar Background="#EEEEEE" DockPanel.Dock="Bottom">
-            <TextBlock Padding="4" Text="{Binding StatusMessage}" />
+            <StatusBarItem DockPanel.Dock="Right">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock
+                        Margin="0,0,8,0"
+                        VerticalAlignment="Center"
+                        Text="凡例：" />
+                    <Border
+                        Width="80"
+                        Height="20"
+                        Margin="2"
+                        Background="{StaticResource StatusNotStarted}"
+                        CornerRadius="3">
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            FontSize="11"
+                            Text="未着手" />
+                    </Border>
+                    <Border
+                        Width="80"
+                        Height="20"
+                        Margin="2"
+                        Background="{StaticResource StatusInProgress}"
+                        CornerRadius="3">
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            FontSize="11"
+                            Text="進行中" />
+                    </Border>
+                    <Border
+                        Width="80"
+                        Height="20"
+                        Margin="2"
+                        Background="#FF9800"
+                        CornerRadius="3">
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            FontSize="11"
+                            Text="警告" />
+                    </Border>
+                    <Border
+                        Width="80"
+                        Height="20"
+                        Margin="2"
+                        Background="{StaticResource StatusCompleted}"
+                        CornerRadius="3">
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            FontSize="11"
+                            Text="完了" />
+                    </Border>
+                    <Border
+                        Width="80"
+                        Height="20"
+                        Margin="2"
+                        Background="{StaticResource StatusOverdue}"
+                        CornerRadius="3">
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            FontSize="11"
+                            Foreground="White"
+                            Text="超過" />
+                    </Border>
+                </StackPanel>
+            </StatusBarItem>
+            <StatusBarItem>
+                <TextBlock Padding="4" Text="{Binding StatusMessage}" />
+            </StatusBarItem>
         </StatusBar>
-
-        <!--  凡例  -->
-        <StackPanel
-            Margin="8,4"
-            Background="#FAFAFA"
-            DockPanel.Dock="Bottom"
-            Orientation="Horizontal">
-            <TextBlock
-                Margin="0,0,8,0"
-                VerticalAlignment="Center"
-                Text="凡例：" />
-            <Border
-                Width="80"
-                Height="20"
-                Margin="2"
-                Background="{StaticResource StatusNotStarted}"
-                CornerRadius="3">
-                <TextBlock
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    FontSize="11"
-                    Text="未着手" />
-            </Border>
-            <Border
-                Width="80"
-                Height="20"
-                Margin="2"
-                Background="{StaticResource StatusInProgress}"
-                CornerRadius="3">
-                <TextBlock
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    FontSize="11"
-                    Text="進行中" />
-            </Border>
-            <Border
-                Width="80"
-                Height="20"
-                Margin="2"
-                Background="#FF9800"
-                CornerRadius="3">
-                <TextBlock
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    FontSize="11"
-                    Text="警告" />
-            </Border>
-            <Border
-                Width="80"
-                Height="20"
-                Margin="2"
-                Background="{StaticResource StatusCompleted}"
-                CornerRadius="3">
-                <TextBlock
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    FontSize="11"
-                    Text="完了" />
-            </Border>
-            <Border
-                Width="80"
-                Height="20"
-                Margin="2"
-                Background="{StaticResource StatusOverdue}"
-                CornerRadius="3">
-                <TextBlock
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    FontSize="11"
-                    Foreground="White"
-                    Text="超過" />
-            </Border>
-        </StackPanel>
 
         <!--  メインリスト  -->
         <DataGrid
@@ -215,32 +235,49 @@
             CanUserSortColumns="False"
             SelectionUnit="Cell" SelectionMode="Single"
             ItemsSource="{Binding Orders}"
-            RowHeight="64"
             SelectedItem="{Binding SelectedOrder}">
             <DataGrid.Columns>
                 <DataGridTextColumn
+                    x:Name="ColDeliveryDate"
                     Width="100"
                     Binding="{Binding DeliveryDate, StringFormat=yyyy/MM/dd}"
+                    ElementStyle="{StaticResource FixedColumnCellStyle}"
                     Header="出荷日" />
                 <DataGridTextColumn
+                    x:Name="ColCompletionDate"
                     Width="100"
                     Binding="{Binding CompletionDate, StringFormat=yyyy/MM/dd}"
+                    ElementStyle="{StaticResource FixedColumnCellStyle}"
                     Header="完了日" />
                 <DataGridTextColumn
+                    x:Name="ColItemNumber"
                     Width="150"
                     Binding="{Binding ItemNumber}"
+                    ElementStyle="{StaticResource FixedColumnCellStyle}"
                     Header="品目番号" />
                 <DataGridTextColumn
+                    x:Name="ColModelCode"
+                    Width="100"
+                    Binding="{Binding ModelCode}"
+                    ElementStyle="{StaticResource FixedColumnCellStyle}"
+                    Header="機種コード" />
+                <DataGridTextColumn
+                    x:Name="ColProductName"
                     Width="200"
                     Binding="{Binding ProductName}"
+                    ElementStyle="{StaticResource FixedColumnCellStyle}"
                     Header="品目名" />
                 <DataGridTextColumn
+                    x:Name="ColManufactureNumber"
                     Width="180"
                     Binding="{Binding ManufactureNumber}"
+                    ElementStyle="{StaticResource FixedColumnCellStyle}"
                     Header="製番" />
                 <DataGridTextColumn
+                    x:Name="ColPlannedQuantity"
                     Width="70"
                     Binding="{Binding PlannedQuantity}"
+                    ElementStyle="{StaticResource FixedColumnCellStyle}"
                     Header="計画数" />
                 <!--  工程列はコードビハインドで動的生成  -->
             </DataGrid.Columns>
@@ -252,6 +289,30 @@
             </DataGrid.RowStyle>
         </DataGrid>
     </DockPanel>
+
+    <!--  列の表示/非表示設定ポップアップ  -->
+    <Popup Name="ColumnVisibilityPopup"
+           Placement="Bottom" StaysOpen="False"
+           PlacementTarget="{Binding ElementName=BtnColumnVisibility}">
+        <Border Background="White" BorderBrush="#999999" BorderThickness="1" Padding="8">
+            <StackPanel>
+                <CheckBox Name="ChkColDeliveryDate" Content="出荷日" Margin="2"
+                          Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed"/>
+                <CheckBox Name="ChkColCompletionDate" Content="完了日" Margin="2"
+                          Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed"/>
+                <CheckBox Name="ChkColItemNumber" Content="品目番号" Margin="2"
+                          Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed"/>
+                <CheckBox Name="ChkColModelCode" Content="機種コード" Margin="2"
+                          Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed"/>
+                <CheckBox Name="ChkColProductName" Content="品目名" Margin="2"
+                          Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed"/>
+                <CheckBox Name="ChkColManufactureNumber" Content="製番" Margin="2"
+                          Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed"/>
+                <CheckBox Name="ChkColPlannedQuantity" Content="計画数" Margin="2"
+                          Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed"/>
+            </StackPanel>
+        </Border>
+    </Popup>
 
     <!--  ローディングオーバーレイ（IsLoading=true のとき表示）  -->
     <Grid IsHitTestVisible="{Binding IsLoading}">
