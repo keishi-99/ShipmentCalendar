@@ -78,17 +78,22 @@ public class SqliteModelCodeRepository : IModelCodeRepository
             await deleteCommand.ExecuteNonQueryAsync();
         }
 
+        using var insertCommand = connection.CreateCommand();
+        insertCommand.Transaction = transaction;
+        insertCommand.CommandText = @"
+            INSERT INTO ModelCodeDefinitions (ModelCode, Name, Category, SortOrder)
+            VALUES ($modelCode, $name, $category, $so)";
+        var modelCodeParam = insertCommand.Parameters.Add("$modelCode", SqliteType.Text);
+        var nameParam = insertCommand.Parameters.Add("$name", SqliteType.Text);
+        var categoryParam = insertCommand.Parameters.Add("$category", SqliteType.Text);
+        var soParam = insertCommand.Parameters.Add("$so", SqliteType.Integer);
+
         foreach (var definition in definitions)
         {
-            using var insertCommand = connection.CreateCommand();
-            insertCommand.Transaction = transaction;
-            insertCommand.CommandText = @"
-                INSERT INTO ModelCodeDefinitions (ModelCode, Name, Category, SortOrder)
-                VALUES ($modelCode, $name, $category, $so)";
-            insertCommand.Parameters.AddWithValue("$modelCode", definition.ModelCode);
-            insertCommand.Parameters.AddWithValue("$name", definition.Name);
-            insertCommand.Parameters.AddWithValue("$category", definition.Category);
-            insertCommand.Parameters.AddWithValue("$so", definition.SortOrder);
+            modelCodeParam.Value = definition.ModelCode;
+            nameParam.Value = definition.Name;
+            categoryParam.Value = definition.Category;
+            soParam.Value = definition.SortOrder;
             await insertCommand.ExecuteNonQueryAsync();
         }
 
