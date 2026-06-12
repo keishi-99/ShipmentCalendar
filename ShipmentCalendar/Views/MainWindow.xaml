@@ -53,7 +53,8 @@
             <Button Name="BtnColumnVisibility"
                     Padding="8,4" Background="Transparent" BorderThickness="0"
                     Foreground="White" FontSize="14"
-                    Click="BtnColumnVisibility_Click">
+                    Click="BtnColumnVisibility_Click"
+                    PreviewMouseLeftButtonDown="BtnColumnVisibility_PreviewMouseLeftButtonDown">
                 列表示設定 ▾
             </Button>
             <Separator />

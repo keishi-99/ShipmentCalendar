@@ -98,6 +98,13 @@ public partial class MainWindow : Window {
         ColumnVisibilityPopup.IsOpen = !ColumnVisibilityPopup.IsOpen;
     }
 
+    private void BtnColumnVisibility_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e) {
+        if (ColumnVisibilityPopup.IsOpen) {
+            ColumnVisibilityPopup.IsOpen = false;
+            e.Handled = true;
+        }
+    }
+
     private void ColumnVisibilityCheckBox_Changed(object sender, RoutedEventArgs e) {
         if (!_columnVisibilityEventsEnabled) return;
 
