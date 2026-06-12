@@ -25,7 +25,7 @@ public static class DatabaseInitializer
         using var connection = new SqliteConnection(ConnectionString);
         connection.Open();
 
-        var command = connection.CreateCommand();
+        using var command = connection.CreateCommand();
         command.CommandText = @"
             CREATE TABLE IF NOT EXISTS Products (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,7 +72,7 @@ public static class DatabaseInitializer
         command.ExecuteNonQuery();
 
         // デフォルト部署を登録（既存なら無視）
-        var insertDepts = connection.CreateCommand();
+        using var insertDepts = connection.CreateCommand();
         insertDepts.CommandText = @"
             INSERT OR IGNORE INTO Departments (Name, SortOrder) VALUES ('製造課', 0);
             INSERT OR IGNORE INTO Departments (Name, SortOrder) VALUES ('検査課', 1);
@@ -96,7 +96,7 @@ public static class DatabaseInitializer
     private static void MigrateProductsFromProcessDefinitions(SqliteConnection connection)
     {
         // ItemNumber列が存在しない場合はスキップ（既に移行済み or 新規DB）
-        var check = connection.CreateCommand();
+        using var check = connection.CreateCommand();
         check.CommandText = "PRAGMA table_info(ProcessDefinitions)";
         bool hasItemNumber = false;
         using (var reader = check.ExecuteReader())
@@ -109,7 +109,7 @@ public static class DatabaseInitializer
         if (!hasItemNumber) return;
 
         // 既存のProductNameとItemNumberをProductsに移行（重複はスキップ）
-        var migrate = connection.CreateCommand();
+        using var migrate = connection.CreateCommand();
         migrate.CommandText = @"
             INSERT OR IGNORE INTO Products (ProductName, ItemNumber)
             SELECT DISTINCT ItemNumber, COALESCE(ItemNumber, '') FROM ProcessDefinitions
@@ -119,14 +119,14 @@ public static class DatabaseInitializer
 
     private static void MigrateAddColumnIfNotExists(SqliteConnection connection, string table, string column, string definition)
     {
-        var check = connection.CreateCommand();
+        using var check = connection.CreateCommand();
         check.CommandText = $"PRAGMA table_info({table})";
         using var reader = check.ExecuteReader();
         while (reader.Read())
         {
             if (reader.GetString(1) == column) return;
         }
-        var alter = connection.CreateCommand();
+        using var alter = connection.CreateCommand();
         alter.CommandText = $"ALTER TABLE {table} ADD COLUMN {column} {definition}";
         alter.ExecuteNonQuery();
     }

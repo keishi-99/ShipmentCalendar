@@ -90,7 +90,7 @@ public partial class ProcessSettingWindow : Window
     /// <summary>「保存」ボタン：機種コード一覧をDBの内容と全置換する</summary>
     private async void BtnSaveModelCodes_Click(object sender, RoutedEventArgs e)
     {
-        // 機種コードの重複チェック（DBのUNIQUE制約違反による全削除後のデータ消失を防ぐ）
+        // 機種コードの重複チェック（DBのUNIQUE制約違反を事前に検知し、わかりやすいエラーを表示する）
         var duplicates = _modelCodes
             .Where(m => !string.IsNullOrWhiteSpace(m.ModelCode))
             .GroupBy(m => m.ModelCode.Trim(), StringComparer.OrdinalIgnoreCase)
@@ -104,17 +104,12 @@ public partial class ProcessSettingWindow : Window
             return;
         }
 
-        var existing = await _modelCodeRepository.GetAllAsync();
-        foreach (var def in existing)
-            await _modelCodeRepository.DeleteAsync(def.Id);
-
+        var toSave = _modelCodes.Where(m => !string.IsNullOrWhiteSpace(m.ModelCode)).ToList();
         var savedCount = 0;
-        foreach (var def in _modelCodes)
-        {
-            if (string.IsNullOrWhiteSpace(def.ModelCode)) continue;
+        foreach (var def in toSave)
             def.SortOrder = savedCount++;
-            await _modelCodeRepository.AddAsync(def);
-        }
+
+        await _modelCodeRepository.ReplaceAllAsync(toSave);
 
         await RefreshModelCodesAsync();
         TxtModelCodeStatus.Text = $"保存しました（{savedCount} 件）";
@@ -373,15 +368,10 @@ public partial class ProcessSettingWindow : Window
     /// <summary>指定品目番号の工程定義をDB上で全置換する</summary>
     private async Task ReplaceDefinitionsInDbAsync(string itemNumber, List<ProcessDefinition> definitions)
     {
-        var existing = await _dbRepository.GetByItemNumberAsync(itemNumber);
-        foreach (var def in existing)
-            await _dbRepository.DeleteAsync(def.Id);
-
         foreach (var def in definitions)
-        {
             def.ItemNumber = itemNumber;
-            await _dbRepository.AddAsync(def);
-        }
+
+        await _dbRepository.ReplaceForItemNumberAsync(itemNumber, definitions);
     }
 
     /// <summary>
@@ -463,15 +453,10 @@ public partial class ProcessSettingWindow : Window
         // グリッドに工程がある場合のみ工程定義を更新する
         if (_currentDefinitions.Any())
         {
-            var existing = await _dbRepository.GetByItemNumberAsync(itemNumber);
-            foreach (var def in existing)
-                await _dbRepository.DeleteAsync(def.Id);
-
             foreach (var def in _currentDefinitions)
-            {
                 def.ItemNumber = itemNumber;
-                await _dbRepository.AddAsync(def);
-            }
+
+            await _dbRepository.ReplaceForItemNumberAsync(itemNumber, _currentDefinitions);
             TxtStatus.Text = $"保存しました（品目名 + {_currentDefinitions.Count} 件の工程）";
         }
         else
