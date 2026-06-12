@@ -231,36 +231,43 @@
             SelectedItem="{Binding SelectedOrder}">
             <DataGrid.Columns>
                 <DataGridTextColumn
+                    x:Name="ColDeliveryDate"
                     Width="100"
                     Binding="{Binding DeliveryDate, StringFormat=yyyy/MM/dd}"
                     ElementStyle="{StaticResource FixedColumnCellStyle}"
                     Header="出荷日" />
                 <DataGridTextColumn
+                    x:Name="ColCompletionDate"
                     Width="100"
                     Binding="{Binding CompletionDate, StringFormat=yyyy/MM/dd}"
                     ElementStyle="{StaticResource FixedColumnCellStyle}"
                     Header="完了日" />
                 <DataGridTextColumn
+                    x:Name="ColItemNumber"
                     Width="150"
                     Binding="{Binding ItemNumber}"
                     ElementStyle="{StaticResource FixedColumnCellStyle}"
                     Header="品目番号" />
                 <DataGridTextColumn
+                    x:Name="ColModelCode"
                     Width="100"
                     Binding="{Binding ModelCode}"
                     ElementStyle="{StaticResource FixedColumnCellStyle}"
                     Header="機種コード" />
                 <DataGridTextColumn
+                    x:Name="ColProductName"
                     Width="200"
                     Binding="{Binding ProductName}"
                     ElementStyle="{StaticResource FixedColumnCellStyle}"
                     Header="品目名" />
                 <DataGridTextColumn
+                    x:Name="ColManufactureNumber"
                     Width="180"
                     Binding="{Binding ManufactureNumber}"
                     ElementStyle="{StaticResource FixedColumnCellStyle}"
                     Header="製番" />
                 <DataGridTextColumn
+                    x:Name="ColPlannedQuantity"
                     Width="70"
                     Binding="{Binding PlannedQuantity}"
                     ElementStyle="{StaticResource FixedColumnCellStyle}"

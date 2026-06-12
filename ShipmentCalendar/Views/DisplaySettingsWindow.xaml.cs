@@ -20,8 +20,13 @@ public partial class DisplaySettingsWindow : Window
 
     private void BtnSave_Click(object sender, RoutedEventArgs e)
     {
-        if (double.TryParse(TxtFixedColumnFontSize.Text, out var fontSize) && fontSize > 0)
-            _viewModel.Settings.FixedColumnFontSize = fontSize;
+        if (!double.TryParse(TxtFixedColumnFontSize.Text, out var fontSize) || fontSize <= 0)
+        {
+            MessageBox.Show("固定列のフォントサイズには、0より大きい有効な数値を入力してください。", "入力エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        _viewModel.Settings.FixedColumnFontSize = fontSize;
         _viewModel.Settings.ShowProcessDate = ChkShowProcessDate.IsChecked == true;
         _viewModel.Settings.ShowProcessRequiredHours = ChkShowProcessRequiredHours.IsChecked == true;
 

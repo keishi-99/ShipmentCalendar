@@ -29,15 +29,15 @@ public partial class MainWindow : Window {
         ApplyFixedColumnFontSize();
     }
 
-    // 列表示設定チェックボックスと対応するDataGridColumnインデックス・設定プロパティの組み合わせ
-    private (CheckBox CheckBox, int ColumnIndex, Func<AppSettings, bool> Getter, Action<AppSettings, bool> Setter)[] ColumnVisibilityMappings => new[] {
-        (ChkColDeliveryDate,      0, (Func<AppSettings, bool>)(s => s.ShowColumnDeliveryDate),      (Action<AppSettings, bool>)((s, v) => s.ShowColumnDeliveryDate = v)),
-        (ChkColCompletionDate,    1, (Func<AppSettings, bool>)(s => s.ShowColumnCompletionDate),    (Action<AppSettings, bool>)((s, v) => s.ShowColumnCompletionDate = v)),
-        (ChkColItemNumber,        2, (Func<AppSettings, bool>)(s => s.ShowColumnItemNumber),        (Action<AppSettings, bool>)((s, v) => s.ShowColumnItemNumber = v)),
-        (ChkColModelCode,         3, (Func<AppSettings, bool>)(s => s.ShowColumnModelCode),         (Action<AppSettings, bool>)((s, v) => s.ShowColumnModelCode = v)),
-        (ChkColProductName,       4, (Func<AppSettings, bool>)(s => s.ShowColumnProductName),       (Action<AppSettings, bool>)((s, v) => s.ShowColumnProductName = v)),
-        (ChkColManufactureNumber, 5, (Func<AppSettings, bool>)(s => s.ShowColumnManufactureNumber), (Action<AppSettings, bool>)((s, v) => s.ShowColumnManufactureNumber = v)),
-        (ChkColPlannedQuantity,   6, (Func<AppSettings, bool>)(s => s.ShowColumnPlannedQuantity),    (Action<AppSettings, bool>)((s, v) => s.ShowColumnPlannedQuantity = v)),
+    // 列表示設定チェックボックスと対応するDataGridColumn・設定プロパティの組み合わせ
+    private (CheckBox CheckBox, DataGridColumn Column, Func<AppSettings, bool> Getter, Action<AppSettings, bool> Setter)[] ColumnVisibilityMappings => new[] {
+        (ChkColDeliveryDate,      (DataGridColumn)ColDeliveryDate,      (Func<AppSettings, bool>)(s => s.ShowColumnDeliveryDate),      (Action<AppSettings, bool>)((s, v) => s.ShowColumnDeliveryDate = v)),
+        (ChkColCompletionDate,    (DataGridColumn)ColCompletionDate,    (Func<AppSettings, bool>)(s => s.ShowColumnCompletionDate),    (Action<AppSettings, bool>)((s, v) => s.ShowColumnCompletionDate = v)),
+        (ChkColItemNumber,        (DataGridColumn)ColItemNumber,        (Func<AppSettings, bool>)(s => s.ShowColumnItemNumber),        (Action<AppSettings, bool>)((s, v) => s.ShowColumnItemNumber = v)),
+        (ChkColModelCode,         (DataGridColumn)ColModelCode,         (Func<AppSettings, bool>)(s => s.ShowColumnModelCode),         (Action<AppSettings, bool>)((s, v) => s.ShowColumnModelCode = v)),
+        (ChkColProductName,       (DataGridColumn)ColProductName,       (Func<AppSettings, bool>)(s => s.ShowColumnProductName),       (Action<AppSettings, bool>)((s, v) => s.ShowColumnProductName = v)),
+        (ChkColManufactureNumber, (DataGridColumn)ColManufactureNumber, (Func<AppSettings, bool>)(s => s.ShowColumnManufactureNumber), (Action<AppSettings, bool>)((s, v) => s.ShowColumnManufactureNumber = v)),
+        (ChkColPlannedQuantity,   (DataGridColumn)ColPlannedQuantity,   (Func<AppSettings, bool>)(s => s.ShowColumnPlannedQuantity),    (Action<AppSettings, bool>)((s, v) => s.ShowColumnPlannedQuantity = v)),
     };
 
     // チェックボックスのChecked/Uncheckedイベントを設定値の反映として処理するか（初期化中はfalseにして保存を抑制する）
@@ -46,10 +46,10 @@ public partial class MainWindow : Window {
     /// <summary>保存済みの設定値をチェックボックスとDataGridColumnの表示状態に反映する（保存はしない）</summary>
     private void InitializeColumnVisibility() {
         _columnVisibilityEventsEnabled = false;
-        foreach (var (checkBox, columnIndex, getter, _) in ColumnVisibilityMappings) {
+        foreach (var (checkBox, column, getter, _) in ColumnVisibilityMappings) {
             var isVisible = getter(_viewModel.Settings);
             checkBox.IsChecked = isVisible;
-            OrderGrid.Columns[columnIndex].Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+            column.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
         }
         _columnVisibilityEventsEnabled = true;
     }
@@ -58,16 +58,15 @@ public partial class MainWindow : Window {
         ColumnVisibilityPopup.IsOpen = !ColumnVisibilityPopup.IsOpen;
     }
 
-    // TODO(human): チェックボックスの状態変化時に、対応するDataGridColumnの表示/非表示を切り替え、
-    // _viewModel.Settingsの該当プロパティを更新し、SaveSettings()で永続化する処理を実装してください。
     private void ColumnVisibilityCheckBox_Changed(object sender, RoutedEventArgs e) {
+        if (!_columnVisibilityEventsEnabled) return;
+
         var checkBox = (CheckBox)sender;
         var mapping = ColumnVisibilityMappings.FirstOrDefault(m => m.CheckBox == checkBox);
-        if (!_columnVisibilityEventsEnabled) return;
         if (mapping.CheckBox == null) return;
 
         var isChecked = checkBox.IsChecked ?? false;
-        OrderGrid.Columns[mapping.ColumnIndex].Visibility = isChecked ? Visibility.Visible : Visibility.Collapsed;
+        mapping.Column.Visibility = isChecked ? Visibility.Visible : Visibility.Collapsed;
         mapping.Setter(_viewModel.Settings, isChecked);
         _viewModel.SaveSettings();
     }
