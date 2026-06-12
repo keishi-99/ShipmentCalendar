@@ -5,6 +5,7 @@ using ShipmentCalendar.ViewModels;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace ShipmentCalendar.Views;
@@ -27,6 +28,41 @@ public partial class MainWindow : Window {
         UpdateSortModeButtonText();
         InitializeColumnVisibility();
         ApplyFixedColumnFontSize();
+        PreviewKeyDown += MainWindow_PreviewKeyDown;
+    }
+
+    // フルスクリーン切り替え前のウィンドウ状態（復元用）
+    private WindowState _previousWindowState;
+    private WindowStyle _previousWindowStyle;
+    private ResizeMode _previousResizeMode;
+    private bool _isFullScreen;
+
+    private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e) {
+        if (e.Key == Key.F11)
+            ToggleFullScreen();
+    }
+
+    private void BtnToggleFullScreen_Click(object sender, RoutedEventArgs e) {
+        ToggleFullScreen();
+    }
+
+    /// <summary>F11キー・ツールバーボタンでフルスクリーン表示（タイトルバー・タスクバーを隠す）と通常表示を切り替える</summary>
+    private void ToggleFullScreen() {
+        if (!_isFullScreen) {
+            _previousWindowState = WindowState;
+            _previousWindowStyle = WindowStyle;
+            _previousResizeMode = ResizeMode;
+
+            WindowStyle = WindowStyle.None;
+            ResizeMode = ResizeMode.NoResize;
+            WindowState = WindowState.Maximized;
+        } else {
+            WindowStyle = _previousWindowStyle;
+            ResizeMode = _previousResizeMode;
+            WindowState = _previousWindowState;
+        }
+        _isFullScreen = !_isFullScreen;
+        BtnToggleFullScreen.Content = _isFullScreen ? "ウィンドウ表示" : "フルスクリーン";
     }
 
     // 列表示設定チェックボックスと対応するDataGridColumn・設定プロパティの組み合わせ

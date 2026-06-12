@@ -107,6 +107,14 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+            <Separator />
+            <!--  フルスクリーン表示の切り替え（F11キーと同じ動作）  -->
+            <Button Name="BtnToggleFullScreen"
+                    Padding="8,4" Background="Transparent" BorderThickness="0"
+                    Foreground="White" FontSize="14"
+                    Click="BtnToggleFullScreen_Click">
+                フルスクリーン
+            </Button>
         </ToolBar>
 
         <!--  フィルターバー  -->
