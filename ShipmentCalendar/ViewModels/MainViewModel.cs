@@ -15,10 +15,12 @@ public partial class MainViewModel : ObservableObject {
 
     // 全件キャッシュ（フィルター用）
     private List<Order> _allOrders = new();
-    // DB登録済み品目番号セット（フィルター用）
-    private HashSet<string> _registeredItemNumbers = new();
-    // 製品マスタの品目番号先頭一致パターン一覧（フィルター用）
-    private List<string> _finishedProductPrefixes = new();
+    // 機種コード登録マスタで「製品」に区分された機種コード一覧（フィルター用）
+    private HashSet<string> _productModelCodes = new(StringComparer.OrdinalIgnoreCase);
+    // 機種コード登録マスタで「半製品」に区分された機種コード一覧（フィルター用）
+    private HashSet<string> _semiProductModelCodes = new(StringComparer.OrdinalIgnoreCase);
+    // 工程設定（ProcessDefinitions）に登録済みの品目番号セット（フィルター用）
+    private HashSet<string> _registeredItemNumbers = new(StringComparer.OrdinalIgnoreCase);
     // 最終更新日時
     private DateTime? _lastLoaded;
 
@@ -42,7 +44,7 @@ public partial class MainViewModel : ObservableObject {
     [ObservableProperty] private string _filterProductCategory = "全て";
 
     public static IReadOnlyList<string> ProductCategoryOptions { get; } =
-        new[] { "全て", "製品", "半製品", "どちらでもない" };
+        new[] { "全て", "製品", "半製品", "半製品（工程未登録）", "どちらでもない" };
 
     /// <summary>ツールバー部署フィルターボタン用リスト（「全て」含む）</summary>
     public ObservableCollection<DepartmentFilterItem> DepartmentFilters { get; } = new();
@@ -109,18 +111,15 @@ public partial class MainViewModel : ObservableObject {
         if (FilterHideCompleted)
             result = result.Where(o => !o.Processes.Any() || o.Processes.Last().Status != ProcessStatus.Completed);
 
-        // 製品/半製品/どちらでもないフィルター
-        // 製品：品目番号が製品マスタのいずれかの先頭一致パターンに該当する
-        // 半製品：品目番号が半製品（工程設定）に登録済み
-        // どちらでもない：上記のいずれにも該当しない
+        // 製品/半製品/どちらでもないフィルター（機種コード登録マスタの区分で判定）
         if (FilterProductCategory == "製品")
-            result = result.Where(o => _finishedProductPrefixes.Any(p => o.ItemNumber.StartsWith(p, StringComparison.OrdinalIgnoreCase)));
+            result = result.Where(o => _productModelCodes.Contains(o.ModelCode));
         else if (FilterProductCategory == "半製品")
-            result = result.Where(o => _registeredItemNumbers.Contains(o.ItemNumber));
+            result = result.Where(o => _semiProductModelCodes.Contains(o.ModelCode));
+        else if (FilterProductCategory == "半製品（工程未登録）")
+            result = result.Where(o => _semiProductModelCodes.Contains(o.ModelCode) && !_registeredItemNumbers.Contains(o.ItemNumber));
         else if (FilterProductCategory == "どちらでもない")
-            result = result.Where(o =>
-                !_finishedProductPrefixes.Any(p => o.ItemNumber.StartsWith(p, StringComparison.OrdinalIgnoreCase))
-                && !_registeredItemNumbers.Contains(o.ItemNumber));
+            result = result.Where(o => !_productModelCodes.Contains(o.ModelCode) && !_semiProductModelCodes.Contains(o.ModelCode));
 
         // 担当部署フィルター：未完了工程のうち SortOrder 最小のものが選択部署の行のみ表示
         if (FilterDepartmentId > 0)
@@ -304,11 +303,15 @@ public partial class MainViewModel : ObservableObject {
             }
 
             _allOrders = orders.OrderBy(o => o.DeliveryDate).ToList();
+
+            var modelCodes = await new SqliteModelCodeRepository().GetAllAsync();
+            _productModelCodes = new HashSet<string>(
+                modelCodes.Where(m => m.Category == "製品").Select(m => m.ModelCode), StringComparer.OrdinalIgnoreCase);
+            _semiProductModelCodes = new HashSet<string>(
+                modelCodes.Where(m => m.Category == "半製品").Select(m => m.ModelCode), StringComparer.OrdinalIgnoreCase);
+
             var registeredNumbers = await new SqliteProcessDefinitionRepository().GetItemNumbersAsync();
             _registeredItemNumbers = new HashSet<string>(registeredNumbers, StringComparer.OrdinalIgnoreCase);
-
-            var finishedProducts = await new SqliteFinishedProductRepository().GetAllAsync();
-            _finishedProductPrefixes = finishedProducts.Select(p => p.ItemNumberPrefix).ToList();
 
             // 部署フィルターボタンリストを更新
             await RefreshDepartmentFiltersAsync();

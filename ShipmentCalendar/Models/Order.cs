@@ -6,6 +6,8 @@ public class Order
     public int Id { get; set; }
     public string ProductName { get; set; } = string.Empty;
     public string ItemNumber { get; set; } = string.Empty;
+    /// <summary>機種コード（製品/半製品の区分判定に使用）</summary>
+    public string ModelCode { get; set; } = string.Empty;
     public string ManufactureNumber { get; set; } = string.Empty;
     public string OrderNumber { get; set; } = string.Empty;
     public DateOnly DeliveryDate { get; set; }

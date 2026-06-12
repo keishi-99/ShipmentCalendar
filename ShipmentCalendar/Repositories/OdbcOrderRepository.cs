@@ -16,6 +16,55 @@ public class OdbcOrderRepository
         _settings = settings;
     }
 
+    /// <summary>VP_生産計画情報_YD から指定した機種コード（半製品）の品目番号・品目名を重複除外して取得する（品目番号昇順、日付範囲なし）。
+    /// excludeItemNumberEqualsSeiban が true の場合、品目番号+'-00'=製番 の行が1件でもある品目番号は除外する。
+    /// excludeItemNumberStartsWithM が true の場合、品目番号が'M'で始まる品目番号は除外する。</summary>
+    public IEnumerable<(string ItemNumber, string ItemName)> GetSemiFinishedItemNumbersWithNames(IEnumerable<string> modelCodes, bool excludeItemNumberEqualsSeiban, bool excludeItemNumberStartsWithM)
+    {
+        var codeList = string.Join(",", modelCodes.Select(c => $"'{c.Replace("'", "''")}'"));
+        if (string.IsNullOrEmpty(codeList)) return Enumerable.Empty<(string, string)>();
+
+        using var conn = OdbcConnectionFactory.Create(_settings);
+        conn.Open();
+
+        var items = new List<(string ItemNumber, string ItemName)>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var excluded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = $@"SELECT 品目番号, 品目名, 製番
+            FROM VP_生産計画情報_YD
+            WHERE 機種コード IN ({codeList})
+              AND 工場番号 = ?
+              AND 品目番号 IS NOT NULL
+            ORDER BY 品目番号";
+        cmd.Parameters.Add("@FactoryNumber", OdbcType.VarChar).Value = _settings.OdbcFactoryNumber;
+
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            var itemNumber = reader["品目番号"]?.ToString()?.Trim() ?? string.Empty;
+            if (string.IsNullOrEmpty(itemNumber)) continue;
+            if (excludeItemNumberStartsWithM && itemNumber.StartsWith("M", StringComparison.OrdinalIgnoreCase)) continue;
+
+            var seiban = reader["製番"]?.ToString()?.Trim() ?? string.Empty;
+            if (excludeItemNumberEqualsSeiban && string.Equals(itemNumber + "-00", seiban, StringComparison.OrdinalIgnoreCase))
+            {
+                excluded.Add(itemNumber);
+                continue;
+            }
+
+            if (!seen.Add(itemNumber)) continue;
+
+            var itemName = reader["品目名"]?.ToString()?.Trim() ?? string.Empty;
+            items.Add((itemNumber, itemName));
+        }
+
+        if (excludeItemNumberEqualsSeiban)
+            items = items.Where(i => !excluded.Contains(i.ItemNumber)).ToList();
+
+        return items;
+    }
+
     public IEnumerable<Order> GetAll()
     {
         var today = DateOnly.FromDateTime(DateTime.Today);
@@ -37,7 +86,7 @@ public class OdbcOrderRepository
         var orders = new Dictionary<string, Order>();
 
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT 製番, 品目番号, 品目名, 納期, 計画数 FROM VP_生産計画情報_YD";
+        cmd.CommandText = "SELECT 製番, 品目番号, 品目名, 納期, 計画数, 機種コード FROM VP_生産計画情報_YD";
 
         using var reader = cmd.ExecuteReader();
         while (reader.Read())
@@ -61,6 +110,7 @@ public class OdbcOrderRepository
             {
                 ProductName = reader["品目名"]?.ToString()?.Trim() ?? string.Empty,
                 ItemNumber = itemNumber,
+                ModelCode = reader["機種コード"]?.ToString()?.Trim() ?? string.Empty,
                 ManufactureNumber = seiban,
                 DeliveryDate = deliveryDate.Value,
                 PlannedQuantity = (int)plannedQty

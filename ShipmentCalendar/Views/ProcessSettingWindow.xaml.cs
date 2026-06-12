@@ -31,9 +31,9 @@ public partial class ProcessSettingWindow : Window
     private readonly IProcessDefinitionRepository _dbRepository = new SqliteProcessDefinitionRepository();
     private readonly AppSettingsService _settingsService = new AppSettingsService();
     private readonly SqliteProductDisplayNameRepository _nameRepository = new SqliteProductDisplayNameRepository();
-    private readonly IFinishedProductRepository _finishedProductRepository = new SqliteFinishedProductRepository();
+    private readonly IModelCodeRepository _modelCodeRepository = new SqliteModelCodeRepository();
     private ObservableCollection<ProcessDefinition> _currentDefinitions = new();
-    private ObservableCollection<FinishedProductDefinition> _finishedProducts = new();
+    private ObservableCollection<ModelCodeDefinition> _modelCodes = new();
 
     /// <summary>XAML の DataTemplate から参照できる静的な部署リスト</summary>
     public static IReadOnlyList<Department>? DepartmentsSource { get; private set; }
@@ -50,7 +50,7 @@ public partial class ProcessSettingWindow : Window
         InitializeComponent();
         ProcessGrid.ItemsSource = _currentDefinitions;
         ApplyProcessGridDefaultSort();
-        FinishedProductGrid.ItemsSource = _finishedProducts;
+        ModelCodeGrid.ItemsSource = _modelCodes;
         Loaded += async (_, _) =>
         {
             // 部署リストをDBから読み込んでDataGrid.Tag経由でCellEditingTemplateに渡す
@@ -62,62 +62,62 @@ public partial class ProcessSettingWindow : Window
             ProcessGrid.Tag = allDepts;
 
             await RefreshRegisteredListAsync();
-            await RefreshFinishedProductsAsync();
+            await RefreshModelCodesAsync();
         };
     }
 
-    /// <summary>製品マスタをDBから読み込む</summary>
-    private async Task RefreshFinishedProductsAsync()
+    /// <summary>機種コード登録マスタをDBから読み込む</summary>
+    private async Task RefreshModelCodesAsync()
     {
-        var products = await _finishedProductRepository.GetAllAsync();
-        _finishedProducts = new ObservableCollection<FinishedProductDefinition>(products);
-        FinishedProductGrid.ItemsSource = _finishedProducts;
+        var modelCodes = await _modelCodeRepository.GetAllAsync();
+        _modelCodes = new ObservableCollection<ModelCodeDefinition>(modelCodes);
+        ModelCodeGrid.ItemsSource = _modelCodes;
     }
 
-    /// <summary>「追加」ボタン：製品一覧に新しい行を追加する</summary>
-    private void BtnAddFinishedProduct_Click(object sender, RoutedEventArgs e)
+    /// <summary>「追加」ボタン：機種コード一覧に新しい行を追加する</summary>
+    private void BtnAddModelCode_Click(object sender, RoutedEventArgs e)
     {
-        _finishedProducts.Add(new FinishedProductDefinition { SortOrder = _finishedProducts.Count });
+        _modelCodes.Add(new ModelCodeDefinition { Category = "半製品", SortOrder = _modelCodes.Count });
     }
 
-    /// <summary>製品一覧の行削除ボタン：選択行をコレクションから除去する（保存まで確定しない）</summary>
-    private void BtnDeleteFinishedProductRow_Click(object sender, RoutedEventArgs e)
+    /// <summary>機種コード一覧の行削除ボタン：選択行をコレクションから除去する（保存まで確定しない）</summary>
+    private void BtnDeleteModelCodeRow_Click(object sender, RoutedEventArgs e)
     {
-        if ((sender as FrameworkElement)?.DataContext is FinishedProductDefinition def)
-            _finishedProducts.Remove(def);
+        if ((sender as FrameworkElement)?.DataContext is ModelCodeDefinition def)
+            _modelCodes.Remove(def);
     }
 
-    /// <summary>「保存」ボタン：製品一覧をDBの内容と全置換する</summary>
-    private async void BtnSaveFinishedProducts_Click(object sender, RoutedEventArgs e)
+    /// <summary>「保存」ボタン：機種コード一覧をDBの内容と全置換する</summary>
+    private async void BtnSaveModelCodes_Click(object sender, RoutedEventArgs e)
     {
-        // 品目番号（先頭一致）の重複チェック（DBのUNIQUE制約違反による全削除後のデータ消失を防ぐ）
-        var duplicates = _finishedProducts
-            .Where(p => !string.IsNullOrWhiteSpace(p.ItemNumberPrefix))
-            .GroupBy(p => p.ItemNumberPrefix.Trim(), StringComparer.OrdinalIgnoreCase)
+        // 機種コードの重複チェック（DBのUNIQUE制約違反による全削除後のデータ消失を防ぐ）
+        var duplicates = _modelCodes
+            .Where(m => !string.IsNullOrWhiteSpace(m.ModelCode))
+            .GroupBy(m => m.ModelCode.Trim(), StringComparer.OrdinalIgnoreCase)
             .Where(g => g.Count() > 1)
             .Select(g => g.Key)
             .ToList();
 
         if (duplicates.Any())
         {
-            MessageBox.Show($"品目番号（先頭一致）が重複しています:\n{string.Join("\n", duplicates)}", "入力エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show($"機種コードが重複しています:\n{string.Join("\n", duplicates)}", "入力エラー", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
 
-        var existing = await _finishedProductRepository.GetAllAsync();
+        var existing = await _modelCodeRepository.GetAllAsync();
         foreach (var def in existing)
-            await _finishedProductRepository.DeleteAsync(def.Id);
+            await _modelCodeRepository.DeleteAsync(def.Id);
 
         var savedCount = 0;
-        foreach (var def in _finishedProducts)
+        foreach (var def in _modelCodes)
         {
-            if (string.IsNullOrWhiteSpace(def.ItemNumberPrefix)) continue;
+            if (string.IsNullOrWhiteSpace(def.ModelCode)) continue;
             def.SortOrder = savedCount++;
-            await _finishedProductRepository.AddAsync(def);
+            await _modelCodeRepository.AddAsync(def);
         }
 
-        await RefreshFinishedProductsAsync();
-        TxtFinishedProductStatus.Text = $"保存しました（{savedCount} 件）";
+        await RefreshModelCodesAsync();
+        TxtModelCodeStatus.Text = $"保存しました（{savedCount} 件）";
     }
 
     /// <summary>DB に登録済みの品目番号一覧を保持する（一覧選択ウィンドウ用）</summary>
@@ -158,6 +158,109 @@ public partial class ProcessSettingWindow : Window
         if (picker.ShowDialog() != true || picker.SelectedItemNumber is not string itemNumber) return;
 
         await LoadRegisteredItemAsync(itemNumber);
+    }
+
+    /// <summary>
+    /// 「未登録品目から選択」ボタン。
+    /// 機種コード登録で「半製品」に区分した機種コードにある未登録の品目番号を一覧表示し、選択した品目をPRONESSから取り込んで登録する。
+    /// </summary>
+    private async void BtnSelectUnregisteredItems_Click(object sender, RoutedEventArgs e)
+    {
+        var settings = _settingsService.Load();
+        if (!settings.IsOdbcConfigured)
+        {
+            TxtStatus.Text = "設定からODBC接続情報を入力してください";
+            return;
+        }
+
+        var semiProductModelCodes = (await _modelCodeRepository.GetAllAsync())
+            .Where(m => m.Category == "半製品")
+            .Select(m => m.ModelCode)
+            .ToList();
+        if (!semiProductModelCodes.Any())
+        {
+            TxtStatus.Text = "機種コード登録に「半製品」が登録されていません";
+            return;
+        }
+
+        if (_refreshTask != null)
+            await _refreshTask;
+
+        LoadingOverlay.Visibility = Visibility.Visible;
+        TxtLoadingMessage.Text = "未登録品目を取得中...";
+        List<UnregisteredItemEntry> entries;
+        try
+        {
+            var excludeSeibanMatch = ChkExcludeItemNumberEqualsSeiban.IsChecked == true;
+            var excludeStartsWithM = ChkExcludeItemNumberStartsWithM.IsChecked == true;
+            var orderRepo = new OdbcOrderRepository(settings);
+            var allItems = await Task.Run(() => orderRepo.GetSemiFinishedItemNumbersWithNames(semiProductModelCodes, excludeSeibanMatch, excludeStartsWithM).ToList());
+
+            var registeredSet = new HashSet<string>(_registeredItems.Select(i => i.ItemNumber), StringComparer.OrdinalIgnoreCase);
+
+            entries = allItems
+                .Where(i => !registeredSet.Contains(i.ItemNumber))
+                .Select(i => new UnregisteredItemEntry
+                {
+                    ItemNumber = i.ItemNumber,
+                    DisplayName = i.ItemName
+                })
+                .ToList();
+        }
+        finally
+        {
+            LoadingOverlay.Visibility = Visibility.Collapsed;
+            TxtLoadingMessage.Text = "取得中...";
+        }
+
+        if (!entries.Any())
+        {
+            TxtStatus.Text = "未登録の品目番号はありません";
+            return;
+        }
+
+        var picker = new UnregisteredItemPickerWindow(entries) { Owner = this };
+        if (picker.ShowDialog() != true || picker.SelectedItemNumbers is not List<string> selectedItemNumbers) return;
+
+        LoadingOverlay.Visibility = Visibility.Visible;
+        try
+        {
+            var odbcRepo = new OdbcProcessDefinitionRepository(settings);
+            var registered = 0;
+            var skipped = 0;
+
+            foreach (var itemNumber in selectedItemNumbers)
+            {
+                TxtLoadingMessage.Text = $"取得中...（{registered + skipped + 1}/{selectedItemNumbers.Count}）";
+
+                var odbcDefs = (await Task.Run(() => odbcRepo.GetByItemNumber(itemNumber))).ToList();
+                if (!odbcDefs.Any())
+                {
+                    skipped++;
+                    continue;
+                }
+
+                foreach (var def in odbcDefs)
+                {
+                    def.ItemNumber = itemNumber;
+                    await _dbRepository.AddAsync(def);
+                }
+
+                var entry = entries.First(i => i.ItemNumber == itemNumber);
+                if (!string.IsNullOrEmpty(entry.DisplayName))
+                    await _nameRepository.SaveDisplayNameAsync(itemNumber, entry.DisplayName);
+
+                registered++;
+            }
+
+            await RefreshRegisteredListAsync();
+            TxtStatus.Text = $"{selectedItemNumbers.Count} 件中 {registered} 件を登録しました（スキップ {skipped} 件）";
+        }
+        finally
+        {
+            TxtLoadingMessage.Text = "取得中...";
+            LoadingOverlay.Visibility = Visibility.Collapsed;
+        }
     }
 
     /// <summary>選択した品目番号の内容を入力欄・グリッドに表示する</summary>
@@ -223,40 +326,121 @@ public partial class ProcessSettingWindow : Window
 
             // DB既存設定を取得（品目番号 = ProductName として保存済みのもの）
             var dbDefs = (await _dbRepository.GetByItemNumberAsync(itemNumber)).ToList();
-            var dbDict = dbDefs
-                .Where(d => !string.IsNullOrEmpty(d.DestinationCode))
-                .GroupBy(d => d.DestinationCode, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
             // ODBC構造 + DB設定をマージ
             // 順序・指示先番号はODBCが正、工程名・LT・表示・警告はDB設定を優先
-            _currentDefinitions = new ObservableCollection<ProcessDefinition>(
-                odbcDefs.Select(odbcDef =>
-                {
-                    if (!dbDict.TryGetValue(odbcDef.DestinationCode, out var db))
-                        return odbcDef;  // DB未登録 → ODBC既定値をそのまま使用
-
-                    return new ProcessDefinition
-                    {
-                        ItemNumber = itemNumber,
-                        ProcessName = db.ProcessName,
-                        DestinationCode = odbcDef.DestinationCode,
-                        SortOrder = odbcDef.SortOrder,                          // 順序は常にODBC
-                        LeadTimeMinutes = db.LeadTimeMinutes,
-                        IsVisible = db.IsVisible,
-                        WarningDaysBeforeDeadline = db.WarningDaysBeforeDeadline,
-                        DepartmentId = db.DepartmentId,
-                        CoolTimeMinutes = db.CoolTimeMinutes,
-                        OutsourceLeadDays = db.OutsourceLeadDays
-                    };
-                })
-            );
+            _currentDefinitions = new ObservableCollection<ProcessDefinition>(MergeOdbcWithDb(itemNumber, odbcDefs, dbDefs));
             ProcessGrid.ItemsSource = _currentDefinitions;
             ApplyProcessGridDefaultSort();
             TxtStatus.Text = $"{odbcDefs.Count} 件の工程を取り込みました";
         }
         finally
         {
+            LoadingOverlay.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    /// <summary>ODBCから取得した工程一覧に、DB既存設定（工程名・LT・表示・警告等）をマージする。
+    /// 順序・指示先番号はODBCを正とする。</summary>
+    private static List<ProcessDefinition> MergeOdbcWithDb(string itemNumber, List<ProcessDefinition> odbcDefs, List<ProcessDefinition> dbDefs)
+    {
+        var dbDict = dbDefs
+            .Where(d => !string.IsNullOrEmpty(d.DestinationCode))
+            .GroupBy(d => d.DestinationCode, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+        return odbcDefs.Select(odbcDef =>
+        {
+            if (!dbDict.TryGetValue(odbcDef.DestinationCode, out var db))
+                return odbcDef;  // DB未登録 → ODBC既定値をそのまま使用
+
+            return new ProcessDefinition
+            {
+                ItemNumber = itemNumber,
+                ProcessName = db.ProcessName,
+                DestinationCode = odbcDef.DestinationCode,
+                SortOrder = odbcDef.SortOrder,                          // 順序は常にODBC
+                LeadTimeMinutes = db.LeadTimeMinutes,
+                IsVisible = db.IsVisible,
+                WarningDaysBeforeDeadline = db.WarningDaysBeforeDeadline,
+                DepartmentId = db.DepartmentId,
+                CoolTimeMinutes = db.CoolTimeMinutes,
+                OutsourceLeadDays = db.OutsourceLeadDays
+            };
+        }).ToList();
+    }
+
+    /// <summary>指定品目番号の工程定義をDB上で全置換する</summary>
+    private async Task ReplaceDefinitionsInDbAsync(string itemNumber, List<ProcessDefinition> definitions)
+    {
+        var existing = await _dbRepository.GetByItemNumberAsync(itemNumber);
+        foreach (var def in existing)
+            await _dbRepository.DeleteAsync(def.Id);
+
+        foreach (var def in definitions)
+        {
+            def.ItemNumber = itemNumber;
+            await _dbRepository.AddAsync(def);
+        }
+    }
+
+    /// <summary>
+    /// 「登録済み品目を一括更新」ボタン。
+    /// 半製品に登録済みの全品目番号についてPRONESSから工程を再取得し、DB既存設定とマージして保存する。
+    /// </summary>
+    private async void BtnBulkImport_Click(object sender, RoutedEventArgs e)
+    {
+        var settings = _settingsService.Load();
+        if (!settings.IsOdbcConfigured)
+        {
+            TxtStatus.Text = "設定からODBC接続情報を入力してください";
+            return;
+        }
+
+        if (_refreshTask != null)
+            await _refreshTask;
+
+        var itemNumbers = _registeredItems.Select(i => i.ItemNumber).ToList();
+        if (!itemNumbers.Any())
+        {
+            TxtStatus.Text = "登録済みの品目番号がありません";
+            return;
+        }
+
+        LoadingOverlay.Visibility = Visibility.Visible;
+        try
+        {
+            var odbcRepo = new OdbcProcessDefinitionRepository(settings);
+            var updated = 0;
+            var skipped = 0;
+
+            foreach (var itemNumber in itemNumbers)
+            {
+                TxtLoadingMessage.Text = $"取得中...（{updated + skipped + 1}/{itemNumbers.Count}）";
+
+                var odbcDefs = (await Task.Run(() => odbcRepo.GetByItemNumber(itemNumber))).ToList();
+                if (!odbcDefs.Any())
+                {
+                    skipped++;
+                    continue;
+                }
+
+                var dbDefs = (await _dbRepository.GetByItemNumberAsync(itemNumber)).ToList();
+                var merged = MergeOdbcWithDb(itemNumber, odbcDefs, dbDefs);
+                await ReplaceDefinitionsInDbAsync(itemNumber, merged);
+                updated++;
+            }
+
+            // 現在表示中の品目が更新対象に含まれていればグリッドを再読み込み
+            var currentItem = TxtItemNumber.Text.Trim();
+            if (!string.IsNullOrEmpty(currentItem) && itemNumbers.Contains(currentItem, StringComparer.OrdinalIgnoreCase))
+                await LoadRegisteredItemAsync(currentItem);
+
+            TxtStatus.Text = $"{itemNumbers.Count} 件中 {updated} 件を更新しました（スキップ {skipped} 件）";
+        }
+        finally
+        {
+            TxtLoadingMessage.Text = "取得中...";
             LoadingOverlay.Visibility = Visibility.Collapsed;
         }
     }

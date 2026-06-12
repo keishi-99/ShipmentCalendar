@@ -4,49 +4,51 @@ using ShipmentCalendar.Models;
 
 namespace ShipmentCalendar.Repositories;
 
-public class SqliteFinishedProductRepository : IFinishedProductRepository
+public class SqliteModelCodeRepository : IModelCodeRepository
 {
-    public async Task<IEnumerable<FinishedProductDefinition>> GetAllAsync()
+    public async Task<IEnumerable<ModelCodeDefinition>> GetAllAsync()
     {
-        var products = new List<FinishedProductDefinition>();
+        var definitions = new List<ModelCodeDefinition>();
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT Id, Name, ItemNumberPrefix, SortOrder FROM FinishedProducts ORDER BY SortOrder";
+        command.CommandText = "SELECT Id, ModelCode, Name, Category, SortOrder FROM ModelCodeDefinitions ORDER BY SortOrder";
         using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
-            products.Add(ReadDefinition(reader));
+            definitions.Add(ReadDefinition(reader));
 
-        return products;
+        return definitions;
     }
 
-    public async Task AddAsync(FinishedProductDefinition definition)
+    public async Task AddAsync(ModelCodeDefinition definition)
     {
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         using var command = connection.CreateCommand();
         command.CommandText = @"
-            INSERT INTO FinishedProducts (Name, ItemNumberPrefix, SortOrder)
-            VALUES ($name, $prefix, $so)";
+            INSERT INTO ModelCodeDefinitions (ModelCode, Name, Category, SortOrder)
+            VALUES ($modelCode, $name, $category, $so)";
+        command.Parameters.AddWithValue("$modelCode", definition.ModelCode);
         command.Parameters.AddWithValue("$name", definition.Name);
-        command.Parameters.AddWithValue("$prefix", definition.ItemNumberPrefix);
+        command.Parameters.AddWithValue("$category", definition.Category);
         command.Parameters.AddWithValue("$so", definition.SortOrder);
         await command.ExecuteNonQueryAsync();
     }
 
-    public async Task UpdateAsync(FinishedProductDefinition definition)
+    public async Task UpdateAsync(ModelCodeDefinition definition)
     {
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         using var command = connection.CreateCommand();
         command.CommandText = @"
-            UPDATE FinishedProducts SET Name=$name, ItemNumberPrefix=$prefix, SortOrder=$so
+            UPDATE ModelCodeDefinitions SET ModelCode=$modelCode, Name=$name, Category=$category, SortOrder=$so
             WHERE Id=$id";
+        command.Parameters.AddWithValue("$modelCode", definition.ModelCode);
         command.Parameters.AddWithValue("$name", definition.Name);
-        command.Parameters.AddWithValue("$prefix", definition.ItemNumberPrefix);
+        command.Parameters.AddWithValue("$category", definition.Category);
         command.Parameters.AddWithValue("$so", definition.SortOrder);
         command.Parameters.AddWithValue("$id", definition.Id);
         await command.ExecuteNonQueryAsync();
@@ -58,16 +60,17 @@ public class SqliteFinishedProductRepository : IFinishedProductRepository
         await connection.OpenAsync();
 
         using var command = connection.CreateCommand();
-        command.CommandText = "DELETE FROM FinishedProducts WHERE Id = $id";
+        command.CommandText = "DELETE FROM ModelCodeDefinitions WHERE Id = $id";
         command.Parameters.AddWithValue("$id", id);
         await command.ExecuteNonQueryAsync();
     }
 
-    private static FinishedProductDefinition ReadDefinition(SqliteDataReader reader) => new FinishedProductDefinition
+    private static ModelCodeDefinition ReadDefinition(SqliteDataReader reader) => new ModelCodeDefinition
     {
         Id = reader.GetInt32(0),
-        Name = reader.GetString(1),
-        ItemNumberPrefix = reader.GetString(2),
-        SortOrder = reader.GetInt32(3)
+        ModelCode = reader.GetString(1),
+        Name = reader.GetString(2),
+        Category = reader.GetString(3),
+        SortOrder = reader.GetInt32(4)
     };
 }
