@@ -107,6 +107,43 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
         await command.ExecuteNonQueryAsync();
     }
 
+    public async Task ReplaceForItemNumberAsync(string itemNumber, IEnumerable<ProcessDefinition> definitions)
+    {
+        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        await connection.OpenAsync();
+        using var transaction = connection.BeginTransaction();
+
+        using (var deleteCommand = connection.CreateCommand())
+        {
+            deleteCommand.Transaction = transaction;
+            deleteCommand.CommandText = "DELETE FROM ProcessDefinitions WHERE ItemNumber = $in";
+            deleteCommand.Parameters.AddWithValue("$in", itemNumber);
+            await deleteCommand.ExecuteNonQueryAsync();
+        }
+
+        foreach (var definition in definitions)
+        {
+            using var insertCommand = connection.CreateCommand();
+            insertCommand.Transaction = transaction;
+            insertCommand.CommandText = @"
+                INSERT INTO ProcessDefinitions (ItemNumber, ProcessName, LeadTimeMinutes, SortOrder, IsVisible, DestinationCode, WarningDaysBeforeDeadline, DepartmentId, CoolTimeMinutes, OutsourceLeadDays)
+                VALUES ($in, $name, $days, $so, $vis, $dest, $warn, $dept, $cool, $outsource)";
+            insertCommand.Parameters.AddWithValue("$in", itemNumber);
+            insertCommand.Parameters.AddWithValue("$name", definition.ProcessName);
+            insertCommand.Parameters.AddWithValue("$days", (object?)definition.LeadTimeMinutes ?? DBNull.Value);
+            insertCommand.Parameters.AddWithValue("$so", definition.SortOrder);
+            insertCommand.Parameters.AddWithValue("$vis", definition.IsVisible ? 1 : 0);
+            insertCommand.Parameters.AddWithValue("$dest", definition.DestinationCode);
+            insertCommand.Parameters.AddWithValue("$warn", definition.WarningDaysBeforeDeadline);
+            insertCommand.Parameters.AddWithValue("$dept", definition.DepartmentId);
+            insertCommand.Parameters.AddWithValue("$cool", definition.CoolTimeMinutes);
+            insertCommand.Parameters.AddWithValue("$outsource", definition.OutsourceLeadDays);
+            await insertCommand.ExecuteNonQueryAsync();
+        }
+
+        await transaction.CommitAsync();
+    }
+
     private static ProcessDefinition ReadDefinition(SqliteDataReader reader) => new ProcessDefinition
     {
         Id = reader.GetInt32(0),

@@ -65,6 +65,36 @@ public class SqliteModelCodeRepository : IModelCodeRepository
         await command.ExecuteNonQueryAsync();
     }
 
+    public async Task ReplaceAllAsync(IEnumerable<ModelCodeDefinition> definitions)
+    {
+        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        await connection.OpenAsync();
+        using var transaction = connection.BeginTransaction();
+
+        using (var deleteCommand = connection.CreateCommand())
+        {
+            deleteCommand.Transaction = transaction;
+            deleteCommand.CommandText = "DELETE FROM ModelCodeDefinitions";
+            await deleteCommand.ExecuteNonQueryAsync();
+        }
+
+        foreach (var definition in definitions)
+        {
+            using var insertCommand = connection.CreateCommand();
+            insertCommand.Transaction = transaction;
+            insertCommand.CommandText = @"
+                INSERT INTO ModelCodeDefinitions (ModelCode, Name, Category, SortOrder)
+                VALUES ($modelCode, $name, $category, $so)";
+            insertCommand.Parameters.AddWithValue("$modelCode", definition.ModelCode);
+            insertCommand.Parameters.AddWithValue("$name", definition.Name);
+            insertCommand.Parameters.AddWithValue("$category", definition.Category);
+            insertCommand.Parameters.AddWithValue("$so", definition.SortOrder);
+            await insertCommand.ExecuteNonQueryAsync();
+        }
+
+        await transaction.CommitAsync();
+    }
+
     private static ModelCodeDefinition ReadDefinition(SqliteDataReader reader) => new ModelCodeDefinition
     {
         Id = reader.GetInt32(0),

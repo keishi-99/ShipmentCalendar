@@ -109,7 +109,7 @@ public partial class MainViewModel : ObservableObject {
             result = result.Where(o => o.DeliveryDate <= DateOnly.FromDateTime(FilterDeliveryTo.Value));
 
         if (FilterHideCompleted)
-            result = result.Where(o => !o.Processes.Any() || o.Processes.Last().Status != ProcessStatus.Completed);
+            result = result.Where(o => !o.Processes.Any() || o.Processes.OrderBy(p => p.SortOrder).Last().Status != ProcessStatus.Completed);
 
         // 製品/半製品/どちらでもないフィルター（機種コード登録マスタの区分で判定）
         if (FilterProductCategory == "製品")
