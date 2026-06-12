@@ -38,8 +38,10 @@ public partial class MainWindow : Window {
     private bool _isFullScreen;
 
     private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e) {
-        if (e.Key == Key.F11)
+        if (e.Key == Key.F11) {
             ToggleFullScreen();
+            e.Handled = true;
+        }
     }
 
     private void BtnToggleFullScreen_Click(object sender, RoutedEventArgs e) {
@@ -55,6 +57,8 @@ public partial class MainWindow : Window {
 
             WindowStyle = WindowStyle.None;
             ResizeMode = ResizeMode.NoResize;
+            if (WindowState == WindowState.Maximized)
+                WindowState = WindowState.Normal;
             WindowState = WindowState.Maximized;
         } else {
             WindowStyle = _previousWindowStyle;
