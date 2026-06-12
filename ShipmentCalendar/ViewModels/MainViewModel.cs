@@ -39,6 +39,7 @@ public partial class MainViewModel : ObservableObject {
     [ObservableProperty] private DateTime? _filterDeliveryFrom;
     [ObservableProperty] private DateTime? _filterDeliveryTo;
     [ObservableProperty] private bool _filterHideCompleted;
+    [ObservableProperty] private bool _filterTodayOnly;
 
     /// <summary>製品/半製品フィルター: "全て" / "半製品" / "製品"</summary>
     [ObservableProperty] private string _filterProductCategory = "全て";
@@ -58,6 +59,17 @@ public partial class MainViewModel : ObservableObject {
     partial void OnFilterDeliveryFromChanged(DateTime? value) => ApplyFilter();
     partial void OnFilterDeliveryToChanged(DateTime? value) => ApplyFilter();
     partial void OnFilterHideCompletedChanged(bool value) => ApplyFilter();
+
+    /// <summary>「本日のみ」トグル：ONなら出荷日範囲を今日に固定し、OFFなら範囲をクリアする</summary>
+    partial void OnFilterTodayOnlyChanged(bool value) {
+        if (value) {
+            FilterDeliveryFrom = DateTime.Today;
+            FilterDeliveryTo = DateTime.Today;
+        } else {
+            FilterDeliveryFrom = null;
+            FilterDeliveryTo = null;
+        }
+    }
     partial void OnFilterProductCategoryChanged(string value) => ApplyFilter();
     partial void OnFilterDepartmentIdChanged(int value)
     {
@@ -74,6 +86,7 @@ public partial class MainViewModel : ObservableObject {
         FilterItemNumber = string.Empty;
         FilterProductName = string.Empty;
         FilterManufactureNumber = string.Empty;
+        FilterTodayOnly = false;
         FilterDeliveryFrom = null;
         FilterDeliveryTo = null;
         FilterProductCategory = "全て";

@@ -333,6 +333,15 @@ public class StatusToColorConverter : System.Windows.Data.IValueConverter {
         => throw new NotImplementedException();
 }
 
+/// <summary>bool値を反転するコンバーター（"本日のみ"チェック時にDatePickerを無効化するために使用）</summary>
+public class InverseBooleanConverter : System.Windows.Data.IValueConverter {
+    public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        => !(value is bool b && b);
+
+    public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        => !(value is bool b && b);
+}
+
 /// <summary>インデックスでProcessリストを検索して背景色を返すコンバーター</summary>
 public class ProcessIndexToStatusColorConverter : System.Windows.Data.IMultiValueConverter {
     public object Convert(object[] values, Type targetType, object parameter, System.Globalization.CultureInfo culture) {
