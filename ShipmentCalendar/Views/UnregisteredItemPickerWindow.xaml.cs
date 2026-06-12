@@ -57,14 +57,16 @@ public partial class UnregisteredItemPickerWindow : Window
 
     private void BtnSelectAll_Click(object sender, RoutedEventArgs e)
     {
-        foreach (var item in _allItems)
-            item.IsSelected = true;
+        if (LstItems.ItemsSource is IEnumerable<UnregisteredItemEntry> visibleItems)
+            foreach (var item in visibleItems)
+                item.IsSelected = true;
     }
 
     private void BtnDeselectAll_Click(object sender, RoutedEventArgs e)
     {
-        foreach (var item in _allItems)
-            item.IsSelected = false;
+        if (LstItems.ItemsSource is IEnumerable<UnregisteredItemEntry> visibleItems)
+            foreach (var item in visibleItems)
+                item.IsSelected = false;
     }
 
     private void BtnRegister_Click(object sender, RoutedEventArgs e)
