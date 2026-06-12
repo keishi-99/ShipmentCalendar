@@ -25,6 +25,51 @@ public partial class MainWindow : Window {
         };
         UpdateDueDateDisplayButtonText();
         UpdateSortModeButtonText();
+        InitializeColumnVisibility();
+        ApplyFixedColumnFontSize();
+    }
+
+    // 列表示設定チェックボックスと対応するDataGridColumnインデックス・設定プロパティの組み合わせ
+    private (CheckBox CheckBox, int ColumnIndex, Func<AppSettings, bool> Getter, Action<AppSettings, bool> Setter)[] ColumnVisibilityMappings => new[] {
+        (ChkColDeliveryDate,      0, (Func<AppSettings, bool>)(s => s.ShowColumnDeliveryDate),      (Action<AppSettings, bool>)((s, v) => s.ShowColumnDeliveryDate = v)),
+        (ChkColCompletionDate,    1, (Func<AppSettings, bool>)(s => s.ShowColumnCompletionDate),    (Action<AppSettings, bool>)((s, v) => s.ShowColumnCompletionDate = v)),
+        (ChkColItemNumber,        2, (Func<AppSettings, bool>)(s => s.ShowColumnItemNumber),        (Action<AppSettings, bool>)((s, v) => s.ShowColumnItemNumber = v)),
+        (ChkColModelCode,         3, (Func<AppSettings, bool>)(s => s.ShowColumnModelCode),         (Action<AppSettings, bool>)((s, v) => s.ShowColumnModelCode = v)),
+        (ChkColProductName,       4, (Func<AppSettings, bool>)(s => s.ShowColumnProductName),       (Action<AppSettings, bool>)((s, v) => s.ShowColumnProductName = v)),
+        (ChkColManufactureNumber, 5, (Func<AppSettings, bool>)(s => s.ShowColumnManufactureNumber), (Action<AppSettings, bool>)((s, v) => s.ShowColumnManufactureNumber = v)),
+        (ChkColPlannedQuantity,   6, (Func<AppSettings, bool>)(s => s.ShowColumnPlannedQuantity),    (Action<AppSettings, bool>)((s, v) => s.ShowColumnPlannedQuantity = v)),
+    };
+
+    // チェックボックスのChecked/Uncheckedイベントを設定値の反映として処理するか（初期化中はfalseにして保存を抑制する）
+    private bool _columnVisibilityEventsEnabled;
+
+    /// <summary>保存済みの設定値をチェックボックスとDataGridColumnの表示状態に反映する（保存はしない）</summary>
+    private void InitializeColumnVisibility() {
+        _columnVisibilityEventsEnabled = false;
+        foreach (var (checkBox, columnIndex, getter, _) in ColumnVisibilityMappings) {
+            var isVisible = getter(_viewModel.Settings);
+            checkBox.IsChecked = isVisible;
+            OrderGrid.Columns[columnIndex].Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+        }
+        _columnVisibilityEventsEnabled = true;
+    }
+
+    private void BtnColumnVisibility_Click(object sender, RoutedEventArgs e) {
+        ColumnVisibilityPopup.IsOpen = !ColumnVisibilityPopup.IsOpen;
+    }
+
+    // TODO(human): チェックボックスの状態変化時に、対応するDataGridColumnの表示/非表示を切り替え、
+    // _viewModel.Settingsの該当プロパティを更新し、SaveSettings()で永続化する処理を実装してください。
+    private void ColumnVisibilityCheckBox_Changed(object sender, RoutedEventArgs e) {
+        var checkBox = (CheckBox)sender;
+        var mapping = ColumnVisibilityMappings.FirstOrDefault(m => m.CheckBox == checkBox);
+        if (!_columnVisibilityEventsEnabled) return;
+        if (mapping.CheckBox == null) return;
+
+        var isChecked = checkBox.IsChecked ?? false;
+        OrderGrid.Columns[mapping.ColumnIndex].Visibility = isChecked ? Visibility.Visible : Visibility.Collapsed;
+        mapping.Setter(_viewModel.Settings, isChecked);
+        _viewModel.SaveSettings();
     }
 
     /// <summary>表示日切り替えボタンの文言を現在の設定に合わせて更新する</summary>
@@ -53,11 +98,28 @@ public partial class MainWindow : Window {
         UpdateSortModeButtonText();
     }
 
+    /// <summary>固定列のフォントサイズを設定値から適用し、行の高さを再計算する</summary>
+    private void ApplyFixedColumnFontSize() {
+        OrderGrid.FontSize = _viewModel.Settings.FixedColumnFontSize;
+        UpdateRowHeight();
+    }
+
+    /// <summary>工程列の表示行数（工程名＋期限日＋標準時間の設定状況）と固定列のフォントサイズから行の高さを計算する</summary>
+    private void UpdateRowHeight() {
+        var settings = _viewModel.Settings;
+        var processLineCount = 1 + (settings.ShowProcessDate ? 1 : 0) + (settings.ShowProcessRequiredHours ? 1 : 0);
+        var processHeight = processLineCount * 20 + 10;
+        var fixedHeight = settings.FixedColumnFontSize * 1.8 + 8;
+        OrderGrid.RowHeight = Math.Max(processHeight, fixedHeight);
+    }
+
     /// <summary>工程列をインデックスベースで動的生成する（列ヘッダー: 1, 2, 3...）</summary>
     private void BuildProcessColumns() {
-        // 固定列（出荷日・完了日・品目番号・品目名・製番・計画数）以外を削除
-        while (OrderGrid.Columns.Count > 6)
-            OrderGrid.Columns.RemoveAt(6);
+        UpdateRowHeight();
+
+        // 固定列（出荷日・完了日・品目番号・機種コード・品目名・製番・計画数）以外を削除
+        while (OrderGrid.Columns.Count > 7)
+            OrderGrid.Columns.RemoveAt(7);
 
         if (!_viewModel.Orders.Any()) return;
 
@@ -108,18 +170,33 @@ public partial class MainWindow : Window {
             nameFactory.SetValue(TextBlock.FontSizeProperty, 11.0);
             nameFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.SemiBold);
 
-            // 期限日テキスト
-            var dateFactory = new FrameworkElementFactory(typeof(TextBlock));
-            var dateBinding = new MultiBinding { Converter = new ProcessIndexToDueDateConverter(_viewModel.Settings.ShowDueDateForNotStarted) };
-            dateBinding.Bindings.Add(new Binding("Processes"));
-            dateBinding.Bindings.Add(new Binding() { Source = index });
-            dateFactory.SetBinding(TextBlock.TextProperty, dateBinding);
-            dateFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-            dateFactory.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
-            dateFactory.SetValue(TextBlock.FontSizeProperty, 11.0);
-
             stackFactory.AppendChild(nameFactory);
-            stackFactory.AppendChild(dateFactory);
+
+            // 期限日テキスト（設定でOFFの場合は生成しない）
+            if (_viewModel.Settings.ShowProcessDate) {
+                var dateFactory = new FrameworkElementFactory(typeof(TextBlock));
+                var dateBinding = new MultiBinding { Converter = new ProcessIndexToDueDateConverter(_viewModel.Settings.ShowDueDateForNotStarted) };
+                dateBinding.Bindings.Add(new Binding("Processes"));
+                dateBinding.Bindings.Add(new Binding() { Source = index });
+                dateFactory.SetBinding(TextBlock.TextProperty, dateBinding);
+                dateFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+                dateFactory.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
+                dateFactory.SetValue(TextBlock.FontSizeProperty, 11.0);
+                stackFactory.AppendChild(dateFactory);
+            }
+
+            // 標準時間（必要時間）テキスト（設定でOFFの場合は生成しない）
+            if (_viewModel.Settings.ShowProcessRequiredHours) {
+                var hoursFactory = new FrameworkElementFactory(typeof(TextBlock));
+                var hoursBinding = new MultiBinding { Converter = new ProcessIndexToRequiredHoursConverter() };
+                hoursBinding.Bindings.Add(new Binding("Processes"));
+                hoursBinding.Bindings.Add(new Binding() { Source = index });
+                hoursFactory.SetBinding(TextBlock.TextProperty, hoursBinding);
+                hoursFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+                hoursFactory.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
+                hoursFactory.SetValue(TextBlock.FontSizeProperty, 11.0);
+                stackFactory.AppendChild(hoursFactory);
+            }
 
             // 外注待ち日数表示（OutsourceLeadDaysが設定されている工程のみ、区切り線付きの別セル風に表示）
             var gapBorderFactory = new FrameworkElementFactory(typeof(Border));
@@ -177,6 +254,15 @@ public partial class MainWindow : Window {
         window.ShowDialog();
         // 部署マスタが変更された可能性があるため、フィルターボタンリストを更新
         await _viewModel.RefreshDepartmentFiltersAsync();
+    }
+
+    private void BtnDisplaySettings_Click(object sender, RoutedEventArgs e) {
+        var window = new DisplaySettingsWindow(_viewModel);
+        window.Owner = this;
+        if (window.ShowDialog() == true) {
+            ApplyFixedColumnFontSize();
+            BuildProcessColumns();
+        }
     }
 
     private void BtnClearFilter_Click(object sender, RoutedEventArgs e) {
@@ -251,12 +337,29 @@ public class ProcessIndexToDueDateConverter : System.Windows.Data.IMultiValueCon
         if (process.Status == ProcessStatus.Completed)
             return process.ActualDate.HasValue ? $"✓{process.ActualDate.Value:MM/dd}" : string.Empty;
 
-        // 未完了工程は 着手必須日/完了必須日（設定により切り替え） + 必要時間（時間単位、小数1桁）
+        // 未完了工程は 着手必須日/完了必須日（設定により切り替え）を表示
         // 完了必須日は「この日までに完了」=矢印を日付の前に、着手必須日は「この日から着手」=矢印を日付の後に付与
-        var hours = process.RequiredMinutes / 60.0;
         if (_showDueDateForNotStarted)
-            return $"→{process.DueDate:MM/dd}\n({hours:F1}h)";
-        return $"{process.StartDate:MM/dd}→\n({hours:F1}h)";
+            return $"→{process.DueDate:MM/dd}";
+        return $"{process.StartDate:MM/dd}→";
+    }
+
+    public object[] ConvertBack(object value, Type[] targetTypes, object parameter, System.Globalization.CultureInfo culture)
+        => throw new NotImplementedException();
+}
+
+/// <summary>インデックスでProcessリストを検索して標準時間（必要時間）テキストを返すコンバーター</summary>
+public class ProcessIndexToRequiredHoursConverter : System.Windows.Data.IMultiValueConverter {
+    public object Convert(object[] values, Type targetType, object parameter, System.Globalization.CultureInfo culture) {
+        if (values[0] is not IEnumerable<OrderProcess> processes) return string.Empty;
+        if (values[1] is not int index) return string.Empty;
+        var process = processes.ElementAtOrDefault(index);
+        if (process == null) return string.Empty;
+        // 完了工程は標準時間を表示しない
+        if (process.Status == ProcessStatus.Completed) return string.Empty;
+
+        var hours = process.RequiredMinutes / 60.0;
+        return $"({hours:F1}h)";
     }
 
     public object[] ConvertBack(object value, Type[] targetTypes, object parameter, System.Globalization.CultureInfo culture)

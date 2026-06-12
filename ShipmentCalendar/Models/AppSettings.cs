@@ -32,6 +32,28 @@ public class AppSettings
     /// <summary>注文一覧の並び順を「次の未完了工程の期限日」にするか（false=出荷日順）</summary>
     public bool SortByProcessDeadline { get; set; } = false;
 
+    /// <summary>メイン画面の「出荷日」列を表示するか</summary>
+    public bool ShowColumnDeliveryDate { get; set; } = true;
+    /// <summary>メイン画面の「完了日」列を表示するか</summary>
+    public bool ShowColumnCompletionDate { get; set; } = true;
+    /// <summary>メイン画面の「品目番号」列を表示するか</summary>
+    public bool ShowColumnItemNumber { get; set; } = true;
+    /// <summary>メイン画面の「機種コード」列を表示するか</summary>
+    public bool ShowColumnModelCode { get; set; } = true;
+    /// <summary>メイン画面の「品目名」列を表示するか</summary>
+    public bool ShowColumnProductName { get; set; } = true;
+    /// <summary>メイン画面の「製番」列を表示するか</summary>
+    public bool ShowColumnManufactureNumber { get; set; } = true;
+    /// <summary>メイン画面の「計画数」列を表示するか</summary>
+    public bool ShowColumnPlannedQuantity { get; set; } = true;
+
+    /// <summary>メイン画面の固定列（出荷日〜計画数）のフォントサイズ</summary>
+    public double FixedColumnFontSize { get; set; } = 12;
+    /// <summary>工程列に「期限日」行を表示するか</summary>
+    public bool ShowProcessDate { get; set; } = true;
+    /// <summary>工程列に「標準時間（必要時間）」行を表示するか</summary>
+    public bool ShowProcessRequiredHours { get; set; } = true;
+
     /// <summary>ODBC接続設定が入力済みか（接続方式に応じて必須項目を判定）</summary>
     public bool IsOdbcConfigured =>
         OdbcConnectionMode == "Direct"
