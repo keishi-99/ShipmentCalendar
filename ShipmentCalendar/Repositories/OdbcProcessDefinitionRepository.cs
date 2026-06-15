@@ -104,8 +104,8 @@ public class OdbcProcessDefinitionRepository
     /// <summary>複数の品目番号の工程定義を1回のODBC接続でまとめて取得する（品目番号 → 工程定義一覧）</summary>
     public IDictionary<string, List<ProcessDefinition>> GetByItemNumbers(IEnumerable<string> itemNumbers)
     {
-        var items = itemNumbers.Where(i => !string.IsNullOrEmpty(i)).Distinct().ToList();
-        var result = items.ToDictionary(i => i, _ => new List<ProcessDefinition>());
+        var items = itemNumbers.Where(i => !string.IsNullOrEmpty(i)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var result = items.ToDictionary(i => i, _ => new List<ProcessDefinition>(), StringComparer.OrdinalIgnoreCase);
         if (items.Count == 0) return result;
 
         using var conn = OdbcConnectionFactory.Create(_settings);

@@ -238,8 +238,7 @@ public partial class ProcessSettingWindow : Window
             {
                 TxtLoadingMessage.Text = $"登録中...（{registered + skipped + 1}/{selectedItemNumbers.Count}）";
 
-                var odbcDefs = odbcDefsByItem[itemNumber];
-                if (!odbcDefs.Any())
+                if (!odbcDefsByItem.TryGetValue(itemNumber, out var odbcDefs) || !odbcDefs.Any())
                 {
                     skipped++;
                     continue;
@@ -421,8 +420,7 @@ public partial class ProcessSettingWindow : Window
             {
                 TxtLoadingMessage.Text = $"更新中...（{updated + skipped + 1}/{itemNumbers.Count}）";
 
-                var odbcDefs = odbcDefsByItem[itemNumber];
-                if (!odbcDefs.Any())
+                if (!odbcDefsByItem.TryGetValue(itemNumber, out var odbcDefs) || !odbcDefs.Any())
                 {
                     skipped++;
                     continue;
