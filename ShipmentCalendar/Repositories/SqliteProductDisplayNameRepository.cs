@@ -36,6 +36,7 @@ public class SqliteProductDisplayNameRepository
     }
 
     /// <summary>品目番号に対応する表示名を保存する（INSERT OR REPLACE）</summary>
+    /// <remarks>ProductName列はUNIQUE制約を利用した一意キーとして品目番号をそのまま格納している</remarks>
     public async Task SaveDisplayNameAsync(string itemNumber, string displayName)
     {
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);

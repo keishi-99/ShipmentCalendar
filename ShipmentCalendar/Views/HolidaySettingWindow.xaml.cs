@@ -11,6 +11,7 @@ public partial class HolidaySettingWindow : Window
     private readonly IHolidayRepository _repository = new SqliteHolidayRepository();
     private readonly AppSettingsService _settingsService = new AppSettingsService();
     private List<Holiday> _holidays = new();
+    private bool _isFetching;
 
     public HolidaySettingWindow()
     {
@@ -53,16 +54,23 @@ public partial class HolidaySettingWindow : Window
             return;
         }
 
+        var date = DateOnly.FromDateTime(DpHoliday.SelectedDate.Value);
         var holiday = new Holiday
         {
-            Date = DateOnly.FromDateTime(DpHoliday.SelectedDate.Value),
+            Date = date,
             Description = TxtDescription.Text.Trim()
         };
 
         await _repository.AddAsync(holiday);
         TxtDescription.Text = string.Empty;
         DpHoliday.SelectedDate = null;
-        await LoadHolidaysAsync();
+
+        // 追加した休日の年が現在表示中の年と異なる場合は、表示中の年を切り替えて一覧に反映する
+        var years = (List<int>)CmbYear.ItemsSource;
+        if (CmbYear.SelectedItem is int selectedYear && selectedYear != date.Year && years.Contains(date.Year))
+            CmbYear.SelectedItem = date.Year;
+        else
+            await LoadHolidaysAsync();
     }
 
     private async void BtnDelete_Click(object sender, RoutedEventArgs e)
@@ -94,6 +102,7 @@ public partial class HolidaySettingWindow : Window
         TxtStatus.Text = "休日データを取得中...";
         BtnFetchHolidays.IsEnabled = false;
         LoadingOverlay.Visibility = Visibility.Visible;
+        _isFetching = true;
 
         try
         {
@@ -130,6 +139,16 @@ public partial class HolidaySettingWindow : Window
         {
             BtnFetchHolidays.IsEnabled = true;
             LoadingOverlay.Visibility = Visibility.Collapsed;
+            _isFetching = false;
+        }
+    }
+
+    private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (_isFetching)
+        {
+            e.Cancel = true;
+            TxtStatus.Text = "休日データの取得が完了するまで閉じることができません";
         }
     }
 

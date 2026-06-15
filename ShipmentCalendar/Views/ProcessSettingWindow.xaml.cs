@@ -60,6 +60,7 @@ public partial class ProcessSettingWindow : Window
             allDepts.AddRange(depts);
             DepartmentsSource = allDepts;
             ProcessGrid.Tag = allDepts;
+            ProcessGrid.IsEnabled = true;
 
             await RefreshRegisteredListAsync();
             await RefreshModelCodesAsync();
@@ -70,6 +71,12 @@ public partial class ProcessSettingWindow : Window
     private async Task RefreshModelCodesAsync()
     {
         var modelCodes = await _modelCodeRepository.GetAllAsync();
+
+        // 区分が未設定（空文字列）の既存データは、コンボボックスが空欄表示にならないよう「製品」を初期値とする
+        foreach (var m in modelCodes)
+            if (string.IsNullOrEmpty(m.Category))
+                m.Category = "製品";
+
         _modelCodes = new ObservableCollection<ModelCodeDefinition>(modelCodes);
         ModelCodeGrid.ItemsSource = _modelCodes;
     }
@@ -224,11 +231,14 @@ public partial class ProcessSettingWindow : Window
             var registered = 0;
             var skipped = 0;
 
+            TxtLoadingMessage.Text = "取得中...";
+            var odbcDefsByItem = await Task.Run(() => odbcRepo.GetByItemNumbers(selectedItemNumbers));
+
             foreach (var itemNumber in selectedItemNumbers)
             {
-                TxtLoadingMessage.Text = $"取得中...（{registered + skipped + 1}/{selectedItemNumbers.Count}）";
+                TxtLoadingMessage.Text = $"登録中...（{registered + skipped + 1}/{selectedItemNumbers.Count}）";
 
-                var odbcDefs = (await Task.Run(() => odbcRepo.GetByItemNumber(itemNumber))).ToList();
+                var odbcDefs = odbcDefsByItem[itemNumber];
                 if (!odbcDefs.Any())
                 {
                     skipped++;
@@ -404,11 +414,14 @@ public partial class ProcessSettingWindow : Window
             var updated = 0;
             var skipped = 0;
 
+            TxtLoadingMessage.Text = "取得中...";
+            var odbcDefsByItem = await Task.Run(() => odbcRepo.GetByItemNumbers(itemNumbers));
+
             foreach (var itemNumber in itemNumbers)
             {
-                TxtLoadingMessage.Text = $"取得中...（{updated + skipped + 1}/{itemNumbers.Count}）";
+                TxtLoadingMessage.Text = $"更新中...（{updated + skipped + 1}/{itemNumbers.Count}）";
 
-                var odbcDefs = (await Task.Run(() => odbcRepo.GetByItemNumber(itemNumber))).ToList();
+                var odbcDefs = odbcDefsByItem[itemNumber];
                 if (!odbcDefs.Any())
                 {
                     skipped++;
