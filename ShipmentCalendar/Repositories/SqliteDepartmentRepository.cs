@@ -27,7 +27,8 @@ public class SqliteDepartmentRepository
         return list;
     }
 
-    public async Task AddAsync(string name)
+    /// <summary>部署を追加する。名前が既存と重複していてINSERTされなかった場合はfalseを返す</summary>
+    public async Task<bool> AddAsync(string name)
     {
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
@@ -35,7 +36,8 @@ public class SqliteDepartmentRepository
         var command = connection.CreateCommand();
         command.CommandText = "INSERT OR IGNORE INTO Departments (Name, SortOrder) VALUES ($name, (SELECT COALESCE(MAX(SortOrder)+1, 0) FROM Departments))";
         command.Parameters.AddWithValue("$name", name);
-        await command.ExecuteNonQueryAsync();
+        var affected = await command.ExecuteNonQueryAsync();
+        return affected > 0;
     }
 
     public async Task DeleteAsync(int id)

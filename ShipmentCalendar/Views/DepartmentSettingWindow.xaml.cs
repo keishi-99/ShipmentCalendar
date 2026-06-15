@@ -33,9 +33,10 @@ public partial class DepartmentSettingWindow : Window
 
         try
         {
-            await _repository.AddAsync(name);
+            var added = await _repository.AddAsync(name);
             TxtDeptName.Text = string.Empty;
             await LoadAsync();
+            TxtStatus.Text = added ? string.Empty : $"「{name}」は既に登録されています";
         }
         catch (Exception ex)
         {

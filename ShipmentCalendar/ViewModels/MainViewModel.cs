@@ -122,7 +122,7 @@ public partial class MainViewModel : ObservableObject {
             result = result.Where(o => o.DeliveryDate <= DateOnly.FromDateTime(FilterDeliveryTo.Value));
 
         if (FilterHideCompleted)
-            result = result.Where(o => !o.Processes.Any() || o.Processes.MaxBy(p => p.SortOrder)!.Status != ProcessStatus.Completed);
+            result = result.Where(o => !o.Processes.Any() || o.Processes.Any(p => p.Status != ProcessStatus.Completed));
 
         // 製品/半製品/どちらでもないフィルター（機種コード登録マスタの区分で判定）
         if (FilterProductCategory == "製品")
@@ -284,14 +284,16 @@ public partial class MainViewModel : ObservableObject {
                 // 仮登録した完了済み指示先番号→受入日のマッピング（指示先番号は工程ごとに一意。重複は先着優先）
                 var completedByDestNumber = order.Processes
                     .Where(p => p.Status == ProcessStatus.Completed)
-                    .GroupBy(p => p.DestinationCode)
-                    .ToDictionary(g => g.Key, g => g.First().ActualDate);
+                    .GroupBy(p => p.DestinationCode, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(g => g.Key, g => g.First().ActualDate, StringComparer.OrdinalIgnoreCase);
 
                 order.Processes = calculator.BuildProcesses(order, productDefs.Where(d => d.IsVisible), completedByDestNumber);
 
-                // 順序999が完了している場合、前工程すべてを完了扱いにする
-                var proc999 = order.Processes.FirstOrDefault(p => p.SortOrder == 999);
-                if (proc999?.Status == ProcessStatus.Completed)
+                // 順序999（最終受入）が完了している場合、前工程すべてを完了扱いにする
+                // ※999番工程がIsVisible=falseで非表示でも判定できるよう、フィルタ前のproductDefsと
+                //   完了済み指示先番号セットから直接判定する
+                var def999 = productDefs.FirstOrDefault(d => d.SortOrder == 999);
+                if (def999 != null && completedByDestNumber.ContainsKey(def999.DestinationCode))
                 {
                     foreach (var process in order.Processes)
                         process.Status = ProcessStatus.Completed;

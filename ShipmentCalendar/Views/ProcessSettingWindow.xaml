@@ -160,6 +160,7 @@
             CanUserAddRows="False"
             CanUserDeleteRows="False"
             HeadersVisibility="Column"
+            IsEnabled="False"
             SelectionMode="Single"
             SelectionUnit="Cell">
             <DataGrid.Columns>

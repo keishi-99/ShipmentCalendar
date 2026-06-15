@@ -160,18 +160,24 @@ public partial class MainWindow : Window {
         OrderGrid.RowHeight = Math.Max(processHeight, fixedHeight);
     }
 
+    // 直前に構築した工程列の構成（変化がなければ再構築をスキップする）
+    private (int MaxProcessCount, bool ShowDueDateForNotStarted, bool ShowProcessDate, bool ShowProcessRequiredHours, double ProcessColumnFontSize)? _lastColumnSignature;
+
     /// <summary>工程列をインデックスベースで動的生成する（列ヘッダー: 1, 2, 3...）</summary>
     private void BuildProcessColumns() {
         UpdateRowHeight();
+
+        // 全注文中の最大工程数を列数とする
+        var maxProcessCount = _viewModel.Orders.Any() ? _viewModel.Orders.Max(o => o.Processes.Count) : 0;
+        var settings = _viewModel.Settings;
+        var signature = (maxProcessCount, settings.ShowDueDateForNotStarted, settings.ShowProcessDate, settings.ShowProcessRequiredHours, settings.ProcessColumnFontSize);
+        if (signature == _lastColumnSignature) return;
+        _lastColumnSignature = signature;
 
         // 固定列（出荷日・完了日・品目番号・機種コード・品目名・製番・計画数）以外を削除
         while (OrderGrid.Columns.Count > 7)
             OrderGrid.Columns.RemoveAt(7);
 
-        if (!_viewModel.Orders.Any()) return;
-
-        // 全注文中の最大工程数を列数とする
-        var maxProcessCount = _viewModel.Orders.Max(o => o.Processes.Count);
         if (maxProcessCount == 0) return;
 
         for (int i = 0; i < maxProcessCount; i++) {
