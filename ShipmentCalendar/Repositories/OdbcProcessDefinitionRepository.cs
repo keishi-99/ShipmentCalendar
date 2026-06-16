@@ -47,7 +47,8 @@ public class OdbcProcessDefinitionRepository
                 ItemNumber = itemNumber,
                 ProcessName = processName,
                 DestinationCode = destNumber,
-                LeadTimeMinutes = setup + work,
+                SetupTimeMinutes = setup,
+                WorkTimeMinutes = work,
                 SortOrder = sortOrder,
                 IsVisible = true,
                 WarningDaysBeforeDeadline = 0
@@ -91,7 +92,8 @@ public class OdbcProcessDefinitionRepository
                 ItemNumber = itemNumber,
                 ProcessName = processName,
                 DestinationCode = destNumber,
-                LeadTimeMinutes = setup + work,
+                SetupTimeMinutes = setup,
+                WorkTimeMinutes = work,
                 SortOrder = sortOrder,
                 IsVisible = true,
                 WarningDaysBeforeDeadline = 0
@@ -146,7 +148,8 @@ public class OdbcProcessDefinitionRepository
                     ItemNumber = itemNumber,
                     ProcessName = processName,
                     DestinationCode = destNumber,
-                    LeadTimeMinutes = setup + work,
+                    SetupTimeMinutes = setup,
+                WorkTimeMinutes = work,
                     SortOrder = sortOrder,
                     IsVisible = true,
                     WarningDaysBeforeDeadline = 0

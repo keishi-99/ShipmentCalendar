@@ -177,7 +177,7 @@
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
                 <DataGridTextColumn
-                    Width="*"
+                    Width="150"
                     Binding="{Binding ProcessName, UpdateSourceTrigger=PropertyChanged}"
                     Header="工程名（変更可）" />
                 <DataGridTextColumn
@@ -194,8 +194,12 @@
                 </DataGridTextColumn>
                 <DataGridTextColumn
                     Width="90"
-                    Binding="{Binding LeadTimeMinutes, UpdateSourceTrigger=PropertyChanged}"
-                    Header="標準時間（分）" />
+                    Binding="{Binding SetupTimeMinutes, UpdateSourceTrigger=PropertyChanged}"
+                    Header="段取時間（分）" />
+                <DataGridTextColumn
+                    Width="90"
+                    Binding="{Binding WorkTimeMinutes, UpdateSourceTrigger=PropertyChanged}"
+                    Header="作業時間（分）" />
                 <DataGridTextColumn
                     Width="90"
                     Binding="{Binding CoolTimeMinutes, UpdateSourceTrigger=PropertyChanged}"

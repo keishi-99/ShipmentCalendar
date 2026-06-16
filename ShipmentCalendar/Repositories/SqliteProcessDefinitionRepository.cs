@@ -13,7 +13,7 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
         await connection.OpenAsync();
 
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT Id, ItemNumber, ProcessName, LeadTimeMinutes, SortOrder, IsVisible, DestinationCode, WarningDaysBeforeDeadline, DepartmentId, CoolTimeMinutes, OutsourceLeadDays FROM ProcessDefinitions ORDER BY ItemNumber, SortOrder";
+        command.CommandText = "SELECT Id, ItemNumber, ProcessName, SetupTimeMinutes, WorkTimeMinutes, SortOrder, IsVisible, DestinationCode, WarningDaysBeforeDeadline, DepartmentId, CoolTimeMinutes, OutsourceLeadDays FROM ProcessDefinitions ORDER BY ItemNumber, SortOrder";
         using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
             definitions.Add(ReadDefinition(reader));
@@ -28,7 +28,7 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
         await connection.OpenAsync();
 
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT Id, ItemNumber, ProcessName, LeadTimeMinutes, SortOrder, IsVisible, DestinationCode, WarningDaysBeforeDeadline, DepartmentId, CoolTimeMinutes, OutsourceLeadDays FROM ProcessDefinitions WHERE ItemNumber = $in ORDER BY SortOrder";
+        command.CommandText = "SELECT Id, ItemNumber, ProcessName, SetupTimeMinutes, WorkTimeMinutes, SortOrder, IsVisible, DestinationCode, WarningDaysBeforeDeadline, DepartmentId, CoolTimeMinutes, OutsourceLeadDays FROM ProcessDefinitions WHERE ItemNumber = $in ORDER BY SortOrder";
         command.Parameters.AddWithValue("$in", itemNumber);
         using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
@@ -59,11 +59,12 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
 
         using var command = connection.CreateCommand();
         command.CommandText = @"
-            INSERT INTO ProcessDefinitions (ItemNumber, ProcessName, LeadTimeMinutes, SortOrder, IsVisible, DestinationCode, WarningDaysBeforeDeadline, DepartmentId, CoolTimeMinutes, OutsourceLeadDays)
-            VALUES ($in, $name, $days, $so, $vis, $dest, $warn, $dept, $cool, $outsource)";
+            INSERT INTO ProcessDefinitions (ItemNumber, ProcessName, SetupTimeMinutes, WorkTimeMinutes, SortOrder, IsVisible, DestinationCode, WarningDaysBeforeDeadline, DepartmentId, CoolTimeMinutes, OutsourceLeadDays)
+            VALUES ($in, $name, $setup, $work, $so, $vis, $dest, $warn, $dept, $cool, $outsource)";
         command.Parameters.AddWithValue("$in", definition.ItemNumber);
         command.Parameters.AddWithValue("$name", definition.ProcessName);
-        command.Parameters.AddWithValue("$days", (object?)definition.LeadTimeMinutes ?? DBNull.Value);
+        command.Parameters.AddWithValue("$setup", definition.SetupTimeMinutes);
+        command.Parameters.AddWithValue("$work", definition.WorkTimeMinutes);
         command.Parameters.AddWithValue("$so", definition.SortOrder);
         command.Parameters.AddWithValue("$vis", definition.IsVisible ? 1 : 0);
         command.Parameters.AddWithValue("$dest", definition.DestinationCode);
@@ -81,10 +82,11 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
 
         using var command = connection.CreateCommand();
         command.CommandText = @"
-            UPDATE ProcessDefinitions SET ProcessName=$name, LeadTimeMinutes=$days, SortOrder=$so, IsVisible=$vis, DestinationCode=$dest, WarningDaysBeforeDeadline=$warn, DepartmentId=$dept, CoolTimeMinutes=$cool, OutsourceLeadDays=$outsource
+            UPDATE ProcessDefinitions SET ProcessName=$name, SetupTimeMinutes=$setup, WorkTimeMinutes=$work, SortOrder=$so, IsVisible=$vis, DestinationCode=$dest, WarningDaysBeforeDeadline=$warn, DepartmentId=$dept, CoolTimeMinutes=$cool, OutsourceLeadDays=$outsource
             WHERE Id=$id";
         command.Parameters.AddWithValue("$name", definition.ProcessName);
-        command.Parameters.AddWithValue("$days", (object?)definition.LeadTimeMinutes ?? DBNull.Value);
+        command.Parameters.AddWithValue("$setup", definition.SetupTimeMinutes);
+        command.Parameters.AddWithValue("$work", definition.WorkTimeMinutes);
         command.Parameters.AddWithValue("$so", definition.SortOrder);
         command.Parameters.AddWithValue("$vis", definition.IsVisible ? 1 : 0);
         command.Parameters.AddWithValue("$dest", definition.DestinationCode);
@@ -124,11 +126,12 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
         using var insertCommand = connection.CreateCommand();
         insertCommand.Transaction = transaction;
         insertCommand.CommandText = @"
-            INSERT INTO ProcessDefinitions (ItemNumber, ProcessName, LeadTimeMinutes, SortOrder, IsVisible, DestinationCode, WarningDaysBeforeDeadline, DepartmentId, CoolTimeMinutes, OutsourceLeadDays)
-            VALUES ($in, $name, $days, $so, $vis, $dest, $warn, $dept, $cool, $outsource)";
+            INSERT INTO ProcessDefinitions (ItemNumber, ProcessName, SetupTimeMinutes, WorkTimeMinutes, SortOrder, IsVisible, DestinationCode, WarningDaysBeforeDeadline, DepartmentId, CoolTimeMinutes, OutsourceLeadDays)
+            VALUES ($in, $name, $setup, $work, $so, $vis, $dest, $warn, $dept, $cool, $outsource)";
         var inParam = insertCommand.Parameters.Add("$in", SqliteType.Text);
         var nameParam = insertCommand.Parameters.Add("$name", SqliteType.Text);
-        var daysParam = insertCommand.Parameters.Add("$days", SqliteType.Real);
+        var setupParam = insertCommand.Parameters.Add("$setup", SqliteType.Real);
+        var workParam = insertCommand.Parameters.Add("$work", SqliteType.Real);
         var soParam = insertCommand.Parameters.Add("$so", SqliteType.Integer);
         var visParam = insertCommand.Parameters.Add("$vis", SqliteType.Integer);
         var destParam = insertCommand.Parameters.Add("$dest", SqliteType.Text);
@@ -141,7 +144,8 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
         {
             inParam.Value = itemNumber;
             nameParam.Value = definition.ProcessName;
-            daysParam.Value = (object?)definition.LeadTimeMinutes ?? DBNull.Value;
+            setupParam.Value = definition.SetupTimeMinutes;
+            workParam.Value = definition.WorkTimeMinutes;
             soParam.Value = definition.SortOrder;
             visParam.Value = definition.IsVisible ? 1 : 0;
             destParam.Value = definition.DestinationCode;
@@ -160,13 +164,14 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
         Id = reader.GetInt32(0),
         ItemNumber = reader.GetString(1),
         ProcessName = reader.GetString(2),
-        LeadTimeMinutes = reader.IsDBNull(3) ? null : reader.GetDouble(3),
-        SortOrder = reader.GetInt32(4),
-        IsVisible = reader.GetInt32(5) == 1,
-        DestinationCode = reader.GetString(6),
-        WarningDaysBeforeDeadline = reader.GetInt32(7),
-        DepartmentId = reader.GetInt32(8),
-        CoolTimeMinutes = reader.GetDouble(9),
-        OutsourceLeadDays = reader.GetInt32(10)
+        SetupTimeMinutes = reader.GetDouble(3),
+        WorkTimeMinutes = reader.GetDouble(4),
+        SortOrder = reader.GetInt32(5),
+        IsVisible = reader.GetInt32(6) == 1,
+        DestinationCode = reader.GetString(7),
+        WarningDaysBeforeDeadline = reader.GetInt32(8),
+        DepartmentId = reader.GetInt32(9),
+        CoolTimeMinutes = reader.GetDouble(10),
+        OutsourceLeadDays = reader.GetInt32(11)
     };
 }

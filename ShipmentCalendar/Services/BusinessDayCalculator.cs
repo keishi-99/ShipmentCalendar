@@ -53,7 +53,7 @@ public class BusinessDayCalculator {
         var finishBucket = new int[sorted.Count];
         for (int i = sorted.Count - 1; i >= 0; i--) {
             var def = sorted[i];
-            double minutes = (def.LeadTimeMinutes ?? 0) * order.PlannedQuantity;
+            double minutes = def.LeadTimeMinutes * order.PlannedQuantity;
             double adjusted = runningIn;
             bool spansBoundary = minutes >= 480;
 
@@ -92,7 +92,7 @@ public class BusinessDayCalculator {
         var results = new List<OrderProcess>(sorted.Count);
         for (int i = 0; i < sorted.Count; i++) {
             var def = sorted[i];
-            double requiredMinutes = (def.LeadTimeMinutes ?? 0) * order.PlannedQuantity;
+            double requiredMinutes = def.LeadTimeMinutes * order.PlannedQuantity;
             var dueDate = SubtractBusinessDays(order.CompletionDate, finishBucket[i] - 1);
             var startDate = SubtractBusinessDays(order.CompletionDate, startBucket[i] - 1);
             // 指示先番号（一意）で完了判定。指示内容（表示名）の重複の影響を受けない
