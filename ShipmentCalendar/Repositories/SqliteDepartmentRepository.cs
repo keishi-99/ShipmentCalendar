@@ -5,11 +5,11 @@ using ShipmentCalendar.Models;
 namespace ShipmentCalendar.Repositories;
 
 /// <summary>担当部署マスタのSQLiteリポジトリ</summary>
-public class SqliteDepartmentRepository
+public static class SqliteDepartmentRepository
 {
-    public async Task<IEnumerable<Department>> GetAllAsync()
+    public static async Task<IEnumerable<Department>> GetAllAsync()
     {
-        var list = new List<Department>();
+        List<Department> list = [];
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
@@ -28,7 +28,7 @@ public class SqliteDepartmentRepository
     }
 
     /// <summary>部署を追加する。名前が既存と重複していてINSERTされなかった場合はfalseを返す</summary>
-    public async Task<bool> AddAsync(string name)
+    public static async Task<bool> AddAsync(string name)
     {
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
@@ -40,7 +40,7 @@ public class SqliteDepartmentRepository
         return affected > 0;
     }
 
-    public async Task DeleteAsync(int id)
+    public static async Task DeleteAsync(int id)
     {
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();

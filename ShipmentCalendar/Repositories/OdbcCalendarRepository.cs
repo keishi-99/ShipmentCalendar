@@ -4,28 +4,21 @@ using ShipmentCalendar.Services;
 namespace ShipmentCalendar.Repositories;
 
 /// <summary>ODBC経由でVP_カレンダ情報_YDから休日（稼働区分='01'）を取得するリポジトリ</summary>
-public class OdbcCalendarRepository
+public class OdbcCalendarRepository(AppSettings settings)
 {
-    private readonly AppSettings _settings;
-
-    public OdbcCalendarRepository(AppSettings settings)
-    {
-        _settings = settings;
-    }
-
     /// <summary>指定年・工場番号の休日（稼働区分='01'）の日付一覧を取得する</summary>
     public IEnumerable<DateOnly> GetHolidays(int year)
     {
-        using var conn = OdbcConnectionFactory.Create(_settings);
+        using var conn = OdbcConnectionFactory.Create(settings);
         conn.Open();
 
-        var dates = new List<DateOnly>();
+        List<DateOnly> dates = [];
         using var cmd = conn.CreateCommand();
         cmd.CommandText = @"SELECT 日付 FROM VP_カレンダ情報_YD
             WHERE 工場番号 = ?
               AND 稼働区分 = '01'
               AND 日付_数値 BETWEEN ? AND ?";
-        cmd.Parameters.Add("@FactoryNumber", System.Data.Odbc.OdbcType.VarChar).Value = _settings.OdbcFactoryNumber;
+        cmd.Parameters.Add("@FactoryNumber", System.Data.Odbc.OdbcType.VarChar).Value = settings.OdbcFactoryNumber;
         cmd.Parameters.Add("@From", System.Data.Odbc.OdbcType.Int).Value = year * 10000 + 101;
         cmd.Parameters.Add("@To", System.Data.Odbc.OdbcType.Int).Value = year * 10000 + 1231;
 

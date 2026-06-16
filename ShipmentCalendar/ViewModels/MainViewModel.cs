@@ -10,11 +10,10 @@ namespace ShipmentCalendar.ViewModels;
 
 public partial class MainViewModel : ObservableObject {
     private readonly IHolidayRepository _holidayRepository;
-    private readonly AppSettingsService _settingsService;
     private readonly DispatcherTimer _refreshTimer;
 
     // 全件キャッシュ（フィルター用）
-    private List<Order> _allOrders = new();
+    private List<Order> _allOrders = [];
     // 機種コード登録マスタで「製品」に区分された機種コード一覧（フィルター用）
     private HashSet<string> _productModelCodes = new(StringComparer.OrdinalIgnoreCase);
     // 機種コード登録マスタで「半製品」に区分された機種コード一覧（フィルター用）
@@ -25,7 +24,7 @@ public partial class MainViewModel : ObservableObject {
     private DateTime? _lastLoaded;
 
     [ObservableProperty]
-    private ObservableCollection<Order> _orders = new();
+    private ObservableCollection<Order> _orders = [];
 
     [ObservableProperty]
     private Order? _selectedOrder;
@@ -45,10 +44,10 @@ public partial class MainViewModel : ObservableObject {
     [ObservableProperty] private string _filterProductCategory = "全て";
 
     public static IReadOnlyList<string> ProductCategoryOptions { get; } =
-        new[] { "全て", "製品", "半製品", "半製品（工程未登録）", "どちらでもない" };
+        ["全て", "製品", "半製品", "半製品（工程未登録）", "どちらでもない"];
 
     /// <summary>ツールバー部署フィルターボタン用リスト（「全て」含む）</summary>
-    public ObservableCollection<DepartmentFilterItem> DepartmentFilters { get; } = new();
+    public ObservableCollection<DepartmentFilterItem> DepartmentFilters { get; } = [];
 
     /// <summary>選択中の担当部署ID（0=全て）</summary>
     [ObservableProperty] private int _filterDepartmentId = 0;
@@ -122,7 +121,7 @@ public partial class MainViewModel : ObservableObject {
             result = result.Where(o => o.DeliveryDate <= DateOnly.FromDateTime(FilterDeliveryTo.Value));
 
         if (FilterHideCompleted)
-            result = result.Where(o => !o.Processes.Any() || o.Processes.Any(p => p.Status != ProcessStatus.Completed));
+            result = result.Where(o => o.Processes.Count == 0 || o.Processes.Any(p => p.Status != ProcessStatus.Completed));
 
         // 製品/半製品/どちらでもないフィルター（機種コード登録マスタの区分で判定）
         if (FilterProductCategory == "製品")
@@ -155,7 +154,7 @@ public partial class MainViewModel : ObservableObject {
     /// <summary>部署マスタを再取得してフィルターボタンリストを更新する</summary>
     public async Task RefreshDepartmentFiltersAsync()
     {
-        var departments = await new Repositories.SqliteDepartmentRepository().GetAllAsync();
+        var departments = await Repositories.SqliteDepartmentRepository.GetAllAsync();
         DepartmentFilters.Clear();
         DepartmentFilters.Add(new DepartmentFilterItem { Id = 0, Name = "全て", IsSelected = FilterDepartmentId == 0 });
         foreach (var d in departments)
@@ -177,17 +176,14 @@ public partial class MainViewModel : ObservableObject {
     private string _statusMessage = "データを読み込んでいます...";
 
     [ObservableProperty]
-    private bool _isLoading = false;
+    private bool _isLoading;
 
     [ObservableProperty]
     private AppSettings _settings;
 
-    public MainViewModel(
-        IHolidayRepository holidayRepository,
-        AppSettingsService settingsService) {
+    public MainViewModel(IHolidayRepository holidayRepository) {
         _holidayRepository = holidayRepository;
-        _settingsService = settingsService;
-        _settings = settingsService.Load();
+        _settings = AppSettingsService.Load();
 
         _refreshTimer = new DispatcherTimer();
         _refreshTimer.Tick += async (_, _) => await LoadOrdersAsync();
@@ -232,7 +228,7 @@ public partial class MainViewModel : ObservableObject {
             var today = DateOnly.FromDateTime(DateTime.Today);
 
             // DB登録済みの品目名があればODBC品目名を上書きする
-            var displayNames = await new Repositories.SqliteProductDisplayNameRepository().GetAllDisplayNamesAsync();
+            var displayNames = await Repositories.SqliteProductDisplayNameRepository.GetAllDisplayNamesAsync();
             foreach (var order in orders) {
                 if (displayNames.TryGetValue(order.ItemNumber, out var displayName) && !string.IsNullOrEmpty(displayName))
                     order.ProductName = displayName;
@@ -279,7 +275,7 @@ public partial class MainViewModel : ObservableObject {
 
                 order.CompletionDate = calculator.SubtractBusinessDays(order.DeliveryDate, Settings.CompletionDateLeadDays);
 
-                if (!productDefs.Any())
+                if (productDefs.Count == 0)
                     continue;
 
                 // 仮登録した完了済み指示先番号→受入日のマッピング（指示先番号は工程ごとに一意。重複は先着優先）
@@ -305,7 +301,7 @@ public partial class MainViewModel : ObservableObject {
                     var warningDays = productDefs
                         .FirstOrDefault(d => d.DestinationCode == process.DestinationCode)
                         ?.WarningDaysBeforeDeadline ?? 0;
-                    process.Status = calculator.DetermineStatus(process, today, warningDays);
+                    process.Status = BusinessDayCalculator.DetermineStatus(process, today, warningDays);
                 }
 
                 // Overdue を後続工程に伝播（完了済みは除く）
@@ -352,7 +348,7 @@ public partial class MainViewModel : ObservableObject {
     }
 
     public void SaveSettings() {
-        _settingsService.Save(Settings);
+        AppSettingsService.Save(Settings);
         ApplyRefreshInterval();
 
         RefreshFilterDateRange();

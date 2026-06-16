@@ -28,12 +28,10 @@ public class DeptIdToNameConverter : IValueConverter
 
 public partial class ProcessSettingWindow : Window
 {
-    private readonly IProcessDefinitionRepository _dbRepository = new SqliteProcessDefinitionRepository();
-    private readonly AppSettingsService _settingsService = new AppSettingsService();
-    private readonly SqliteProductDisplayNameRepository _nameRepository = new SqliteProductDisplayNameRepository();
-    private readonly IModelCodeRepository _modelCodeRepository = new SqliteModelCodeRepository();
-    private ObservableCollection<ProcessDefinition> _currentDefinitions = new();
-    private ObservableCollection<ModelCodeDefinition> _modelCodes = new();
+    private readonly SqliteProcessDefinitionRepository _dbRepository = new();
+    private readonly SqliteModelCodeRepository _modelCodeRepository = new();
+    private ObservableCollection<ProcessDefinition> _currentDefinitions = [];
+    private ObservableCollection<ModelCodeDefinition> _modelCodes = [];
 
     /// <summary>XAML の DataTemplate から参照できる静的な部署リスト</summary>
     public static IReadOnlyList<Department>? DepartmentsSource { get; private set; }
@@ -54,9 +52,9 @@ public partial class ProcessSettingWindow : Window
         Loaded += async (_, _) =>
         {
             // 部署リストをDBから読み込んでDataGrid.Tag経由でCellEditingTemplateに渡す
-            var depts = (await new SqliteDepartmentRepository().GetAllAsync()).ToList();
+            var depts = (await SqliteDepartmentRepository.GetAllAsync()).ToList();
             // 先頭に「未設定」（Id=0）を追加
-            var allDepts = new List<Department> { new Department { Id = 0, Name = "（未設定）" } };
+            List<Department> allDepts = [new Department { Id = 0, Name = "（未設定）" }];
             allDepts.AddRange(depts);
             DepartmentsSource = allDepts;
             ProcessGrid.Tag = allDepts;
@@ -90,7 +88,7 @@ public partial class ProcessSettingWindow : Window
     /// <summary>機種コード一覧の行削除ボタン：選択行をコレクションから除去する（保存まで確定しない）</summary>
     private void BtnDeleteModelCodeRow_Click(object sender, RoutedEventArgs e)
     {
-        if ((sender as FrameworkElement)?.DataContext is ModelCodeDefinition def)
+        if (sender is FrameworkElement fe1 && fe1.DataContext is ModelCodeDefinition def)
             _modelCodes.Remove(def);
     }
 
@@ -105,7 +103,7 @@ public partial class ProcessSettingWindow : Window
             .Select(g => g.Key)
             .ToList();
 
-        if (duplicates.Any())
+        if (duplicates.Count > 0)
         {
             MessageBox.Show($"機種コードが重複しています:\n{string.Join("\n", duplicates)}", "入力エラー", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
@@ -123,7 +121,7 @@ public partial class ProcessSettingWindow : Window
     }
 
     /// <summary>DB に登録済みの品目番号一覧を保持する（一覧選択ウィンドウ用）</summary>
-    private List<ItemPickerEntry> _registeredItems = new();
+    private List<ItemPickerEntry> _registeredItems = [];
 
     /// <summary>登録済み品目一覧の読み込みタスク（一覧選択ウィンドウを開く前に完了を待機する）</summary>
     private Task? _refreshTask;
@@ -139,7 +137,7 @@ public partial class ProcessSettingWindow : Window
         var itemNumbers = (await _dbRepository.GetItemNumbersAsync())
             .OrderBy(n => n)
             .ToList();
-        var displayNames = await _nameRepository.GetAllDisplayNamesAsync();
+        var displayNames = await SqliteProductDisplayNameRepository.GetAllDisplayNamesAsync();
 
         _registeredItems = itemNumbers
             .Select(n => new ItemPickerEntry
@@ -168,7 +166,7 @@ public partial class ProcessSettingWindow : Window
     /// </summary>
     private async void BtnSelectUnregisteredItems_Click(object sender, RoutedEventArgs e)
     {
-        var settings = _settingsService.Load();
+        var settings = AppSettingsService.Load();
         if (!settings.IsOdbcConfigured)
         {
             TxtStatus.Text = "設定からODBC接続情報を入力してください";
@@ -179,7 +177,7 @@ public partial class ProcessSettingWindow : Window
             .Where(m => m.Category == "半製品")
             .Select(m => m.ModelCode)
             .ToList();
-        if (!semiProductModelCodes.Any())
+        if (semiProductModelCodes.Count == 0)
         {
             TxtStatus.Text = "機種コード登録に「半製品」が登録されていません";
             return;
@@ -215,7 +213,7 @@ public partial class ProcessSettingWindow : Window
             TxtLoadingMessage.Text = "取得中...";
         }
 
-        if (!entries.Any())
+        if (entries.Count == 0)
         {
             TxtStatus.Text = "未登録の品目番号はありません";
             return;
@@ -238,7 +236,7 @@ public partial class ProcessSettingWindow : Window
             {
                 TxtLoadingMessage.Text = $"登録中...（{registered + skipped + 1}/{selectedItemNumbers.Count}）";
 
-                if (!odbcDefsByItem.TryGetValue(itemNumber, out var odbcDefs) || !odbcDefs.Any())
+                if (!odbcDefsByItem.TryGetValue(itemNumber, out var odbcDefs) || odbcDefs.Count == 0)
                 {
                     skipped++;
                     continue;
@@ -252,7 +250,7 @@ public partial class ProcessSettingWindow : Window
 
                 var entry = entries.First(i => i.ItemNumber == itemNumber);
                 if (!string.IsNullOrEmpty(entry.DisplayName))
-                    await _nameRepository.SaveDisplayNameAsync(itemNumber, entry.DisplayName);
+                    await SqliteProductDisplayNameRepository.SaveDisplayNameAsync(itemNumber, entry.DisplayName);
 
                 registered++;
             }
@@ -274,7 +272,7 @@ public partial class ProcessSettingWindow : Window
         TxtRegisteredDisplay.Text = itemNumber;
 
         // DB登録済みの品目名を表示
-        TxtItemName.Text = await _nameRepository.GetDisplayNameAsync(itemNumber) ?? string.Empty;
+        TxtItemName.Text = await SqliteProductDisplayNameRepository.GetDisplayNameAsync(itemNumber) ?? string.Empty;
 
         // DB設定をそのままグリッドに表示（CSVとのマージは行わず登録内容を確認）
         var dbDefs = (await _dbRepository.GetByItemNumberAsync(itemNumber))
@@ -299,7 +297,7 @@ public partial class ProcessSettingWindow : Window
             return;
         }
 
-        var settings = _settingsService.Load();
+        var settings = AppSettingsService.Load();
         if (!settings.IsOdbcConfigured)
         {
             TxtStatus.Text = "設定からODBC接続情報を入力してください";
@@ -314,7 +312,7 @@ public partial class ProcessSettingWindow : Window
             var odbcRepo = new OdbcProcessDefinitionRepository(settings);
             var odbcDefs = (await Task.Run(() => odbcRepo.GetByItemNumber(itemNumber))).ToList();
 
-            if (!odbcDefs.Any())
+            if (odbcDefs.Count == 0)
             {
                 TxtStatus.Text = $"品目番号 '{itemNumber}' の工程データが見つかりませんでした";
                 return;
@@ -390,7 +388,7 @@ public partial class ProcessSettingWindow : Window
     /// </summary>
     private async void BtnBulkImport_Click(object sender, RoutedEventArgs e)
     {
-        var settings = _settingsService.Load();
+        var settings = AppSettingsService.Load();
         if (!settings.IsOdbcConfigured)
         {
             TxtStatus.Text = "設定からODBC接続情報を入力してください";
@@ -401,7 +399,7 @@ public partial class ProcessSettingWindow : Window
             await _refreshTask;
 
         var itemNumbers = _registeredItems.Select(i => i.ItemNumber).ToList();
-        if (!itemNumbers.Any())
+        if (itemNumbers.Count == 0)
         {
             TxtStatus.Text = "登録済みの品目番号がありません";
             return;
@@ -421,7 +419,7 @@ public partial class ProcessSettingWindow : Window
             {
                 TxtLoadingMessage.Text = $"更新中...（{updated + skipped + 1}/{itemNumbers.Count}）";
 
-                if (!odbcDefsByItem.TryGetValue(itemNumber, out var odbcDefs) || !odbcDefs.Any())
+                if (!odbcDefsByItem.TryGetValue(itemNumber, out var odbcDefs) || odbcDefs.Count == 0)
                 {
                     skipped++;
                     continue;
@@ -460,10 +458,10 @@ public partial class ProcessSettingWindow : Window
         }
 
         // 品目名を保存（工程の有無に関わらず保存する）
-        await _nameRepository.SaveDisplayNameAsync(itemNumber, TxtItemName.Text.Trim());
+        await SqliteProductDisplayNameRepository.SaveDisplayNameAsync(itemNumber, TxtItemName.Text.Trim());
 
         // グリッドに工程がある場合のみ工程定義を更新する
-        if (_currentDefinitions.Any())
+        if (_currentDefinitions.Count > 0)
         {
             foreach (var def in _currentDefinitions)
                 def.ItemNumber = itemNumber;
@@ -540,7 +538,7 @@ public partial class ProcessSettingWindow : Window
     /// <summary>グリッド行の削除ボタン：選択行をコレクションから除去する（保存まで確定しない）</summary>
     private void BtnDeleteRow_Click(object sender, RoutedEventArgs e)
     {
-        if ((sender as FrameworkElement)?.DataContext is ProcessDefinition def)
+        if (sender is FrameworkElement fe2 && fe2.DataContext is ProcessDefinition def)
             _currentDefinitions.Remove(def);
     }
 

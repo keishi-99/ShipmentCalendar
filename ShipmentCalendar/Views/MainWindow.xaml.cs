@@ -15,9 +15,7 @@ public partial class MainWindow : Window {
 
     public MainWindow() {
         InitializeComponent();
-        _viewModel = new MainViewModel(
-            new SqliteHolidayRepository(),
-            new AppSettingsService());
+        _viewModel = new MainViewModel(new SqliteHolidayRepository());
         DataContext = _viewModel;
         Loaded += async (_, _) => await _viewModel.LoadOrdersAsync();
         _viewModel.PropertyChanged += (_, e) => {
@@ -71,7 +69,7 @@ public partial class MainWindow : Window {
 
     // 列表示設定チェックボックスと対応するDataGridColumn・設定プロパティの組み合わせ（初回アクセス時に生成してキャッシュする）
     private (CheckBox CheckBox, DataGridColumn Column, Func<AppSettings, bool> Getter, Action<AppSettings, bool> Setter)[]? _columnVisibilityMappings;
-    private (CheckBox CheckBox, DataGridColumn Column, Func<AppSettings, bool> Getter, Action<AppSettings, bool> Setter)[] ColumnVisibilityMappings => _columnVisibilityMappings ??= new (CheckBox, DataGridColumn, Func<AppSettings, bool>, Action<AppSettings, bool>)[] {
+    private (CheckBox CheckBox, DataGridColumn Column, Func<AppSettings, bool> Getter, Action<AppSettings, bool> Setter)[] ColumnVisibilityMappings => _columnVisibilityMappings ??= [
         (ChkColDeliveryDate,      ColDeliveryDate,      s => s.ShowColumnDeliveryDate,      (s, v) => s.ShowColumnDeliveryDate = v),
         (ChkColCompletionDate,    ColCompletionDate,    s => s.ShowColumnCompletionDate,    (s, v) => s.ShowColumnCompletionDate = v),
         (ChkColItemNumber,        ColItemNumber,        s => s.ShowColumnItemNumber,        (s, v) => s.ShowColumnItemNumber = v),
@@ -79,7 +77,7 @@ public partial class MainWindow : Window {
         (ChkColProductName,       ColProductName,       s => s.ShowColumnProductName,       (s, v) => s.ShowColumnProductName = v),
         (ChkColManufactureNumber, ColManufactureNumber, s => s.ShowColumnManufactureNumber, (s, v) => s.ShowColumnManufactureNumber = v),
         (ChkColPlannedQuantity,   ColPlannedQuantity,   s => s.ShowColumnPlannedQuantity,   (s, v) => s.ShowColumnPlannedQuantity = v),
-    };
+    ];
 
     // チェックボックスのChecked/Uncheckedイベントを設定値の反映として処理するか（初期化中はfalseにして保存を抑制する）
     private bool _columnVisibilityEventsEnabled;
@@ -168,7 +166,7 @@ public partial class MainWindow : Window {
         UpdateRowHeight();
 
         // 全注文中の最大工程数を列数とする
-        var maxProcessCount = _viewModel.Orders.Any() ? _viewModel.Orders.Max(o => o.Processes.Count) : 0;
+        var maxProcessCount = _viewModel.Orders.Count > 0 ? _viewModel.Orders.Max(o => o.Processes.Count) : 0;
         var settings = _viewModel.Settings;
         var signature = (maxProcessCount, settings.ShowDueDateForNotStarted, settings.ShowProcessDate, settings.ShowProcessRequiredHours, settings.ProcessColumnFontSize);
         if (signature == _lastColumnSignature) return;
@@ -275,35 +273,30 @@ public partial class MainWindow : Window {
     }
 
     private void BtnSettings_Click(object sender, RoutedEventArgs e) {
-        var window = new SettingsWindow(_viewModel);
-        window.Owner = this;
+        var window = new SettingsWindow(_viewModel) { Owner = this };
         window.ShowDialog();
     }
 
     private async void BtnProcess_Click(object sender, RoutedEventArgs e) {
-        var window = new ProcessSettingWindow();
-        window.Owner = this;
+        var window = new ProcessSettingWindow() { Owner = this };
         window.ShowDialog();
         await _viewModel.LoadOrdersAsync();
     }
 
     private void BtnHoliday_Click(object sender, RoutedEventArgs e) {
-        var window = new HolidaySettingWindow();
-        window.Owner = this;
+        var window = new HolidaySettingWindow() { Owner = this };
         window.ShowDialog();
     }
 
     private async void BtnDeptSetting_Click(object sender, RoutedEventArgs e) {
-        var window = new DepartmentSettingWindow();
-        window.Owner = this;
+        var window = new DepartmentSettingWindow() { Owner = this };
         window.ShowDialog();
         // 部署マスタが変更された可能性があるため、フィルターボタンリストを更新
         await _viewModel.RefreshDepartmentFiltersAsync();
     }
 
     private void BtnDisplaySettings_Click(object sender, RoutedEventArgs e) {
-        var window = new DisplaySettingsWindow(_viewModel);
-        window.Owner = this;
+        var window = new DisplaySettingsWindow(_viewModel) { Owner = this };
         if (window.ShowDialog() == true) {
             ApplyFixedColumnFontSize();
             BuildProcessColumns();
@@ -375,16 +368,7 @@ public class ProcessIndexToNameConverter : System.Windows.Data.IMultiValueConver
 }
 
 /// <summary>インデックスでProcessリストを検索して期限日・標準時間（必要時間）テキストを1行にまとめて返すコンバーター</summary>
-public class ProcessIndexToDateAndHoursConverter : System.Windows.Data.IMultiValueConverter {
-    private readonly bool _showDueDateForNotStarted;
-    private readonly bool _showDate;
-    private readonly bool _showHours;
-
-    public ProcessIndexToDateAndHoursConverter(bool showDueDateForNotStarted, bool showDate, bool showHours) {
-        _showDueDateForNotStarted = showDueDateForNotStarted;
-        _showDate = showDate;
-        _showHours = showHours;
-    }
+public class ProcessIndexToDateAndHoursConverter(bool showDueDateForNotStarted, bool showDate, bool showHours) : System.Windows.Data.IMultiValueConverter {
 
     public object Convert(object[] values, Type targetType, object parameter, System.Globalization.CultureInfo culture) {
         if (values[0] is not IEnumerable<OrderProcess> processes) return string.Empty;
@@ -392,8 +376,8 @@ public class ProcessIndexToDateAndHoursConverter : System.Windows.Data.IMultiVal
         var process = processes.ElementAtOrDefault(index);
         if (process == null) return string.Empty;
 
-        var dateText = _showDate ? GetDateText(process) : string.Empty;
-        var hoursText = _showHours ? GetHoursText(process) : string.Empty;
+        var dateText = showDate ? GetDateText(process) : string.Empty;
+        var hoursText = showHours ? GetHoursText(process) : string.Empty;
 
         return string.Join(" ", new[] { dateText, hoursText }.Where(s => !string.IsNullOrEmpty(s)));
     }
@@ -406,7 +390,7 @@ public class ProcessIndexToDateAndHoursConverter : System.Windows.Data.IMultiVal
 
         // 未完了工程は 着手必須日/完了必須日（設定により切り替え）を表示
         // 完了必須日は「この日までに完了」=矢印を日付の前に、着手必須日は「この日から着手」=矢印を日付の後に付与
-        if (_showDueDateForNotStarted)
+        if (showDueDateForNotStarted)
             return $"→{process.DueDate:MM/dd}";
         return $"{process.StartDate:MM/dd}→";
     }

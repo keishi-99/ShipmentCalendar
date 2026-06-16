@@ -8,7 +8,7 @@ public class SqliteModelCodeRepository : IModelCodeRepository
 {
     public async Task<IEnumerable<ModelCodeDefinition>> GetAllAsync()
     {
-        var definitions = new List<ModelCodeDefinition>();
+        List<ModelCodeDefinition> definitions = [];
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
@@ -100,7 +100,7 @@ public class SqliteModelCodeRepository : IModelCodeRepository
         await transaction.CommitAsync();
     }
 
-    private static ModelCodeDefinition ReadDefinition(SqliteDataReader reader) => new ModelCodeDefinition
+    private static ModelCodeDefinition ReadDefinition(SqliteDataReader reader) => new()
     {
         Id = reader.GetInt32(0),
         ModelCode = reader.GetString(1),

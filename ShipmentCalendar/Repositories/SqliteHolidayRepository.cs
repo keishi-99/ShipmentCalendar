@@ -8,7 +8,7 @@ public class SqliteHolidayRepository : IHolidayRepository
 {
     public async Task<IEnumerable<Holiday>> GetAllAsync()
     {
-        var holidays = new List<Holiday>();
+        List<Holiday> holidays = [];
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
@@ -23,7 +23,7 @@ public class SqliteHolidayRepository : IHolidayRepository
 
     public async Task<IEnumerable<Holiday>> GetByYearAsync(int year)
     {
-        var holidays = new List<Holiday>();
+        List<Holiday> holidays = [];
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
@@ -60,7 +60,7 @@ public class SqliteHolidayRepository : IHolidayRepository
         await command.ExecuteNonQueryAsync();
     }
 
-    private static Holiday ReadHoliday(SqliteDataReader reader) => new Holiday
+    private static Holiday ReadHoliday(SqliteDataReader reader) => new()
     {
         Id = reader.GetInt32(0),
         Date = DateOnly.Parse(reader.GetString(1)),
