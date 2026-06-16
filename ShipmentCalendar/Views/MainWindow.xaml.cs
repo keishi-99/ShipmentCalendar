@@ -220,6 +220,7 @@ public partial class MainWindow : Window {
             nameFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
             nameFactory.SetValue(TextBlock.FontSizeProperty, _viewModel.Settings.ProcessColumnFontSize);
             nameFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.SemiBold);
+            nameFactory.SetValue(TextBlock.ForegroundProperty, Brushes.Black);
 
             stackFactory.AppendChild(nameFactory);
 
@@ -238,6 +239,7 @@ public partial class MainWindow : Window {
                 dateHoursFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
                 dateHoursFactory.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
                 dateHoursFactory.SetValue(TextBlock.FontSizeProperty, _viewModel.Settings.ProcessColumnFontSize);
+                dateHoursFactory.SetValue(TextBlock.ForegroundProperty, Brushes.Black);
                 stackFactory.AppendChild(dateHoursFactory);
             }
 

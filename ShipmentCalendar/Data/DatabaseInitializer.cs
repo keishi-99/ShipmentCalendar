@@ -61,17 +61,7 @@ public static class DatabaseInitializer {
                 SortOrder INTEGER NOT NULL DEFAULT 0
             );
 
-            DROP TABLE IF EXISTS FinishedProducts;
         ";
         command.ExecuteNonQuery();
-
-        // デフォルト部署を登録（既存なら無視）
-        using var insertDepts = connection.CreateCommand();
-        insertDepts.CommandText = @"
-            INSERT OR IGNORE INTO Departments (Name, SortOrder) VALUES ('生産統括課', 0);
-            INSERT OR IGNORE INTO Departments (Name, SortOrder) VALUES ('製造課', 1);
-            INSERT OR IGNORE INTO Departments (Name, SortOrder) VALUES ('検査課', 2);
-        ";
-        insertDepts.ExecuteNonQuery();
     }
 }

@@ -365,6 +365,14 @@
                 <DataGrid.RowStyle>
                     <Style TargetType="DataGridRow">
                         <EventSetter Event="MouseDoubleClick" Handler="OrderRow_DoubleClick" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsAllCompleted}" Value="True">
+                                <Setter Property="Foreground" Value="#1976D2" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding HasOverdue}" Value="True">
+                                <Setter Property="Foreground" Value="#E53935" />
+                            </DataTrigger>
+                        </Style.Triggers>
                     </Style>
                 </DataGrid.RowStyle>
             </DataGrid>

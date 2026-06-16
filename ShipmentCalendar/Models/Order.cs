@@ -15,4 +15,10 @@ public class Order
     public DateOnly CompletionDate { get; set; }
     public int PlannedQuantity { get; set; }
     public List<OrderProcess> Processes { get; set; } = [];
+
+    public bool IsAllCompleted =>
+        Processes.Count > 0 && Processes.All(p => p.Status == ProcessStatus.Completed);
+
+    public bool HasOverdue =>
+        Processes.Any(p => p.Status == ProcessStatus.Overdue);
 }
