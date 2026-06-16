@@ -6,8 +6,12 @@ public class ProcessDefinition
     public int Id { get; set; }
     public string ItemNumber { get; set; } = string.Empty;
     public string ProcessName { get; set; } = string.Empty;
-    /// <summary>この工程の所要時間（分単位・小数あり）。1日480分換算で営業日を算出。0=当日中に完了。null=未設定（CSV/ODBC側の標準値にフォールバック）</summary>
-    public double? LeadTimeMinutes { get; set; }
+    /// <summary>段取時間（分単位・小数あり）。数量に関わらず1回分の時間</summary>
+    public double SetupTimeMinutes { get; set; } = 0;
+    /// <summary>作業時間（分単位・小数あり）。数量1個あたりの時間</summary>
+    public double WorkTimeMinutes { get; set; } = 0;
+    /// <summary>この工程の所要時間（分単位・小数あり）＝段取時間+作業時間。1日480分換算で営業日を算出。0=当日中に完了</summary>
+    public double LeadTimeMinutes => SetupTimeMinutes + WorkTimeMinutes;
     public int SortOrder { get; set; }
     /// <summary>一覧に表示するか</summary>
     public bool IsVisible { get; set; } = true;

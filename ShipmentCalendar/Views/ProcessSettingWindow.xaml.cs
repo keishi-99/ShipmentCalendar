@@ -364,7 +364,8 @@ public partial class ProcessSettingWindow : Window
                 ProcessName = db.ProcessName,
                 DestinationCode = odbcDef.DestinationCode,
                 SortOrder = odbcDef.SortOrder,                          // 順序は常にODBC
-                LeadTimeMinutes = db.LeadTimeMinutes,
+                SetupTimeMinutes = db.SetupTimeMinutes,
+                WorkTimeMinutes = db.WorkTimeMinutes,
                 IsVisible = db.IsVisible,
                 WarningDaysBeforeDeadline = db.WarningDaysBeforeDeadline,
                 DepartmentId = db.DepartmentId,

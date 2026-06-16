@@ -37,7 +37,8 @@ public static class DatabaseInitializer
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 ItemNumber TEXT NOT NULL,
                 ProcessName TEXT NOT NULL,
-                LeadTimeMinutes REAL,
+                SetupTimeMinutes REAL NOT NULL DEFAULT 0,
+                WorkTimeMinutes REAL NOT NULL DEFAULT 0,
                 SortOrder INTEGER NOT NULL DEFAULT 0,
                 IsVisible INTEGER NOT NULL DEFAULT 1,
                 DestinationCode TEXT NOT NULL DEFAULT '',
@@ -79,7 +80,8 @@ public static class DatabaseInitializer
         ";
         insertDepts.ExecuteNonQuery();
 
-        MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "LeadTimeMinutes", "REAL NOT NULL DEFAULT 0");
+        MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "SetupTimeMinutes", "REAL NOT NULL DEFAULT 0");
+        MigrateSplitLeadTimeMinutes(connection);
         MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "IsVisible", "INTEGER NOT NULL DEFAULT 1");
         MigrateRenameOrAddColumn(connection, "ProcessDefinitions", "CsvColumnName", "DestinationCode", "TEXT NOT NULL DEFAULT ''");
         MigrateAddColumnIfNotExists(connection, "ProcessDefinitions", "WarningDaysBeforeDeadline", "INTEGER NOT NULL DEFAULT 0");
@@ -115,6 +117,45 @@ public static class DatabaseInitializer
             SELECT DISTINCT ItemNumber, COALESCE(ItemNumber, '') FROM ProcessDefinitions
             WHERE ItemNumber != ''";
         migrate.ExecuteNonQuery();
+    }
+
+    /// <summary>旧LeadTimeMinutes列（段取時間+作業時間の合計）をWorkTimeMinutes列に引き継いでから削除する</summary>
+    private static void MigrateSplitLeadTimeMinutes(SqliteConnection connection)
+    {
+        using var check = connection.CreateCommand();
+        check.CommandText = "PRAGMA table_info(ProcessDefinitions)";
+        bool hasLeadTime = false, hasWorkTime = false;
+        using (var reader = check.ExecuteReader())
+        {
+            while (reader.Read())
+            {
+                var col = reader.GetString(1);
+                if (col == "LeadTimeMinutes") hasLeadTime = true;
+                if (col == "WorkTimeMinutes") hasWorkTime = true;
+            }
+        }
+
+        if (!hasWorkTime)
+        {
+            using var add = connection.CreateCommand();
+            add.CommandText = "ALTER TABLE ProcessDefinitions ADD COLUMN WorkTimeMinutes REAL NOT NULL DEFAULT 0";
+            add.ExecuteNonQuery();
+
+            // 既存の標準時間（段取+作業の合計）を作業時間に引き継ぎ、合計値（計算結果）を変えない
+            if (hasLeadTime)
+            {
+                using var copy = connection.CreateCommand();
+                copy.CommandText = "UPDATE ProcessDefinitions SET WorkTimeMinutes = COALESCE(LeadTimeMinutes, 0)";
+                copy.ExecuteNonQuery();
+            }
+        }
+
+        if (hasLeadTime)
+        {
+            using var drop = connection.CreateCommand();
+            drop.CommandText = "ALTER TABLE ProcessDefinitions DROP COLUMN LeadTimeMinutes";
+            drop.ExecuteNonQuery();
+        }
     }
 
     private static void MigrateAddColumnIfNotExists(SqliteConnection connection, string table, string column, string definition)
