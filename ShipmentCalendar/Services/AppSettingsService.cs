@@ -45,6 +45,7 @@ public static class AppSettingsService {
         toSave.OdbcPassword = Protect(settings.OdbcPassword);
 
         var encryptedJson = JsonSerializer.Serialize(toSave, _jsonOptions);
+        Directory.CreateDirectory(_dataDir);
         File.WriteAllText(_settingsPath, encryptedJson);
     }
 
