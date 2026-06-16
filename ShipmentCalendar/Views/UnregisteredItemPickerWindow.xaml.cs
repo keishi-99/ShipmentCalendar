@@ -72,7 +72,7 @@ public partial class UnregisteredItemPickerWindow : Window
     private void BtnRegister_Click(object sender, RoutedEventArgs e)
     {
         var selected = _allItems.Where(i => i.IsSelected).Select(i => i.ItemNumber).ToList();
-        if (!selected.Any())
+        if (selected.Count == 0)
         {
             MessageBox.Show("品目番号を1件以上選択してください", "選択エラー", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;

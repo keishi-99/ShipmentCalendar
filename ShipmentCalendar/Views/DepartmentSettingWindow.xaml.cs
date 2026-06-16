@@ -6,8 +6,7 @@ namespace ShipmentCalendar.Views;
 
 public partial class DepartmentSettingWindow : Window
 {
-    private readonly SqliteDepartmentRepository _repository = new SqliteDepartmentRepository();
-    private List<Department> _departments = new();
+    private List<Department> _departments = [];
 
     public DepartmentSettingWindow()
     {
@@ -17,7 +16,7 @@ public partial class DepartmentSettingWindow : Window
 
     private async Task LoadAsync()
     {
-        _departments = (await _repository.GetAllAsync()).ToList();
+        _departments = (await SqliteDepartmentRepository.GetAllAsync()).ToList();
         DeptGrid.ItemsSource = _departments;
         TxtStatus.Text = $"{_departments.Count} 件";
     }
@@ -33,7 +32,7 @@ public partial class DepartmentSettingWindow : Window
 
         try
         {
-            var added = await _repository.AddAsync(name);
+            var added = await SqliteDepartmentRepository.AddAsync(name);
             TxtDeptName.Text = string.Empty;
             await LoadAsync();
             TxtStatus.Text = added ? string.Empty : $"「{name}」は既に登録されています";
@@ -55,7 +54,7 @@ public partial class DepartmentSettingWindow : Window
 
         try
         {
-            await _repository.DeleteAsync(dept.Id);
+            await SqliteDepartmentRepository.DeleteAsync(dept.Id);
             await LoadAsync();
         }
         catch (Exception ex)

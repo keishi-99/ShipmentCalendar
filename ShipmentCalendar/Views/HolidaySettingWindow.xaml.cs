@@ -8,9 +8,8 @@ namespace ShipmentCalendar.Views;
 
 public partial class HolidaySettingWindow : Window
 {
-    private readonly IHolidayRepository _repository = new SqliteHolidayRepository();
-    private readonly AppSettingsService _settingsService = new AppSettingsService();
-    private List<Holiday> _holidays = new();
+    private readonly SqliteHolidayRepository _repository = new();
+    private List<Holiday> _holidays = [];
     private bool _isFetching;
 
     public HolidaySettingWindow()
@@ -22,7 +21,7 @@ public partial class HolidaySettingWindow : Window
         CmbYear.ItemsSource = Enumerable.Range(currentYear - 1, 4).ToList();
         CmbYear.SelectedItem = currentYear;
 
-        TxtFactoryNumber.Text = _settingsService.Load().OdbcFactoryNumber;
+        TxtFactoryNumber.Text = AppSettingsService.Load().OdbcFactoryNumber;
 
         Loaded += async (_, _) => await LoadHolidaysAsync();
     }
@@ -30,9 +29,9 @@ public partial class HolidaySettingWindow : Window
     /// <summary>工場番号の入力欄からフォーカスが外れたタイミングで設定を保存する</summary>
     private void TxtFactoryNumber_LostFocus(object sender, RoutedEventArgs e)
     {
-        var settings = _settingsService.Load();
+        var settings = AppSettingsService.Load();
         settings.OdbcFactoryNumber = TxtFactoryNumber.Text.Trim();
-        _settingsService.Save(settings);
+        AppSettingsService.Save(settings);
     }
 
     private async Task LoadHolidaysAsync()
@@ -83,7 +82,7 @@ public partial class HolidaySettingWindow : Window
     /// <summary>VP_カレンダ情報_YD（稼働区分='01'）から選択中の年の休日を取得してDBに登録する</summary>
     private async void BtnFetchHolidays_Click(object sender, RoutedEventArgs e)
     {
-        var settings = _settingsService.Load();
+        var settings = AppSettingsService.Load();
         settings.OdbcFactoryNumber = TxtFactoryNumber.Text.Trim();
         if (!settings.IsOdbcConfigured)
         {
@@ -96,7 +95,7 @@ public partial class HolidaySettingWindow : Window
             return;
         }
 
-        _settingsService.Save(settings);
+        AppSettingsService.Save(settings);
 
         var year = (int)(CmbYear.SelectedItem ?? DateTime.Today.Year);
         TxtStatus.Text = "休日データを取得中...";

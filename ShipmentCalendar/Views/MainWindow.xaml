@@ -16,8 +16,8 @@
             <Setter Property="TextAlignment" Value="Center" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
-        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
-        <views:InverseBooleanConverter x:Key="InverseBool"/>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+        <views:InverseBooleanConverter x:Key="InverseBool" />
         <!--  固定列のセル内テキストを縦中央に揃えるスタイル  -->
         <Style x:Key="FixedColumnCellStyle" TargetType="TextBlock">
             <Setter Property="VerticalAlignment" Value="Center" />
@@ -26,354 +26,473 @@
 
     <!--  ルートを Grid にして DockPanel の上にスピナーオーバーレイを重ねる  -->
     <Grid>
-    <DockPanel>
-        <!--  ツールバー  -->
-        <ToolBar Background="#1976D2" DockPanel.Dock="Top">
-            <Button
-                Padding="8,4"
-                Background="Transparent"
-                BorderThickness="0"
-                Command="{Binding LoadOrdersCommand}"
-                FontSize="14"
-                Foreground="White">
-                更新
-            </Button>
-            <Separator />
-            <!--  設定系をまとめたドロップダウンメニュー  -->
-            <Menu Background="Transparent" VerticalAlignment="Center">
-                <MenuItem FontSize="14" Foreground="White" Background="Transparent" Padding="8,4">
-                    <MenuItem.Header>設定 ▾</MenuItem.Header>
-                    <MenuItem Header="データソース設定" Click="BtnSettings_Click"/>
-                    <MenuItem Header="工程設定"          Click="BtnProcess_Click"/>
-                    <MenuItem Header="休日設定"          Click="BtnHoliday_Click"/>
-                    <MenuItem Header="部署設定"          Click="BtnDeptSetting_Click"/>
-                    <MenuItem Header="表示設定"          Click="BtnDisplaySettings_Click"/>
-                </MenuItem>
-            </Menu>
-            <Separator />
-            <!--  列の表示/非表示設定  -->
-            <Button Name="BtnColumnVisibility"
-                    Padding="8,4" Background="Transparent" BorderThickness="0"
-                    Foreground="White" FontSize="14"
+        <DockPanel>
+            <!--  ツールバー  -->
+            <ToolBar Background="#1976D2" DockPanel.Dock="Top">
+                <Button
+                    Padding="8,4"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Command="{Binding LoadOrdersCommand}"
+                    FontSize="14"
+                    Foreground="White">
+                    更新
+                </Button>
+                <Separator />
+                <!--  設定系をまとめたドロップダウンメニュー  -->
+                <Menu VerticalAlignment="Center" Background="Transparent">
+                    <MenuItem
+                        Padding="8,4"
+                        Background="Transparent"
+                        FontSize="14"
+                        Foreground="White">
+                        <MenuItem.Header>設定 ▾</MenuItem.Header>
+                        <MenuItem Click="BtnSettings_Click" Header="データソース設定" />
+                        <MenuItem Click="BtnProcess_Click" Header="工程設定" />
+                        <MenuItem Click="BtnHoliday_Click" Header="休日設定" />
+                        <MenuItem Click="BtnDeptSetting_Click" Header="部署設定" />
+                        <MenuItem Click="BtnDisplaySettings_Click" Header="表示設定" />
+                    </MenuItem>
+                </Menu>
+                <Separator />
+                <!--  列の表示/非表示設定  -->
+                <Button
+                    Name="BtnColumnVisibility"
+                    Padding="8,4"
+                    Background="Transparent"
+                    BorderThickness="0"
                     Click="BtnColumnVisibility_Click"
+                    FontSize="14"
+                    Foreground="White"
                     PreviewMouseLeftButtonDown="BtnColumnVisibility_PreviewMouseLeftButtonDown">
-                列表示設定 ▾
-            </Button>
-            <Separator />
-            <!--  未完了工程の表示日切り替え（クリックで着手必須日/完了必須日を切り替え）  -->
-            <Button Name="BtnToggleDueDateDisplay"
-                    Padding="8,4" Background="Transparent" BorderThickness="0"
-                    Foreground="White" FontSize="14"
-                    Click="BtnToggleDueDateDisplay_Click"/>
-            <!--  注文一覧の並び順切り替え（出荷日順/工程期限順）  -->
-            <Button Name="BtnToggleSortMode"
-                    Padding="8,4" Background="Transparent" BorderThickness="0"
-                    Foreground="White" FontSize="14"
-                    Click="BtnToggleSortMode_Click"/>
-            <Separator />
-            <!--  担当部署フィルターボタン（動的生成）  -->
-            <ItemsControl ItemsSource="{Binding DepartmentFilters}">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <StackPanel Orientation="Horizontal"/>
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <ToggleButton
-                            Content="{Binding Name}"
-                            IsChecked="{Binding IsSelected, Mode=OneWay}"
-                            Command="{Binding DataContext.SelectDepartmentCommand,
-                                      RelativeSource={RelativeSource AncestorType=ToolBar}}"
-                            CommandParameter="{Binding Id}"
-                            Padding="10,4" Margin="2,0"
-                            FontSize="13" FontWeight="SemiBold"
-                            Foreground="White" Background="Transparent" BorderThickness="0">
-                            <ToggleButton.Style>
-                                <Style TargetType="ToggleButton">
-                                    <Setter Property="Foreground" Value="White"/>
-                                    <Setter Property="Background" Value="Transparent"/>
-                                    <Setter Property="BorderThickness" Value="0"/>
-                                    <Style.Triggers>
-                                        <Trigger Property="IsChecked" Value="True">
-                                            <Setter Property="Background" Value="#0D47A1"/>
-                                            <Setter Property="BorderThickness" Value="0,0,0,3"/>
-                                            <Setter Property="BorderBrush" Value="White"/>
-                                        </Trigger>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="#1565C0"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </ToggleButton.Style>
-                        </ToggleButton>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <Separator />
-            <!--  フルスクリーン表示の切り替え（F11キーと同じ動作）  -->
-            <Button Name="BtnToggleFullScreen"
-                    Padding="8,4" Background="Transparent" BorderThickness="0"
-                    Foreground="White" FontSize="14"
-                    Click="BtnToggleFullScreen_Click">
-                フルスクリーン
-            </Button>
-        </ToolBar>
+                    列表示設定 ▾
+                </Button>
+                <Separator />
+                <!--  未完了工程の表示日切り替え（クリックで着手必須日/完了必須日を切り替え）  -->
+                <Button
+                    Name="BtnToggleDueDateDisplay"
+                    Padding="8,4"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Click="BtnToggleDueDateDisplay_Click"
+                    FontSize="14"
+                    Foreground="White" />
+                <!--  注文一覧の並び順切り替え（出荷日順/工程期限順）  -->
+                <Button
+                    Name="BtnToggleSortMode"
+                    Padding="8,4"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Click="BtnToggleSortMode_Click"
+                    FontSize="14"
+                    Foreground="White" />
+                <Separator />
+                <!--  担当部署フィルターボタン（動的生成）  -->
+                <ItemsControl ItemsSource="{Binding DepartmentFilters}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <ToggleButton
+                                Margin="2,0"
+                                Padding="10,4"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Command="{Binding DataContext.SelectDepartmentCommand, RelativeSource={RelativeSource AncestorType=ToolBar}}"
+                                CommandParameter="{Binding Id}"
+                                Content="{Binding Name}"
+                                FontSize="13"
+                                FontWeight="SemiBold"
+                                Foreground="White"
+                                IsChecked="{Binding IsSelected, Mode=OneWay}">
+                                <ToggleButton.Style>
+                                    <Style TargetType="ToggleButton">
+                                        <Setter Property="Foreground" Value="White" />
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Setter Property="BorderThickness" Value="0" />
+                                        <Style.Triggers>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter Property="Background" Value="#0D47A1" />
+                                                <Setter Property="BorderThickness" Value="0,0,0,3" />
+                                                <Setter Property="BorderBrush" Value="White" />
+                                            </Trigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="#1565C0" />
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ToggleButton.Style>
+                            </ToggleButton>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Separator />
+                <!--  フルスクリーン表示の切り替え（F11キーと同じ動作）  -->
+                <Button
+                    Name="BtnToggleFullScreen"
+                    Padding="8,4"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Click="BtnToggleFullScreen_Click"
+                    FontSize="14"
+                    Foreground="White">
+                    フルスクリーン
+                </Button>
+            </ToolBar>
 
-        <!--  フィルターバー  -->
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal"
-                    Margin="4,4,4,2" Background="#F0F4F8">
-            <TextBlock Text="出荷日：" VerticalAlignment="Center" Margin="6,0,2,0"/>
-            <DatePicker SelectedDate="{Binding FilterDeliveryFrom}"
-                        DisplayDateStart="{Binding FilterDateMin}" DisplayDateEnd="{Binding FilterDateMax}"
-                        IsEnabled="{Binding FilterTodayOnly, Converter={StaticResource InverseBool}}"
-                        Width="112" Margin="0,0,2,0"/>
-            <TextBlock Text="〜" VerticalAlignment="Center" Margin="0,0,2,0"/>
-            <DatePicker SelectedDate="{Binding FilterDeliveryTo}"
-                        DisplayDateStart="{Binding FilterDateMin}" DisplayDateEnd="{Binding FilterDateMax}"
-                        IsEnabled="{Binding FilterTodayOnly, Converter={StaticResource InverseBool}}"
-                        Width="112" Margin="0,0,4,0"/>
-            <CheckBox Content="本日のみ" VerticalAlignment="Center" Margin="0,0,10,0"
-                      IsChecked="{Binding FilterTodayOnly}"/>
-            <TextBlock Text="品目番号：" VerticalAlignment="Center" Margin="0,0,2,0"/>
-            <TextBox Text="{Binding FilterItemNumber, UpdateSourceTrigger=PropertyChanged}"
-                     Width="130" Margin="0,0,10,0" Padding="3,2" VerticalContentAlignment="Center"/>
-            <TextBlock Text="品目名：" VerticalAlignment="Center" Margin="0,0,2,0"/>
-            <TextBox Text="{Binding FilterProductName, UpdateSourceTrigger=PropertyChanged}"
-                     Width="130" Margin="0,0,10,0" Padding="3,2" VerticalContentAlignment="Center"/>
-            <TextBlock Text="製番：" VerticalAlignment="Center" Margin="0,0,2,0"/>
-            <TextBox Text="{Binding FilterManufactureNumber, UpdateSourceTrigger=PropertyChanged}"
-                     Width="140" Margin="0,0,10,0" Padding="3,2" VerticalContentAlignment="Center"/>
-            <TextBlock Text="区分：" VerticalAlignment="Center" Margin="0,0,2,0"/>
-            <ComboBox ItemsSource="{Binding ProductCategoryOptions}"
-                      SelectedItem="{Binding FilterProductCategory}"
-                      Width="120" Margin="0,0,10,0"/>
-            <CheckBox Content="完了済みを非表示" VerticalAlignment="Center" Margin="0,0,10,0"
-                      IsChecked="{Binding FilterHideCompleted}"/>
-            <Button Content="クリア" Padding="8,3" Click="BtnClearFilter_Click"/>
-        </StackPanel>
+            <!--  フィルターバー  -->
+            <StackPanel
+                Margin="4,4,4,2"
+                Background="#F0F4F8"
+                DockPanel.Dock="Top"
+                Orientation="Horizontal">
+                <TextBlock
+                    Margin="6,0,2,0"
+                    VerticalAlignment="Center"
+                    Text="出荷日：" />
+                <DatePicker
+                    Width="112"
+                    Margin="0,0,2,0"
+                    DisplayDateEnd="{Binding FilterDateMax}"
+                    DisplayDateStart="{Binding FilterDateMin}"
+                    IsEnabled="{Binding FilterTodayOnly, Converter={StaticResource InverseBool}}"
+                    SelectedDate="{Binding FilterDeliveryFrom}" />
+                <TextBlock
+                    Margin="0,0,2,0"
+                    VerticalAlignment="Center"
+                    Text="〜" />
+                <DatePicker
+                    Width="112"
+                    Margin="0,0,4,0"
+                    DisplayDateEnd="{Binding FilterDateMax}"
+                    DisplayDateStart="{Binding FilterDateMin}"
+                    IsEnabled="{Binding FilterTodayOnly, Converter={StaticResource InverseBool}}"
+                    SelectedDate="{Binding FilterDeliveryTo}" />
+                <CheckBox
+                    Margin="0,0,10,0"
+                    VerticalAlignment="Center"
+                    Content="本日のみ"
+                    IsChecked="{Binding FilterTodayOnly}" />
+                <TextBlock
+                    Margin="0,0,2,0"
+                    VerticalAlignment="Center"
+                    Text="品目番号：" />
+                <TextBox
+                    Width="130"
+                    Margin="0,0,10,0"
+                    Padding="3,2"
+                    VerticalContentAlignment="Center"
+                    Text="{Binding FilterItemNumber, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock
+                    Margin="0,0,2,0"
+                    VerticalAlignment="Center"
+                    Text="品目名：" />
+                <TextBox
+                    Width="130"
+                    Margin="0,0,10,0"
+                    Padding="3,2"
+                    VerticalContentAlignment="Center"
+                    Text="{Binding FilterProductName, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock
+                    Margin="0,0,2,0"
+                    VerticalAlignment="Center"
+                    Text="製番：" />
+                <TextBox
+                    Width="140"
+                    Margin="0,0,10,0"
+                    Padding="3,2"
+                    VerticalContentAlignment="Center"
+                    Text="{Binding FilterManufactureNumber, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock
+                    Margin="0,0,2,0"
+                    VerticalAlignment="Center"
+                    Text="区分：" />
+                <ComboBox
+                    Width="120"
+                    Margin="0,0,10,0"
+                    ItemsSource="{Binding ProductCategoryOptions}"
+                    SelectedItem="{Binding FilterProductCategory}" />
+                <CheckBox
+                    Margin="0,0,10,0"
+                    VerticalAlignment="Center"
+                    Content="完了済みを非表示"
+                    IsChecked="{Binding FilterHideCompleted}" />
+                <Button
+                    Padding="8,3"
+                    Click="BtnClearFilter_Click"
+                    Content="クリア" />
+            </StackPanel>
 
-        <!--  ステータスバー（左：状態メッセージ、右：凡例）  -->
-        <StatusBar Background="#EEEEEE" DockPanel.Dock="Bottom">
-            <StatusBarItem DockPanel.Dock="Right">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock
-                        Margin="0,0,8,0"
-                        VerticalAlignment="Center"
-                        Text="凡例：" />
-                    <Border
-                        Width="80"
-                        Height="20"
-                        Margin="2"
-                        Background="{StaticResource StatusNotStarted}"
-                        CornerRadius="3">
+            <!--  ステータスバー（左：状態メッセージ、右：凡例）  -->
+            <StatusBar Background="#EEEEEE" DockPanel.Dock="Bottom">
+                <StatusBarItem DockPanel.Dock="Right">
+                    <StackPanel Orientation="Horizontal">
                         <TextBlock
-                            HorizontalAlignment="Center"
+                            Margin="0,0,8,0"
                             VerticalAlignment="Center"
-                            FontSize="11"
-                            Text="未着手" />
-                    </Border>
-                    <Border
-                        Width="80"
-                        Height="20"
+                            Text="凡例：" />
+                        <Border
+                            Width="80"
+                            Height="20"
+                            Margin="2"
+                            Background="{StaticResource StatusNotStarted}"
+                            CornerRadius="3">
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                FontSize="11"
+                                Text="未着手" />
+                        </Border>
+                        <Border
+                            Width="80"
+                            Height="20"
+                            Margin="2"
+                            Background="{StaticResource StatusInProgress}"
+                            CornerRadius="3">
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                FontSize="11"
+                                Text="進行中" />
+                        </Border>
+                        <Border
+                            Width="80"
+                            Height="20"
+                            Margin="2"
+                            Background="#FF9800"
+                            CornerRadius="3">
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                FontSize="11"
+                                Text="警告" />
+                        </Border>
+                        <Border
+                            Width="80"
+                            Height="20"
+                            Margin="2"
+                            Background="{StaticResource StatusCompleted}"
+                            CornerRadius="3">
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                FontSize="11"
+                                Text="完了" />
+                        </Border>
+                        <Border
+                            Width="80"
+                            Height="20"
+                            Margin="2"
+                            Background="{StaticResource StatusOverdue}"
+                            CornerRadius="3">
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                FontSize="11"
+                                Foreground="White"
+                                Text="超過" />
+                        </Border>
+                    </StackPanel>
+                </StatusBarItem>
+                <StatusBarItem>
+                    <TextBlock Padding="4" Text="{Binding StatusMessage}" />
+                </StatusBarItem>
+            </StatusBar>
+
+            <!--  メインリスト  -->
+            <DataGrid
+                Name="OrderGrid"
+                Margin="4"
+                AlternatingRowBackground="#F5F5F5"
+                AutoGenerateColumns="False"
+                CanUserSortColumns="False"
+                GridLinesVisibility="Horizontal"
+                HeadersVisibility="Column"
+                IsReadOnly="True"
+                ItemsSource="{Binding Orders}"
+                SelectedItem="{Binding SelectedOrder}"
+                SelectionMode="Single"
+                SelectionUnit="Cell">
+                <DataGrid.Columns>
+                    <DataGridTextColumn
+                        x:Name="ColDeliveryDate"
+                        Width="100"
+                        Binding="{Binding DeliveryDate, StringFormat=yyyy/MM/dd}"
+                        ElementStyle="{StaticResource FixedColumnCellStyle}"
+                        Header="出荷日" />
+                    <DataGridTextColumn
+                        x:Name="ColCompletionDate"
+                        Width="100"
+                        Binding="{Binding CompletionDate, StringFormat=yyyy/MM/dd}"
+                        ElementStyle="{StaticResource FixedColumnCellStyle}"
+                        Header="完了日" />
+                    <DataGridTextColumn
+                        x:Name="ColItemNumber"
+                        Width="150"
+                        Binding="{Binding ItemNumber}"
+                        ElementStyle="{StaticResource FixedColumnCellStyle}"
+                        Header="品目番号" />
+                    <DataGridTextColumn
+                        x:Name="ColModelCode"
+                        Width="100"
+                        Binding="{Binding ModelCode}"
+                        ElementStyle="{StaticResource FixedColumnCellStyle}"
+                        Header="機種コード" />
+                    <DataGridTextColumn
+                        x:Name="ColProductName"
+                        Width="200"
+                        Binding="{Binding ProductName}"
+                        ElementStyle="{StaticResource FixedColumnCellStyle}"
+                        Header="品目名" />
+                    <DataGridTextColumn
+                        x:Name="ColManufactureNumber"
+                        Width="180"
+                        Binding="{Binding ManufactureNumber}"
+                        ElementStyle="{StaticResource FixedColumnCellStyle}"
+                        Header="製番" />
+                    <DataGridTextColumn
+                        x:Name="ColPlannedQuantity"
+                        Width="70"
+                        Binding="{Binding PlannedQuantity}"
+                        ElementStyle="{StaticResource FixedColumnCellStyle}"
+                        Header="計画数" />
+                    <!--  工程列はコードビハインドで動的生成  -->
+                </DataGrid.Columns>
+
+                <DataGrid.RowStyle>
+                    <Style TargetType="DataGridRow">
+                        <EventSetter Event="MouseDoubleClick" Handler="OrderRow_DoubleClick" />
+                    </Style>
+                </DataGrid.RowStyle>
+            </DataGrid>
+        </DockPanel>
+
+        <!--  列の表示/非表示設定ポップアップ  -->
+        <Popup
+            Name="ColumnVisibilityPopup"
+            Placement="Bottom"
+            PlacementTarget="{Binding ElementName=BtnColumnVisibility}"
+            StaysOpen="False">
+            <Border
+                Padding="8"
+                Background="White"
+                BorderBrush="#999999"
+                BorderThickness="1">
+                <StackPanel>
+                    <CheckBox
+                        Name="ChkColDeliveryDate"
                         Margin="2"
-                        Background="{StaticResource StatusInProgress}"
-                        CornerRadius="3">
-                        <TextBlock
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            FontSize="11"
-                            Text="進行中" />
-                    </Border>
-                    <Border
-                        Width="80"
-                        Height="20"
+                        Checked="ColumnVisibilityCheckBox_Changed"
+                        Content="出荷日"
+                        Unchecked="ColumnVisibilityCheckBox_Changed" />
+                    <CheckBox
+                        Name="ChkColCompletionDate"
                         Margin="2"
-                        Background="#FF9800"
-                        CornerRadius="3">
-                        <TextBlock
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            FontSize="11"
-                            Text="警告" />
-                    </Border>
-                    <Border
-                        Width="80"
-                        Height="20"
+                        Checked="ColumnVisibilityCheckBox_Changed"
+                        Content="完了日"
+                        Unchecked="ColumnVisibilityCheckBox_Changed" />
+                    <CheckBox
+                        Name="ChkColItemNumber"
                         Margin="2"
-                        Background="{StaticResource StatusCompleted}"
-                        CornerRadius="3">
-                        <TextBlock
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            FontSize="11"
-                            Text="完了" />
-                    </Border>
-                    <Border
-                        Width="80"
-                        Height="20"
+                        Checked="ColumnVisibilityCheckBox_Changed"
+                        Content="品目番号"
+                        Unchecked="ColumnVisibilityCheckBox_Changed" />
+                    <CheckBox
+                        Name="ChkColModelCode"
                         Margin="2"
-                        Background="{StaticResource StatusOverdue}"
-                        CornerRadius="3">
-                        <TextBlock
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            FontSize="11"
-                            Foreground="White"
-                            Text="超過" />
-                    </Border>
+                        Checked="ColumnVisibilityCheckBox_Changed"
+                        Content="機種コード"
+                        Unchecked="ColumnVisibilityCheckBox_Changed" />
+                    <CheckBox
+                        Name="ChkColProductName"
+                        Margin="2"
+                        Checked="ColumnVisibilityCheckBox_Changed"
+                        Content="品目名"
+                        Unchecked="ColumnVisibilityCheckBox_Changed" />
+                    <CheckBox
+                        Name="ChkColManufactureNumber"
+                        Margin="2"
+                        Checked="ColumnVisibilityCheckBox_Changed"
+                        Content="製番"
+                        Unchecked="ColumnVisibilityCheckBox_Changed" />
+                    <CheckBox
+                        Name="ChkColPlannedQuantity"
+                        Margin="2"
+                        Checked="ColumnVisibilityCheckBox_Changed"
+                        Content="計画数"
+                        Unchecked="ColumnVisibilityCheckBox_Changed" />
                 </StackPanel>
-            </StatusBarItem>
-            <StatusBarItem>
-                <TextBlock Padding="4" Text="{Binding StatusMessage}" />
-            </StatusBarItem>
-        </StatusBar>
+            </Border>
+        </Popup>
 
-        <!--  メインリスト  -->
-        <DataGrid
-            Name="OrderGrid"
-            Margin="4"
-            AlternatingRowBackground="#F5F5F5"
-            AutoGenerateColumns="False"
-            GridLinesVisibility="Horizontal"
-            HeadersVisibility="Column"
-            IsReadOnly="True"
-            CanUserSortColumns="False"
-            SelectionUnit="Cell" SelectionMode="Single"
-            ItemsSource="{Binding Orders}"
-            SelectedItem="{Binding SelectedOrder}">
-            <DataGrid.Columns>
-                <DataGridTextColumn
-                    x:Name="ColDeliveryDate"
-                    Width="100"
-                    Binding="{Binding DeliveryDate, StringFormat=yyyy/MM/dd}"
-                    ElementStyle="{StaticResource FixedColumnCellStyle}"
-                    Header="出荷日" />
-                <DataGridTextColumn
-                    x:Name="ColCompletionDate"
-                    Width="100"
-                    Binding="{Binding CompletionDate, StringFormat=yyyy/MM/dd}"
-                    ElementStyle="{StaticResource FixedColumnCellStyle}"
-                    Header="完了日" />
-                <DataGridTextColumn
-                    x:Name="ColItemNumber"
-                    Width="150"
-                    Binding="{Binding ItemNumber}"
-                    ElementStyle="{StaticResource FixedColumnCellStyle}"
-                    Header="品目番号" />
-                <DataGridTextColumn
-                    x:Name="ColModelCode"
-                    Width="100"
-                    Binding="{Binding ModelCode}"
-                    ElementStyle="{StaticResource FixedColumnCellStyle}"
-                    Header="機種コード" />
-                <DataGridTextColumn
-                    x:Name="ColProductName"
-                    Width="200"
-                    Binding="{Binding ProductName}"
-                    ElementStyle="{StaticResource FixedColumnCellStyle}"
-                    Header="品目名" />
-                <DataGridTextColumn
-                    x:Name="ColManufactureNumber"
-                    Width="180"
-                    Binding="{Binding ManufactureNumber}"
-                    ElementStyle="{StaticResource FixedColumnCellStyle}"
-                    Header="製番" />
-                <DataGridTextColumn
-                    x:Name="ColPlannedQuantity"
-                    Width="70"
-                    Binding="{Binding PlannedQuantity}"
-                    ElementStyle="{StaticResource FixedColumnCellStyle}"
-                    Header="計画数" />
-                <!--  工程列はコードビハインドで動的生成  -->
-            </DataGrid.Columns>
-
-            <DataGrid.RowStyle>
-                <Style TargetType="DataGridRow">
-                    <EventSetter Event="MouseDoubleClick" Handler="OrderRow_DoubleClick" />
+        <!--  ローディングオーバーレイ（IsLoading=true のとき表示）  -->
+        <Grid IsHitTestVisible="{Binding IsLoading}">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Setter Property="Opacity" Value="0" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsLoading}" Value="True">
+                            <Setter Property="Opacity" Value="1" />
+                        </DataTrigger>
+                    </Style.Triggers>
                 </Style>
-            </DataGrid.RowStyle>
-        </DataGrid>
-    </DockPanel>
+            </Grid.Style>
+            <!--  半透明の暗幕  -->
+            <Rectangle Fill="#88000000" />
 
-    <!--  列の表示/非表示設定ポップアップ  -->
-    <Popup Name="ColumnVisibilityPopup"
-           Placement="Bottom" StaysOpen="False"
-           PlacementTarget="{Binding ElementName=BtnColumnVisibility}">
-        <Border Background="White" BorderBrush="#999999" BorderThickness="1" Padding="8">
-            <StackPanel>
-                <CheckBox Name="ChkColDeliveryDate" Content="出荷日" Margin="2"
-                          Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed"/>
-                <CheckBox Name="ChkColCompletionDate" Content="完了日" Margin="2"
-                          Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed"/>
-                <CheckBox Name="ChkColItemNumber" Content="品目番号" Margin="2"
-                          Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed"/>
-                <CheckBox Name="ChkColModelCode" Content="機種コード" Margin="2"
-                          Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed"/>
-                <CheckBox Name="ChkColProductName" Content="品目名" Margin="2"
-                          Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed"/>
-                <CheckBox Name="ChkColManufactureNumber" Content="製番" Margin="2"
-                          Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed"/>
-                <CheckBox Name="ChkColPlannedQuantity" Content="計画数" Margin="2"
-                          Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed"/>
-            </StackPanel>
-        </Border>
-    </Popup>
-
-    <!--  ローディングオーバーレイ（IsLoading=true のとき表示）  -->
-    <Grid IsHitTestVisible="{Binding IsLoading}">
-        <Grid.Style>
-            <Style TargetType="Grid">
-                <Setter Property="Opacity" Value="0"/>
-                <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsLoading}" Value="True">
-                        <Setter Property="Opacity" Value="1"/>
-                    </DataTrigger>
-                </Style.Triggers>
-            </Style>
-        </Grid.Style>
-        <!--  半透明の暗幕  -->
-        <Rectangle Fill="#88000000"/>
-
-        <!--  スピナーカード  -->
-        <Border Background="White" CornerRadius="10"
-                Width="140" Height="110"
-                HorizontalAlignment="Center" VerticalAlignment="Center">
-            <Border.Effect>
-                <DropShadowEffect BlurRadius="16" ShadowDepth="0" Opacity="0.3"/>
-            </Border.Effect>
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                <!--  回転する破線の楕円でスピナーを表現  -->
-                <Ellipse Width="40" Height="40"
-                         StrokeThickness="4"
-                         StrokeDashArray="6 3"
-                         Stroke="#1976D2"
-                         RenderTransformOrigin="0.5,0.5">
-                    <Ellipse.RenderTransform>
-                        <RotateTransform x:Name="SpinnerRotate"/>
-                    </Ellipse.RenderTransform>
-                    <Ellipse.Triggers>
-                        <EventTrigger RoutedEvent="Loaded">
-                            <BeginStoryboard>
-                                <Storyboard RepeatBehavior="Forever">
-                                    <DoubleAnimation
-                                        Storyboard.TargetName="SpinnerRotate"
-                                        Storyboard.TargetProperty="Angle"
-                                        From="0" To="360"
-                                        Duration="0:0:0.8"/>
-                                </Storyboard>
-                            </BeginStoryboard>
-                        </EventTrigger>
-                    </Ellipse.Triggers>
-                </Ellipse>
-                <TextBlock Text="読み込み中..."
-                           Margin="0,10,0,0"
-                           HorizontalAlignment="Center"
-                           Foreground="#444444"
-                           FontSize="13"/>
-            </StackPanel>
-        </Border>
-    </Grid>
+            <!--  スピナーカード  -->
+            <Border
+                Width="140"
+                Height="110"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="White"
+                CornerRadius="10">
+                <Border.Effect>
+                    <DropShadowEffect
+                        BlurRadius="16"
+                        Opacity="0.3"
+                        ShadowDepth="0" />
+                </Border.Effect>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <!--  回転する破線の楕円でスピナーを表現  -->
+                    <Ellipse
+                        Width="40"
+                        Height="40"
+                        RenderTransformOrigin="0.5,0.5"
+                        Stroke="#1976D2"
+                        StrokeDashArray="6 3"
+                        StrokeThickness="4">
+                        <Ellipse.RenderTransform>
+                            <RotateTransform x:Name="SpinnerRotate" />
+                        </Ellipse.RenderTransform>
+                        <Ellipse.Triggers>
+                            <EventTrigger RoutedEvent="Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard RepeatBehavior="Forever">
+                                        <DoubleAnimation
+                                            Storyboard.TargetName="SpinnerRotate"
+                                            Storyboard.TargetProperty="Angle"
+                                            From="0"
+                                            To="360"
+                                            Duration="0:0:0.8" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </Ellipse.Triggers>
+                    </Ellipse>
+                    <TextBlock
+                        Margin="0,10,0,0"
+                        HorizontalAlignment="Center"
+                        FontSize="13"
+                        Foreground="#444444"
+                        Text="読み込み中..." />
+                </StackPanel>
+            </Border>
+        </Grid>
 
     </Grid>
 </Window>

@@ -7,7 +7,7 @@ namespace ShipmentCalendar.Repositories;
 public class SqliteProductDisplayNameRepository
 {
     /// <summary>品目番号に対応する表示名を取得する（未登録時はnull）</summary>
-    public async Task<string?> GetDisplayNameAsync(string itemNumber)
+    public static async Task<string?> GetDisplayNameAsync(string itemNumber)
     {
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
@@ -20,7 +20,7 @@ public class SqliteProductDisplayNameRepository
     }
 
     /// <summary>全品目の品目番号→表示名辞書を返す</summary>
-    public async Task<Dictionary<string, string>> GetAllDisplayNamesAsync()
+    public static async Task<Dictionary<string, string>> GetAllDisplayNamesAsync()
     {
         var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
@@ -37,7 +37,7 @@ public class SqliteProductDisplayNameRepository
 
     /// <summary>品目番号に対応する表示名を保存する（INSERT OR REPLACE）</summary>
     /// <remarks>ProductName列はUNIQUE制約を利用した一意キーとして品目番号をそのまま格納している</remarks>
-    public async Task SaveDisplayNameAsync(string itemNumber, string displayName)
+    public static async Task SaveDisplayNameAsync(string itemNumber, string displayName)
     {
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();

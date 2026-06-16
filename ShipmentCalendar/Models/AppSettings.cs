@@ -3,16 +3,8 @@ namespace ShipmentCalendar.Models;
 /// <summary>アプリ設定（JSONファイルで永続化）</summary>
 public class AppSettings
 {
-    /// <summary>ODBC接続方式（"Dsn"=DSN名を使用、"Direct"=DSNレス接続）</summary>
-    public string OdbcConnectionMode { get; set; } = "Dsn";
     /// <summary>ODBC DSN名（例: DrSum_WORKDB_YD）</summary>
     public string OdbcDsn { get; set; } = string.Empty;
-    /// <summary>DSNレス接続時のサーバー名/IPアドレス</summary>
-    public string OdbcServer { get; set; } = string.Empty;
-    /// <summary>DSNレス接続時のポート番号</summary>
-    public string OdbcPort { get; set; } = string.Empty;
-    /// <summary>DSNレス接続時のデータベース名</summary>
-    public string OdbcDatabase { get; set; } = string.Empty;
     /// <summary>ODBCユーザーID</summary>
     public string OdbcUserId { get; set; } = string.Empty;
     /// <summary>ODBCパスワード（保存時はDPAPIで暗号化される）</summary>
@@ -56,9 +48,6 @@ public class AppSettings
     /// <summary>工程列に「標準時間（必要時間）」行を表示するか</summary>
     public bool ShowProcessRequiredHours { get; set; } = true;
 
-    /// <summary>ODBC接続設定が入力済みか（接続方式に応じて必須項目を判定）</summary>
-    public bool IsOdbcConfigured =>
-        OdbcConnectionMode == "Direct"
-            ? !string.IsNullOrEmpty(OdbcServer) && !string.IsNullOrEmpty(OdbcDatabase)
-            : !string.IsNullOrEmpty(OdbcDsn);
+    /// <summary>ODBC接続設定が入力済みか</summary>
+    public bool IsOdbcConfigured => !string.IsNullOrEmpty(OdbcDsn);
 }

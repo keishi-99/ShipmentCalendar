@@ -14,5 +14,5 @@ public class Order
     /// <summary>完了日（出荷日から設定の営業日数だけ前の日）</summary>
     public DateOnly CompletionDate { get; set; }
     public int PlannedQuantity { get; set; }
-    public List<OrderProcess> Processes { get; set; } = new();
+    public List<OrderProcess> Processes { get; set; } = [];
 }

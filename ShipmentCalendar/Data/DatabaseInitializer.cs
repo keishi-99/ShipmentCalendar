@@ -4,18 +4,16 @@ using System.IO;
 namespace ShipmentCalendar.Data;
 
 /// <summary>SQLiteデータベース初期化・接続管理（工程マスタ・休日のみ管理）</summary>
-public static class DatabaseInitializer
-{
-    private static readonly string DataDir = Path.Combine(
+public static class DatabaseInitializer {
+    private static readonly string _dataDir = Path.Combine(
         AppDomain.CurrentDomain.BaseDirectory, "data");
 
-    private static string _dbPath = Path.Combine(DataDir, "shipment.db");
+    private static readonly string _dbPath = Path.Combine(_dataDir, "shipment.db");
 
     public static string ConnectionString => $"Data Source={_dbPath}";
 
-    public static void Initialize()
-    {
-        Directory.CreateDirectory(DataDir);
+    public static void Initialize() {
+        Directory.CreateDirectory(_dataDir);
 
         using var connection = new SqliteConnection(ConnectionString);
         connection.Open();
@@ -70,8 +68,9 @@ public static class DatabaseInitializer
         // デフォルト部署を登録（既存なら無視）
         using var insertDepts = connection.CreateCommand();
         insertDepts.CommandText = @"
-            INSERT OR IGNORE INTO Departments (Name, SortOrder) VALUES ('製造課', 0);
-            INSERT OR IGNORE INTO Departments (Name, SortOrder) VALUES ('検査課', 1);
+            INSERT OR IGNORE INTO Departments (Name, SortOrder) VALUES ('生産統括課', 0);
+            INSERT OR IGNORE INTO Departments (Name, SortOrder) VALUES ('製造課', 1);
+            INSERT OR IGNORE INTO Departments (Name, SortOrder) VALUES ('検査課', 2);
         ";
         insertDepts.ExecuteNonQuery();
     }

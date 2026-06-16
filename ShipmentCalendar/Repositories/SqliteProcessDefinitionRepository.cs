@@ -8,7 +8,7 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
 {
     public async Task<IEnumerable<ProcessDefinition>> GetAllAsync()
     {
-        var definitions = new List<ProcessDefinition>();
+        List<ProcessDefinition> definitions = [];
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
@@ -23,7 +23,7 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
 
     public async Task<IEnumerable<ProcessDefinition>> GetByItemNumberAsync(string itemNumber)
     {
-        var definitions = new List<ProcessDefinition>();
+        List<ProcessDefinition> definitions = [];
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
@@ -39,7 +39,7 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
 
     public async Task<IEnumerable<string>> GetItemNumbersAsync()
     {
-        var names = new List<string>();
+        List<string> names = [];
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
@@ -159,7 +159,7 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
         await transaction.CommitAsync();
     }
 
-    private static ProcessDefinition ReadDefinition(SqliteDataReader reader) => new ProcessDefinition
+    private static ProcessDefinition ReadDefinition(SqliteDataReader reader) => new()
     {
         Id = reader.GetInt32(0),
         ItemNumber = reader.GetString(1),

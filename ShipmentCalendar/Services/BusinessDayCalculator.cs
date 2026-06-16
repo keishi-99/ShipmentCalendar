@@ -3,12 +3,8 @@ using ShipmentCalendar.Models;
 namespace ShipmentCalendar.Services;
 
 /// <summary>営業日計算サービス（休日・土日を除く）</summary>
-public class BusinessDayCalculator {
-    private readonly HashSet<DateOnly> _holidays;
-
-    public BusinessDayCalculator(IEnumerable<Holiday> holidays) {
-        _holidays = holidays.Select(h => h.Date).ToHashSet();
-    }
+public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
+    private readonly HashSet<DateOnly> _holidays = holidays.Select(h => h.Date).ToHashSet();
 
     /// <summary>基準日からN営業日前の日付を返す</summary>
     public DateOnly SubtractBusinessDays(DateOnly baseDate, int businessDays) {
@@ -43,7 +39,7 @@ public class BusinessDayCalculator {
     /// </summary>
     public List<OrderProcess> BuildProcesses(Order order, IEnumerable<ProcessDefinition> definitions, Dictionary<string, DateOnly?> completedByDestNumber) {
         var sorted = definitions.OrderBy(d => d.SortOrder).ToList();
-        if (!sorted.Any()) return new List<OrderProcess>();
+        if (sorted.Count == 0) return [];
 
         // 末尾工程から逆向きに、完了日から数えた日チャンク番号
         // （1=完了日当日、2=その前営業日…）で着手・完了それぞれの必須バケットを求める
@@ -114,7 +110,7 @@ public class BusinessDayCalculator {
     }
 
     /// <summary>今日の日付を基準に工程ステータスを自動判定する</summary>
-    public ProcessStatus DetermineStatus(OrderProcess process, DateOnly today, int warningDays = 0) {
+    public static ProcessStatus DetermineStatus(OrderProcess process, DateOnly today, int warningDays = 0) {
         if (process.Status == ProcessStatus.Completed)
             return ProcessStatus.Completed;
 
