@@ -4,7 +4,7 @@ using ShipmentCalendar.Data;
 namespace ShipmentCalendar.Repositories;
 
 /// <summary>品目番号ごとの表示用品目名をProductsテーブルで管理する</summary>
-public class SqliteProductDisplayNameRepository
+public static class SqliteProductDisplayNameRepository
 {
     /// <summary>品目番号に対応する表示名を取得する（未登録時はnull）</summary>
     public static async Task<string?> GetDisplayNameAsync(string itemNumber)

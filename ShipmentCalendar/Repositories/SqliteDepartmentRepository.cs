@@ -5,7 +5,7 @@ using ShipmentCalendar.Models;
 namespace ShipmentCalendar.Repositories;
 
 /// <summary>担当部署マスタのSQLiteリポジトリ</summary>
-public class SqliteDepartmentRepository
+public static class SqliteDepartmentRepository
 {
     public static async Task<IEnumerable<Department>> GetAllAsync()
     {

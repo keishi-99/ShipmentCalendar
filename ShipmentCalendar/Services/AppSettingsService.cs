@@ -7,7 +7,7 @@ using System.Text.Json;
 namespace ShipmentCalendar.Services;
 
 /// <summary>アプリ設定のロード・保存を管理する</summary>
-public class AppSettingsService {
+public static class AppSettingsService {
     private static readonly string _dataDir = Path.Combine(
         AppDomain.CurrentDomain.BaseDirectory, "data");
 
