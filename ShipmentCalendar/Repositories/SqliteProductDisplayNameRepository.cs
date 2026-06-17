@@ -12,7 +12,7 @@ public static class SqliteProductDisplayNameRepository
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
-        var command = connection.CreateCommand();
+        using var command = connection.CreateCommand();
         command.CommandText = "SELECT DisplayName FROM Products WHERE ProductNumber = $pn LIMIT 1";
         command.Parameters.AddWithValue("$pn", itemNumber);
         var result = await command.ExecuteScalarAsync();
@@ -26,7 +26,7 @@ public static class SqliteProductDisplayNameRepository
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
-        var command = connection.CreateCommand();
+        using var command = connection.CreateCommand();
         command.CommandText = "SELECT ProductNumber, DisplayName FROM Products WHERE ProductNumber != '' AND DisplayName != ''";
         using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
@@ -41,7 +41,7 @@ public static class SqliteProductDisplayNameRepository
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
-        var command = connection.CreateCommand();
+        using var command = connection.CreateCommand();
         command.CommandText = @"
             INSERT INTO Products (ProductNumber, DisplayName)
             VALUES ($pn, $dn)
