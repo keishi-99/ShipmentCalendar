@@ -59,6 +59,14 @@ public partial class MainViewModel : ObservableObject {
     partial void OnFilterDeliveryToChanged(DateTime? value) => ApplyFilter();
     partial void OnFilterHideCompletedChanged(bool value) => ApplyFilter();
 
+    /// <summary>超過工程がある注文のみ表示</summary>
+    [ObservableProperty] private bool _filterOverdueOnly = false;
+    partial void OnFilterOverdueOnlyChanged(bool value) => ApplyFilter();
+
+    /// <summary>次の未完了工程の着手〜完了期間が今日を含む注文のみ表示</summary>
+    [ObservableProperty] private bool _filterTodayTask = false;
+    partial void OnFilterTodayTaskChanged(bool value) => ApplyFilter();
+
     /// <summary>「本日のみ」トグル：ONなら出荷日範囲を今日に固定し、OFFなら範囲をクリアする</summary>
     partial void OnFilterTodayOnlyChanged(bool value) {
         if (value) {
@@ -122,6 +130,20 @@ public partial class MainViewModel : ObservableObject {
 
         if (FilterHideCompleted)
             result = result.Where(o => o.Processes.Count == 0 || o.Processes.Any(p => p.Status != ProcessStatus.Completed));
+
+        if (FilterOverdueOnly)
+            result = result.Where(o => o.HasOverdue);
+
+        if (FilterTodayTask) {
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            result = result.Where(o => {
+                var next = o.Processes
+                    .Where(p => p.Status != ProcessStatus.Completed)
+                    .OrderBy(p => p.SortOrder)
+                    .FirstOrDefault();
+                return next != null && next.StartDate <= today && today <= next.DueDate;
+            });
+        }
 
         // 製品/半製品/どちらでもないフィルター（機種コード登録マスタの区分で判定）
         if (FilterProductCategory == "製品")

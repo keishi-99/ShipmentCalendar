@@ -93,6 +93,62 @@
                     FontSize="14"
                     Foreground="White" />
                 <Separator />
+                <!--  クイックフィルター（超過・今日対応）  -->
+                <ToggleButton
+                    Margin="2,0"
+                    Padding="10,4"
+                    BorderThickness="0"
+                    Content="超過"
+                    FontSize="13"
+                    FontWeight="SemiBold"
+                    Foreground="White"
+                    IsChecked="{Binding FilterOverdueOnly}">
+                    <ToggleButton.Style>
+                        <Style TargetType="ToggleButton">
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="Foreground" Value="White" />
+                            <Setter Property="BorderThickness" Value="0" />
+                            <Style.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter Property="Background" Value="#B71C1C" />
+                                    <Setter Property="BorderThickness" Value="0,0,0,3" />
+                                    <Setter Property="BorderBrush" Value="White" />
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#C62828" />
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ToggleButton.Style>
+                </ToggleButton>
+                <ToggleButton
+                    Margin="2,0"
+                    Padding="10,4"
+                    BorderThickness="0"
+                    Content="今日対応"
+                    FontSize="13"
+                    FontWeight="SemiBold"
+                    Foreground="White"
+                    IsChecked="{Binding FilterTodayTask}">
+                    <ToggleButton.Style>
+                        <Style TargetType="ToggleButton">
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="Foreground" Value="White" />
+                            <Setter Property="BorderThickness" Value="0" />
+                            <Style.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter Property="Background" Value="#0D47A1" />
+                                    <Setter Property="BorderThickness" Value="0,0,0,3" />
+                                    <Setter Property="BorderBrush" Value="White" />
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#1565C0" />
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ToggleButton.Style>
+                </ToggleButton>
+                <Separator />
                 <!--  担当部署フィルターボタン（動的生成）  -->
                 <ItemsControl ItemsSource="{Binding DepartmentFilters}">
                     <ItemsControl.ItemsPanel>
