@@ -91,18 +91,35 @@ public partial class MainWindow : Window {
             checkBox.IsChecked = isVisible;
             column.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
         }
-        ChkColProcessBar.IsChecked = _viewModel.Settings.ShowProcessBar;
-        ChkColProcessColumns.IsChecked = _viewModel.Settings.ShowProcessColumns;
+        UpdateProcessModeButtonText();
         _columnVisibilityEventsEnabled = true;
     }
 
-    private void ProcessColumnCheckBox_Changed(object sender, RoutedEventArgs e) {
-        if (!_columnVisibilityEventsEnabled) return;
-        _viewModel.Settings.ShowProcessBar = ChkColProcessBar.IsChecked ?? true;
-        _viewModel.Settings.ShowProcessColumns = ChkColProcessColumns.IsChecked ?? true;
+    private void BtnToggleProcessMode_Click(object sender, RoutedEventArgs e) {
+        var settings = _viewModel.Settings;
+        // バー→セル→バー の順でトグル
+        if (settings.ShowProcessBar && !settings.ShowProcessColumns) {
+            settings.ShowProcessBar = false;
+            settings.ShowProcessColumns = true;
+        } else {
+            settings.ShowProcessBar = true;
+            settings.ShowProcessColumns = false;
+        }
         _viewModel.SaveSettings();
+        UpdateProcessModeButtonText();
         _lastColumnSignature = null;
         BuildProcessColumns();
+    }
+
+    /// <summary>工程表示モードボタンの文言を現在の設定に合わせて更新する</summary>
+    private void UpdateProcessModeButtonText() {
+        var settings = _viewModel.Settings;
+        BtnToggleProcessMode.Content = (settings.ShowProcessBar, settings.ShowProcessColumns) switch {
+            (true, false) => "表示中：バー",
+            (false, true) => "表示中：セル",
+            (true, true)  => "表示中：バー＋セル",
+            _             => "表示中：なし",
+        };
     }
 
     private void BtnColumnVisibility_Click(object sender, RoutedEventArgs e) {
@@ -164,13 +181,17 @@ public partial class MainWindow : Window {
     /// <summary>工程列の表示行数（工程名＋期限日/標準時間の設定状況）と各列のフォントサイズから行の高さを計算する</summary>
     private void UpdateRowHeight() {
         var settings = _viewModel.Settings;
-        double processHeight = 0;
 
+        if (settings.ManualRowHeight > 0) {
+            OrderGrid.RowHeight = settings.ManualRowHeight;
+            return;
+        }
+
+        double processHeight = 0;
         if (settings.ShowProcessColumns) {
             var processLineCount = 1 + (settings.ShowProcessDate || settings.ShowProcessRequiredHours ? 1 : 0);
             processHeight = processLineCount * (settings.ProcessColumnFontSize * 1.8) + 10;
         }
-
         if (settings.ShowProcessBar)
             processHeight = Math.Max(processHeight, ProcessBarControl.DateBarHeight + 16);
 

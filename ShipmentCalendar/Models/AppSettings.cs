@@ -50,7 +50,9 @@ public class AppSettings
     /// <summary>メイン画面に「工程バー」列を表示するか</summary>
     public bool ShowProcessBar { get; set; } = true;
     /// <summary>メイン画面に「工程列（1工程1列）」を表示するか</summary>
-    public bool ShowProcessColumns { get; set; } = true;
+    public bool ShowProcessColumns { get; set; } = false;
+    /// <summary>メイン画面の行の高さ（px）。0=自動計算</summary>
+    public double ManualRowHeight { get; set; } = 0;
 
     /// <summary>ODBC接続設定が入力済みか</summary>
     public bool IsOdbcConfigured => !string.IsNullOrEmpty(OdbcDsn);

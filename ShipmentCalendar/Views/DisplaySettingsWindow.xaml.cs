@@ -17,6 +17,7 @@ public partial class DisplaySettingsWindow : Window
         TxtProcessColumnFontSize.Text = settings.ProcessColumnFontSize.ToString();
         ChkShowProcessDate.IsChecked = settings.ShowProcessDate;
         ChkShowProcessRequiredHours.IsChecked = settings.ShowProcessRequiredHours;
+        TxtManualRowHeight.Text = settings.ManualRowHeight.ToString();
     }
 
     private void BtnSave_Click(object sender, RoutedEventArgs e)
@@ -33,10 +34,17 @@ public partial class DisplaySettingsWindow : Window
             return;
         }
 
+        if (!double.TryParse(TxtManualRowHeight.Text, out var manualRowHeight) || manualRowHeight < 0)
+        {
+            MessageBox.Show("行の高さには0以上の数値を入力してください。", "入力エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
         _viewModel.Settings.FixedColumnFontSize = fixedFontSize;
         _viewModel.Settings.ProcessColumnFontSize = processFontSize;
         _viewModel.Settings.ShowProcessDate = ChkShowProcessDate.IsChecked == true;
         _viewModel.Settings.ShowProcessRequiredHours = ChkShowProcessRequiredHours.IsChecked == true;
+        _viewModel.Settings.ManualRowHeight = manualRowHeight;
 
         _viewModel.SaveSettings();
         DialogResult = true;

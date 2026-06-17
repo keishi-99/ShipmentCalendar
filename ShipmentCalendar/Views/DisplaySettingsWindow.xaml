@@ -20,6 +20,7 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="180"/>
@@ -48,9 +49,16 @@
 
             <!-- 工程列：標準時間表示 -->
             <TextBlock Grid.Row="3" Grid.Column="0" Text="工程列に標準時間を表示："
-                       VerticalAlignment="Center"/>
+                       VerticalAlignment="Center" Margin="0,0,0,12"/>
             <CheckBox Grid.Row="3" Grid.Column="1" Name="ChkShowProcessRequiredHours"
-                      VerticalAlignment="Center"/>
+                      VerticalAlignment="Center" Margin="0,0,0,12"/>
+
+            <!-- 行の高さ（手動指定） -->
+            <TextBlock Grid.Row="4" Grid.Column="0" Text="行の高さ（px、0=自動）："
+                       VerticalAlignment="Center"/>
+            <TextBox Grid.Row="4" Grid.Column="1" Name="TxtManualRowHeight"
+                     Width="60" HorizontalAlignment="Left"
+                     VerticalContentAlignment="Center" Padding="4"/>
         </Grid>
     </DockPanel>
 </Window>
