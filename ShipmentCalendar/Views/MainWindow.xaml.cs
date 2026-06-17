@@ -310,7 +310,8 @@ public partial class MainWindow : Window {
     }
 
     private void OrderRow_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e) {
-        // 将来：詳細表示ウィンドウ
+        if (sender is not DataGridRow row || row.Item is not Order order) return;
+        new OrderDetailWindow(order) { Owner = this }.ShowDialog();
     }
 }
 
