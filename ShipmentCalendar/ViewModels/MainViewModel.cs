@@ -131,17 +131,16 @@ public partial class MainViewModel : ObservableObject {
         if (FilterHideCompleted)
             result = result.Where(o => o.Processes.Count == 0 || o.Processes.Any(p => p.Status != ProcessStatus.Completed));
 
-        if (FilterOverdueOnly)
-            result = result.Where(o => o.HasOverdue);
-
-        if (FilterTodayTask) {
+        if (FilterOverdueOnly || FilterTodayTask) {
             var today = DateOnly.FromDateTime(DateTime.Today);
             result = result.Where(o => {
                 var next = o.Processes
                     .Where(p => p.Status != ProcessStatus.Completed)
                     .OrderBy(p => p.SortOrder)
                     .FirstOrDefault();
-                return next != null && next.StartDate <= today && today <= next.DueDate;
+                var isOverdue = FilterOverdueOnly && o.HasOverdue;
+                var isToday = FilterTodayTask && next != null && next.StartDate <= today && today <= next.DueDate;
+                return isOverdue || isToday;
             });
         }
 
