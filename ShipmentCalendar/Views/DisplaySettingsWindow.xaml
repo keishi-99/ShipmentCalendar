@@ -58,7 +58,8 @@
                        VerticalAlignment="Center"/>
             <TextBox Grid.Row="4" Grid.Column="1" Name="TxtManualRowHeight"
                      Width="60" HorizontalAlignment="Left"
-                     VerticalContentAlignment="Center" Padding="4"/>
+                     VerticalContentAlignment="Center" Padding="4"
+                     TextChanged="TxtManualRowHeight_TextChanged"/>
         </Grid>
     </DockPanel>
 </Window>

@@ -93,7 +93,7 @@
                     FontSize="14"
                     Foreground="White" />
                 <Separator />
-                <!--  クイックフィルター（超過・今日対応）  -->
+                <!--  クイックフィルター（超過・警告・今日対応）  -->
                 <ToggleButton
                     Margin="2,0"
                     Padding="10,4"
@@ -116,6 +116,33 @@
                                 </Trigger>
                                 <Trigger Property="IsMouseOver" Value="True">
                                     <Setter Property="Background" Value="#C62828" />
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ToggleButton.Style>
+                </ToggleButton>
+                <ToggleButton
+                    Margin="2,0"
+                    Padding="10,4"
+                    BorderThickness="0"
+                    Content="警告"
+                    FontSize="13"
+                    FontWeight="SemiBold"
+                    Foreground="White"
+                    IsChecked="{Binding FilterWarningOnly}">
+                    <ToggleButton.Style>
+                        <Style TargetType="ToggleButton">
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="Foreground" Value="White" />
+                            <Setter Property="BorderThickness" Value="0" />
+                            <Style.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter Property="Background" Value="#E65100" />
+                                    <Setter Property="BorderThickness" Value="0,0,0,3" />
+                                    <Setter Property="BorderBrush" Value="White" />
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#EF6C00" />
                                 </Trigger>
                             </Style.Triggers>
                         </Style>

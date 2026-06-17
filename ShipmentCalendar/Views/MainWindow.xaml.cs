@@ -170,22 +170,7 @@ public partial class MainWindow : Window {
     /// <summary>工程列の表示行数（工程名＋期限日/標準時間の設定状況）と各列のフォントサイズから行の高さを計算する</summary>
     private void UpdateRowHeight() {
         var settings = _viewModel.Settings;
-
-        if (settings.ManualRowHeight > 0) {
-            OrderGrid.RowHeight = settings.ManualRowHeight;
-            return;
-        }
-
-        double processHeight = 0;
-        if (settings.ShowProcessColumns) {
-            var processLineCount = 1 + (settings.ShowProcessDate || settings.ShowProcessRequiredHours ? 1 : 0);
-            processHeight = processLineCount * (settings.ProcessColumnFontSize * 1.8) + 10;
-        }
-        if (settings.ShowProcessBar)
-            processHeight = Math.Max(processHeight, ProcessBarControl.DateBarHeight + 16);
-
-        var fixedHeight = settings.FixedColumnFontSize * 1.8 + 8;
-        OrderGrid.RowHeight = Math.Max(processHeight, fixedHeight);
+        OrderGrid.RowHeight = settings.ManualRowHeight > 0 ? settings.ManualRowHeight : CalculateAutoRowHeight();
     }
 
     // 直前に構築した工程列の構成（変化がなければ再構築をスキップする）
@@ -343,8 +328,25 @@ public partial class MainWindow : Window {
         await _viewModel.RefreshDepartmentFiltersAsync();
     }
 
+    /// <summary>表示設定ダイアログからのリアルタイムプレビュー用（設定には保存しない）</summary>
+    public void PreviewRowHeight(double height) {
+        OrderGrid.RowHeight = height > 0 ? height : CalculateAutoRowHeight();
+    }
+
+    private double CalculateAutoRowHeight() {
+        var settings = _viewModel.Settings;
+        double processHeight = 0;
+        if (settings.ShowProcessColumns) {
+            var processLineCount = 1 + (settings.ShowProcessDate || settings.ShowProcessRequiredHours ? 1 : 0);
+            processHeight = processLineCount * (settings.ProcessColumnFontSize * 1.8) + 10;
+        }
+        if (settings.ShowProcessBar)
+            processHeight = Math.Max(processHeight, ProcessBarControl.DateBarHeight + 16);
+        return Math.Max(processHeight, settings.FixedColumnFontSize * 1.8 + 8);
+    }
+
     private void BtnDisplaySettings_Click(object sender, RoutedEventArgs e) {
-        var window = new DisplaySettingsWindow(_viewModel) { Owner = this };
+        var window = new DisplaySettingsWindow(_viewModel, this) { Owner = this };
         if (window.ShowDialog() == true) {
             ApplyFixedColumnFontSize();
             BuildProcessColumns();

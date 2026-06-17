@@ -1,16 +1,19 @@
 using ShipmentCalendar.ViewModels;
 using System.Windows;
+using System.Windows.Controls;
 
 namespace ShipmentCalendar.Views;
 
 public partial class DisplaySettingsWindow : Window
 {
     private readonly MainViewModel _viewModel;
+    private readonly MainWindow _mainWindow;
 
-    public DisplaySettingsWindow(MainViewModel viewModel)
+    public DisplaySettingsWindow(MainViewModel viewModel, MainWindow mainWindow)
     {
         InitializeComponent();
         _viewModel = viewModel;
+        _mainWindow = mainWindow;
 
         var settings = viewModel.Settings;
         TxtFixedColumnFontSize.Text = settings.FixedColumnFontSize.ToString();
@@ -50,5 +53,14 @@ public partial class DisplaySettingsWindow : Window
         DialogResult = true;
     }
 
-    private void BtnCancel_Click(object sender, RoutedEventArgs e) => DialogResult = false;
+    private void TxtManualRowHeight_TextChanged(object sender, TextChangedEventArgs e) {
+        if (double.TryParse(TxtManualRowHeight.Text, out var h) && h >= 0)
+            _mainWindow.PreviewRowHeight(h);
+    }
+
+    private void BtnCancel_Click(object sender, RoutedEventArgs e) {
+        // キャンセル時は元の行高さに戻す
+        _mainWindow.PreviewRowHeight(_viewModel.Settings.ManualRowHeight);
+        DialogResult = false;
+    }
 }
