@@ -54,27 +54,13 @@
                         <MenuItem Click="BtnDisplaySettings_Click" Header="表示設定" />
                         <Separator />
                         <MenuItem Header="列の表示設定">
-                            <MenuItem Name="MnuColDeliveryDate" StaysOpenOnClick="True" Header="出荷日" Click="ColumnVisibilityCheckBox_Changed">
-                                <MenuItem.Icon><CheckBox IsChecked="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=MenuItem}, Mode=OneWay}" IsHitTestVisible="False" VerticalAlignment="Center"/></MenuItem.Icon>
-                            </MenuItem>
-                            <MenuItem Name="MnuColCompletionDate" StaysOpenOnClick="True" Header="完了日" Click="ColumnVisibilityCheckBox_Changed">
-                                <MenuItem.Icon><CheckBox IsChecked="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=MenuItem}, Mode=OneWay}" IsHitTestVisible="False" VerticalAlignment="Center"/></MenuItem.Icon>
-                            </MenuItem>
-                            <MenuItem Name="MnuColItemNumber" StaysOpenOnClick="True" Header="品目番号" Click="ColumnVisibilityCheckBox_Changed">
-                                <MenuItem.Icon><CheckBox IsChecked="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=MenuItem}, Mode=OneWay}" IsHitTestVisible="False" VerticalAlignment="Center"/></MenuItem.Icon>
-                            </MenuItem>
-                            <MenuItem Name="MnuColModelCode" StaysOpenOnClick="True" Header="機種コード" Click="ColumnVisibilityCheckBox_Changed">
-                                <MenuItem.Icon><CheckBox IsChecked="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=MenuItem}, Mode=OneWay}" IsHitTestVisible="False" VerticalAlignment="Center"/></MenuItem.Icon>
-                            </MenuItem>
-                            <MenuItem Name="MnuColProductName" StaysOpenOnClick="True" Header="品目名" Click="ColumnVisibilityCheckBox_Changed">
-                                <MenuItem.Icon><CheckBox IsChecked="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=MenuItem}, Mode=OneWay}" IsHitTestVisible="False" VerticalAlignment="Center"/></MenuItem.Icon>
-                            </MenuItem>
-                            <MenuItem Name="MnuColManufactureNumber" StaysOpenOnClick="True" Header="製番" Click="ColumnVisibilityCheckBox_Changed">
-                                <MenuItem.Icon><CheckBox IsChecked="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=MenuItem}, Mode=OneWay}" IsHitTestVisible="False" VerticalAlignment="Center"/></MenuItem.Icon>
-                            </MenuItem>
-                            <MenuItem Name="MnuColPlannedQuantity" StaysOpenOnClick="True" Header="計画数" Click="ColumnVisibilityCheckBox_Changed">
-                                <MenuItem.Icon><CheckBox IsChecked="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=MenuItem}, Mode=OneWay}" IsHitTestVisible="False" VerticalAlignment="Center"/></MenuItem.Icon>
-                            </MenuItem>
+                            <MenuItem Name="MnuColDeliveryDate" IsCheckable="True" StaysOpenOnClick="True" Header="出荷日" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem Name="MnuColCompletionDate" IsCheckable="True" StaysOpenOnClick="True" Header="完了日" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem Name="MnuColItemNumber" IsCheckable="True" StaysOpenOnClick="True" Header="品目番号" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem Name="MnuColModelCode" IsCheckable="True" StaysOpenOnClick="True" Header="機種コード" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem Name="MnuColProductName" IsCheckable="True" StaysOpenOnClick="True" Header="品目名" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem Name="MnuColManufactureNumber" IsCheckable="True" StaysOpenOnClick="True" Header="製番" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem Name="MnuColPlannedQuantity" IsCheckable="True" StaysOpenOnClick="True" Header="計画数" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
                         </MenuItem>
                     </MenuItem>
                 </Menu>
