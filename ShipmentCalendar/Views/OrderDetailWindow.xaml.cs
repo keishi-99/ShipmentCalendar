@@ -1,20 +1,12 @@
 using ShipmentCalendar.Models;
 using System.Windows;
-using System.Windows.Data;
-using System.Windows.Media;
 
 namespace ShipmentCalendar.Views;
 
 public partial class OrderDetailWindow : Window {
     public OrderDetailWindow(Order order) {
         InitializeComponent();
-        TxtProductName.Text = order.ProductName;
-        TxtOrderNumber.Text = order.OrderNumber;
-        TxtPlannedQuantity.Text = order.PlannedQuantity.ToString();
-        TxtItemNumber.Text = order.ItemNumber;
-        TxtModelCode.Text = order.ModelCode;
-        TxtManufactureNumber.Text = order.ManufactureNumber;
-        TxtDates.Text = $"{order.DeliveryDate:yyyy/MM/dd} / {order.CompletionDate:yyyy/MM/dd}";
+        DataContext = order;
         ProcessGrid.ItemsSource = order.Processes
             .OrderBy(p => p.SortOrder)
             .Select(p => new ProcessRow(p))
@@ -45,20 +37,4 @@ public partial class OrderDetailWindow : Window {
             ? $"{Process.WarningDaysBeforeDeadline}日前"
             : "-";
     }
-}
-
-/// <summary>ProcessStatusを日本語ラベルに変換するコンバーター</summary>
-public class ProcessStatusToLabelConverter : IValueConverter {
-    public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
-        => value is ProcessStatus status ? status switch {
-            ProcessStatus.Completed => "完了",
-            ProcessStatus.InProgress => "進行中",
-            ProcessStatus.Warning => "警告",
-            ProcessStatus.Overdue => "超過",
-            ProcessStatus.NotStarted => "未着手",
-            _ => ""
-        } : "";
-
-    public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
-        => throw new NotImplementedException();
 }
