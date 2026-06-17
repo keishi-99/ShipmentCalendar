@@ -22,6 +22,18 @@ public partial class ProcessBarControl : UserControl {
         set => SetValue(ProcessesProperty, value);
     }
 
+    public static readonly DependencyProperty BarFontSizeProperty =
+        DependencyProperty.Register(
+            nameof(BarFontSize),
+            typeof(double),
+            typeof(ProcessBarControl),
+            new PropertyMetadata(10.0, (d, _) => ((ProcessBarControl)d).RebuildBars()));
+
+    public double BarFontSize {
+        get => (double)GetValue(BarFontSizeProperty);
+        set => SetValue(BarFontSizeProperty, value);
+    }
+
     public ProcessBarControl() {
         InitializeComponent();
     }
@@ -55,7 +67,7 @@ public partial class ProcessBarControl : UserControl {
                 BorderThickness = new Thickness(0.5),
                 Child = new TextBlock {
                     Text = date.ToString("M/d"),
-                    FontSize = 8,
+                    FontSize = Math.Max(6, BarFontSize - 2),
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center,
                     Foreground = Brushes.DimGray,
@@ -98,7 +110,7 @@ public partial class ProcessBarControl : UserControl {
                 Child = new TextBlock {
                     Text = process.ProcessName,
                     TextTrimming = TextTrimming.CharacterEllipsis,
-                    FontSize = 10,
+                    FontSize = BarFontSize,
                     VerticalAlignment = VerticalAlignment.Center,
                     HorizontalAlignment = HorizontalAlignment.Center,
                     Foreground = Brushes.Black,

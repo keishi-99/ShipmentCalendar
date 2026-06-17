@@ -8,6 +8,10 @@ public partial class DisplaySettingsWindow : Window
 {
     private readonly MainViewModel _viewModel;
     private readonly MainWindow _mainWindow;
+    // キャンセル時に復元するための保存値
+    private readonly double _savedFixedFontSize;
+    private readonly double _savedProcessBarFontSize;
+    private readonly double _savedManualRowHeight;
 
     public DisplaySettingsWindow(MainViewModel viewModel, MainWindow mainWindow)
     {
@@ -16,21 +20,31 @@ public partial class DisplaySettingsWindow : Window
         _mainWindow = mainWindow;
 
         var settings = viewModel.Settings;
+        _savedFixedFontSize = settings.FixedColumnFontSize;
+        _savedProcessBarFontSize = settings.ProcessBarFontSize;
+        _savedManualRowHeight = settings.ManualRowHeight;
+
         TxtFixedColumnFontSize.Text = settings.FixedColumnFontSize.ToString();
+        TxtProcessBarFontSize.Text = settings.ProcessBarFontSize.ToString();
         TxtProcessColumnFontSize.Text = settings.ProcessColumnFontSize.ToString();
         ChkShowProcessDate.IsChecked = settings.ShowProcessDate;
         ChkShowProcessRequiredHours.IsChecked = settings.ShowProcessRequiredHours;
         TxtManualRowHeight.Text = settings.ManualRowHeight.ToString();
     }
 
-    private void TxtFontSize_TextChanged(object sender, TextChangedEventArgs e) {
+    private void TxtFixedFontSize_TextChanged(object sender, TextChangedEventArgs e) {
         if (double.TryParse(TxtFixedColumnFontSize.Text, out var size) && size >= 5 && size <= 100)
-            _mainWindow.PreviewRowHeight(0); // フォントサイズ変更時は行高さを再計算
+            _mainWindow?.PreviewFontSizes(size, 0);
+    }
+
+    private void TxtProcessBarFontSize_TextChanged(object sender, TextChangedEventArgs e) {
+        if (double.TryParse(TxtProcessBarFontSize.Text, out var size) && size >= 5 && size <= 100)
+            _mainWindow?.PreviewFontSizes(0, size);
     }
 
     private void TxtManualRowHeight_TextChanged(object sender, TextChangedEventArgs e) {
         if (double.TryParse(TxtManualRowHeight.Text, out var h) && h >= 0)
-            _mainWindow.PreviewRowHeight(h);
+            _mainWindow?.PreviewRowHeight(h);
     }
 
     private void BtnSave_Click(object sender, RoutedEventArgs e)
@@ -38,6 +52,12 @@ public partial class DisplaySettingsWindow : Window
         if (!double.TryParse(TxtFixedColumnFontSize.Text, out var fixedFontSize) || fixedFontSize < 5 || fixedFontSize > 100)
         {
             MessageBox.Show("固定列のフォントサイズには、5から100の間の有効な数値を入力してください。", "入力エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        if (!double.TryParse(TxtProcessBarFontSize.Text, out var processBarFontSize) || processBarFontSize < 5 || processBarFontSize > 100)
+        {
+            MessageBox.Show("工程バーのフォントサイズには、5から100の間の有効な数値を入力してください。", "入力エラー", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
 
@@ -54,6 +74,7 @@ public partial class DisplaySettingsWindow : Window
         }
 
         _viewModel.Settings.FixedColumnFontSize = fixedFontSize;
+        _viewModel.Settings.ProcessBarFontSize = processBarFontSize;
         _viewModel.Settings.ProcessColumnFontSize = processFontSize;
         _viewModel.Settings.ShowProcessDate = ChkShowProcessDate.IsChecked == true;
         _viewModel.Settings.ShowProcessRequiredHours = ChkShowProcessRequiredHours.IsChecked == true;
@@ -64,8 +85,8 @@ public partial class DisplaySettingsWindow : Window
     }
 
     private void BtnCancel_Click(object sender, RoutedEventArgs e) {
-        var s = _viewModel.Settings;
-        _mainWindow.PreviewRowHeight(s.ManualRowHeight);
+        _mainWindow.PreviewFontSizes(_savedFixedFontSize, _savedProcessBarFontSize);
+        _mainWindow.PreviewRowHeight(_savedManualRowHeight);
         DialogResult = false;
     }
 }
