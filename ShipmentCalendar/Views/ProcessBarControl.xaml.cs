@@ -27,13 +27,10 @@ public partial class ProcessBarControl : UserControl {
     }
 
     private void RebuildBars() {
-        RebuildDateBar();
-        RebuildProcessBar();
-    }
-
-    private void RebuildDateBar() {
         DateBarGrid.ColumnDefinitions.Clear();
         DateBarGrid.Children.Clear();
+        BarGrid.ColumnDefinitions.Clear();
+        BarGrid.Children.Clear();
         if (Processes == null || Processes.Count == 0) return;
 
         var minDate = Processes.Min(p => p.StartDate);
@@ -42,17 +39,21 @@ public partial class ProcessBarControl : UserControl {
         // 未設定日付や異常に広い範囲（365日超）はスキップ
         if (minDate == default || maxDate == default || minDate > maxDate || minDate.AddDays(365) < maxDate) return;
 
-        // 週末をスキップして営業日リストを生成
+        // 週末をスキップして営業日リストを生成（日付バー・工程バーで共有）
         var businessDays = new List<DateOnly>();
         for (var d = minDate; d <= maxDate; d = d.AddDays(1)) {
             if (d.DayOfWeek is not DayOfWeek.Saturday and not DayOfWeek.Sunday)
                 businessDays.Add(d);
         }
 
+        // 日付バー・工程バーとも同じ列構造（1列=1営業日）
+        foreach (var _ in businessDays) {
+            DateBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        }
+
+        // 日付バー
         foreach (var (date, col) in businessDays.Select((d, i) => (d, i))) {
-            DateBarGrid.ColumnDefinitions.Add(new ColumnDefinition {
-                Width = new GridLength(1, GridUnitType.Star)
-            });
             var border = new Border {
                 Background = new SolidColorBrush(Color.FromRgb(220, 230, 241)),
                 BorderBrush = Brushes.White,
@@ -68,19 +69,15 @@ public partial class ProcessBarControl : UserControl {
             Grid.SetColumn(border, col);
             DateBarGrid.Children.Add(border);
         }
-    }
 
-    private void RebuildProcessBar() {
-        BarGrid.ColumnDefinitions.Clear();
-        BarGrid.Children.Clear();
-        if (Processes == null || Processes.Count == 0) return;
+        // 工程バー（StartDate〜DueDateを日付グリッドに対応させてColumnSpanで配置）
+        foreach (var process in Processes) {
+            var startCol = businessDays.FindIndex(d => d >= process.StartDate);
+            var endCol = businessDays.FindLastIndex(d => d <= process.DueDate);
+            if (startCol < 0) startCol = 0;
+            if (endCol < 0) endCol = startCol;
+            var span = Math.Max(1, endCol - startCol + 1);
 
-        for (int i = 0; i < Processes.Count; i++) {
-            var process = Processes[i];
-            var width = process.RequiredMinutes > 0 ? process.RequiredMinutes : 1.0;
-            BarGrid.ColumnDefinitions.Add(new ColumnDefinition {
-                Width = new GridLength(width, GridUnitType.Star)
-            });
             var border = new Border {
                 Background = StatusToColorConverter.StatusToBrush(process.Status),
                 BorderBrush = Brushes.White,
@@ -96,7 +93,8 @@ public partial class ProcessBarControl : UserControl {
                     ClipToBounds = true,
                 }
             };
-            Grid.SetColumn(border, i);
+            Grid.SetColumn(border, startCol);
+            Grid.SetColumnSpan(border, span);
             BarGrid.Children.Add(border);
         }
     }
