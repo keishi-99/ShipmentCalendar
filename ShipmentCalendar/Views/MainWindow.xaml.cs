@@ -115,10 +115,10 @@ public partial class MainWindow : Window {
     private void UpdateProcessModeButtonText() {
         var settings = _viewModel.Settings;
         BtnToggleProcessMode.Content = (settings.ShowProcessBar, settings.ShowProcessColumns) switch {
-            (true, false) => "表示中：バー",
-            (false, true) => "表示中：セル",
-            (true, true)  => "表示中：バー＋セル",
-            _             => "表示中：なし",
+            (true, false) => "工程: バー",
+            (false, true) => "工程: リスト",
+            (true, true)  => "工程: バー＋リスト",
+            _             => "工程: なし",
         };
     }
 
