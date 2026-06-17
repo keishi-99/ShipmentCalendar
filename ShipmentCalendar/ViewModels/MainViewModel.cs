@@ -139,7 +139,7 @@ public partial class MainViewModel : ObservableObject {
                     .OrderBy(p => p.SortOrder)
                     .FirstOrDefault();
                 var isOverdue = FilterOverdueOnly && o.HasOverdue;
-                var isToday = FilterTodayTask && next != null && next.StartDate <= today && today <= next.DueDate;
+                var isToday = FilterTodayTask && next != null && next.StartDate <= today;
                 return isOverdue || isToday;
             });
         }
