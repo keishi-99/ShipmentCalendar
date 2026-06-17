@@ -68,12 +68,12 @@ public class OdbcOrderRepository(AppSettings settings) {
         return orders.Values;
     }
 
-    /// <summary>生産計画ビューから注文を取得し、日付フィルターはC#側で適用する（ドライバーの型差異を回避）</summary>
+    /// <summary>生産計画ビューから注文を取得する。日付フィルターはSQL側で適用（文字列形式でドライバーの型差異を回避）</summary>
     private static Dictionary<string, Order> LoadSeisanKeikaku(OdbcConnection conn, DateOnly rangeStart, DateOnly rangeEnd) {
         Dictionary<string, Order> orders = [];
 
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT 製番, 品目番号, 品目名, 納期, 計画数, 機種コード FROM VP_生産計画情報_YD";
+        cmd.CommandText = $"SELECT 製番, 品目番号, 品目名, 納期, 計画数, 機種コード FROM VP_生産計画情報_YD WHERE 納期 >= '{rangeStart:yyyy-MM-dd}' AND 納期 <= '{rangeEnd:yyyy-MM-dd}'";
 
         using var reader = cmd.ExecuteReader();
         while (reader.Read()) {
@@ -83,9 +83,6 @@ public class OdbcOrderRepository(AppSettings settings) {
 
             var deliveryDate = ToDateOnly(reader["納期"]);
             if (deliveryDate == null) continue;
-
-            // 日付フィルター（C#側）
-            if (deliveryDate.Value < rangeStart || deliveryDate.Value > rangeEnd) continue;
 
             // 同一製番が複数行ある場合は最初の行を採用
             if (orders.ContainsKey(seiban)) continue;
