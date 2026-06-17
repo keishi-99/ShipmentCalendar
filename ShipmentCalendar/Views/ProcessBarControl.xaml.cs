@@ -39,6 +39,9 @@ public partial class ProcessBarControl : UserControl {
         var minDate = Processes.Min(p => p.StartDate);
         var maxDate = Processes.Max(p => p.DueDate);
 
+        // 未設定日付や異常に広い範囲（365日超）はスキップ
+        if (minDate == default || maxDate == default || minDate > maxDate || minDate.AddDays(365) < maxDate) return;
+
         // 週末をスキップして営業日リストを生成
         var businessDays = new List<DateOnly>();
         for (var d = minDate; d <= maxDate; d = d.AddDays(1)) {

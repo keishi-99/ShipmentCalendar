@@ -164,8 +164,16 @@ public partial class MainWindow : Window {
     /// <summary>工程列の表示行数（工程名＋期限日/標準時間の設定状況）と各列のフォントサイズから行の高さを計算する</summary>
     private void UpdateRowHeight() {
         var settings = _viewModel.Settings;
-        var processLineCount = 1 + (settings.ShowProcessDate || settings.ShowProcessRequiredHours ? 1 : 0);
-        var processHeight = processLineCount * (settings.ProcessColumnFontSize * 1.8) + 10 + ProcessBarControl.DateBarHeight;
+        double processHeight = 0;
+
+        if (settings.ShowProcessColumns) {
+            var processLineCount = 1 + (settings.ShowProcessDate || settings.ShowProcessRequiredHours ? 1 : 0);
+            processHeight = processLineCount * (settings.ProcessColumnFontSize * 1.8) + 10;
+        }
+
+        if (settings.ShowProcessBar)
+            processHeight = Math.Max(processHeight, ProcessBarControl.DateBarHeight + 16);
+
         var fixedHeight = settings.FixedColumnFontSize * 1.8 + 8;
         OrderGrid.RowHeight = Math.Max(processHeight, fixedHeight);
     }
