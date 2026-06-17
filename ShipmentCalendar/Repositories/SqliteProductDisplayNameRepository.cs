@@ -12,9 +12,9 @@ public static class SqliteProductDisplayNameRepository
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
-        var command = connection.CreateCommand();
-        command.CommandText = "SELECT DisplayName FROM Products WHERE ItemNumber = $in LIMIT 1";
-        command.Parameters.AddWithValue("$in", itemNumber);
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT DisplayName FROM Products WHERE ItemNumber = $pn LIMIT 1";
+        command.Parameters.AddWithValue("$pn", itemNumber);
         var result = await command.ExecuteScalarAsync();
         return result is string s ? s : null;
     }
@@ -26,7 +26,7 @@ public static class SqliteProductDisplayNameRepository
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
-        var command = connection.CreateCommand();
+        using var command = connection.CreateCommand();
         command.CommandText = "SELECT ItemNumber, DisplayName FROM Products WHERE ItemNumber != '' AND DisplayName != ''";
         using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
@@ -36,19 +36,17 @@ public static class SqliteProductDisplayNameRepository
     }
 
     /// <summary>品目番号に対応する表示名を保存する（INSERT OR REPLACE）</summary>
-    /// <remarks>ProductName列はUNIQUE制約を利用した一意キーとして品目番号をそのまま格納している</remarks>
     public static async Task SaveDisplayNameAsync(string itemNumber, string displayName)
     {
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
-        var command = connection.CreateCommand();
+        using var command = connection.CreateCommand();
         command.CommandText = @"
-            INSERT INTO Products (ProductName, ItemNumber, DisplayName)
-            VALUES ($pn, $in, $dn)
-            ON CONFLICT(ProductName) DO UPDATE SET DisplayName = excluded.DisplayName, ItemNumber = excluded.ItemNumber";
+            INSERT INTO Products (ItemNumber, DisplayName)
+            VALUES ($pn, $dn)
+            ON CONFLICT(ItemNumber) DO UPDATE SET DisplayName = excluded.DisplayName";
         command.Parameters.AddWithValue("$pn", itemNumber);
-        command.Parameters.AddWithValue("$in", itemNumber);
         command.Parameters.AddWithValue("$dn", displayName);
         await command.ExecuteNonQueryAsync();
     }
