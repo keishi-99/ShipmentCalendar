@@ -1,7 +1,7 @@
 <Window x:Class="ShipmentCalendar.Views.DisplaySettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="表示設定" Height="340" Width="420"
+        Title="表示設定" Height="400" Width="420"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize">
     <DockPanel Margin="16">
@@ -21,42 +21,52 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="180"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- 固定列フォントサイズ -->
-            <TextBlock Grid.Row="0" Grid.Column="0" Text="固定列のフォントサイズ："
+            <!-- フォント -->
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="フォント："
                        VerticalAlignment="Center" Margin="0,0,0,12"/>
-            <TextBox Grid.Row="0" Grid.Column="1" Name="TxtFixedColumnFontSize"
+            <ComboBox Grid.Row="0" Grid.Column="1" Name="CmbFontFamily"
+                      Width="180" HorizontalAlignment="Left"
+                      Margin="0,0,0,12"
+                      SelectionChanged="CmbFontFamily_SelectionChanged"/>
+
+            <!-- 固定列フォントサイズ -->
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="固定列のフォントサイズ："
+                       VerticalAlignment="Center" Margin="0,0,0,12"/>
+            <TextBox Grid.Row="1" Grid.Column="1" Name="TxtFixedColumnFontSize"
                      Width="60" HorizontalAlignment="Left"
-                     VerticalContentAlignment="Center" Padding="4" Margin="0,0,0,12"/>
+                     VerticalContentAlignment="Center" Padding="4" Margin="0,0,0,12"
+                     TextChanged="TxtFontSize_TextChanged"/>
 
             <!-- 工程列フォントサイズ -->
-            <TextBlock Grid.Row="1" Grid.Column="0" Text="工程列のフォントサイズ："
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="工程列のフォントサイズ："
                        VerticalAlignment="Center" Margin="0,0,0,12"/>
-            <TextBox Grid.Row="1" Grid.Column="1" Name="TxtProcessColumnFontSize"
+            <TextBox Grid.Row="2" Grid.Column="1" Name="TxtProcessColumnFontSize"
                      Width="60" HorizontalAlignment="Left"
                      VerticalContentAlignment="Center" Padding="4" Margin="0,0,0,12"/>
 
             <!-- 工程列：期限日表示 -->
-            <TextBlock Grid.Row="2" Grid.Column="0" Text="工程列に期限日を表示："
+            <TextBlock Grid.Row="3" Grid.Column="0" Text="工程列に期限日を表示："
                        VerticalAlignment="Center" Margin="0,0,0,12"/>
-            <CheckBox Grid.Row="2" Grid.Column="1" Name="ChkShowProcessDate"
+            <CheckBox Grid.Row="3" Grid.Column="1" Name="ChkShowProcessDate"
                       VerticalAlignment="Center" Margin="0,0,0,12"/>
 
             <!-- 工程列：標準時間表示 -->
-            <TextBlock Grid.Row="3" Grid.Column="0" Text="工程列に標準時間を表示："
+            <TextBlock Grid.Row="4" Grid.Column="0" Text="工程列に標準時間を表示："
                        VerticalAlignment="Center" Margin="0,0,0,12"/>
-            <CheckBox Grid.Row="3" Grid.Column="1" Name="ChkShowProcessRequiredHours"
+            <CheckBox Grid.Row="4" Grid.Column="1" Name="ChkShowProcessRequiredHours"
                       VerticalAlignment="Center" Margin="0,0,0,12"/>
 
             <!-- 行の高さ（手動指定） -->
-            <TextBlock Grid.Row="4" Grid.Column="0" Text="行の高さ（px、0=自動）："
+            <TextBlock Grid.Row="5" Grid.Column="0" Text="行の高さ（px、0=自動）："
                        VerticalAlignment="Center"/>
-            <TextBox Grid.Row="4" Grid.Column="1" Name="TxtManualRowHeight"
+            <TextBox Grid.Row="5" Grid.Column="1" Name="TxtManualRowHeight"
                      Width="60" HorizontalAlignment="Left"
                      VerticalContentAlignment="Center" Padding="4"
                      TextChanged="TxtManualRowHeight_TextChanged"/>

@@ -1,6 +1,7 @@
 using ShipmentCalendar.ViewModels;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 
 namespace ShipmentCalendar.Views;
 
@@ -15,12 +16,35 @@ public partial class DisplaySettingsWindow : Window
         _viewModel = viewModel;
         _mainWindow = mainWindow;
 
+        // システムフォント一覧を取得してコンボボックスに設定
+        var fonts = Fonts.SystemFontFamilies
+            .Select(f => f.Source)
+            .OrderBy(f => f)
+            .ToList();
+        CmbFontFamily.ItemsSource = fonts;
+
         var settings = viewModel.Settings;
+        CmbFontFamily.SelectedItem = fonts.Contains(settings.FontFamily) ? settings.FontFamily : fonts.FirstOrDefault();
         TxtFixedColumnFontSize.Text = settings.FixedColumnFontSize.ToString();
         TxtProcessColumnFontSize.Text = settings.ProcessColumnFontSize.ToString();
         ChkShowProcessDate.IsChecked = settings.ShowProcessDate;
         ChkShowProcessRequiredHours.IsChecked = settings.ShowProcessRequiredHours;
         TxtManualRowHeight.Text = settings.ManualRowHeight.ToString();
+    }
+
+    private void CmbFontFamily_SelectionChanged(object sender, SelectionChangedEventArgs e) {
+        if (CmbFontFamily.SelectedItem is string font)
+            _mainWindow.PreviewFont(font, 0);
+    }
+
+    private void TxtFontSize_TextChanged(object sender, TextChangedEventArgs e) {
+        if (double.TryParse(TxtFixedColumnFontSize.Text, out var size) && size >= 5 && size <= 100)
+            _mainWindow.PreviewFont("", size);
+    }
+
+    private void TxtManualRowHeight_TextChanged(object sender, TextChangedEventArgs e) {
+        if (double.TryParse(TxtManualRowHeight.Text, out var h) && h >= 0)
+            _mainWindow.PreviewRowHeight(h);
     }
 
     private void BtnSave_Click(object sender, RoutedEventArgs e)
@@ -43,6 +67,7 @@ public partial class DisplaySettingsWindow : Window
             return;
         }
 
+        _viewModel.Settings.FontFamily = CmbFontFamily.SelectedItem as string ?? _viewModel.Settings.FontFamily;
         _viewModel.Settings.FixedColumnFontSize = fixedFontSize;
         _viewModel.Settings.ProcessColumnFontSize = processFontSize;
         _viewModel.Settings.ShowProcessDate = ChkShowProcessDate.IsChecked == true;
@@ -53,14 +78,11 @@ public partial class DisplaySettingsWindow : Window
         DialogResult = true;
     }
 
-    private void TxtManualRowHeight_TextChanged(object sender, TextChangedEventArgs e) {
-        if (double.TryParse(TxtManualRowHeight.Text, out var h) && h >= 0)
-            _mainWindow.PreviewRowHeight(h);
-    }
-
     private void BtnCancel_Click(object sender, RoutedEventArgs e) {
-        // キャンセル時は元の行高さに戻す
-        _mainWindow.PreviewRowHeight(_viewModel.Settings.ManualRowHeight);
+        // キャンセル時は元の設定に戻す
+        var s = _viewModel.Settings;
+        _mainWindow.PreviewFont(s.FontFamily, s.FixedColumnFontSize);
+        _mainWindow.PreviewRowHeight(s.ManualRowHeight);
         DialogResult = false;
     }
 }

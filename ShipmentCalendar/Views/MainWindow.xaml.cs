@@ -161,10 +161,20 @@ public partial class MainWindow : Window {
         UpdateSortModeButtonText();
     }
 
-    /// <summary>固定列のフォントサイズを設定値から適用し、行の高さを再計算する</summary>
+    /// <summary>フォント設定（ファミリー・サイズ）を設定値から適用し、行の高さを再計算する</summary>
     private void ApplyFixedColumnFontSize() {
-        OrderGrid.FontSize = _viewModel.Settings.FixedColumnFontSize;
+        var settings = _viewModel.Settings;
+        OrderGrid.FontSize = settings.FixedColumnFontSize;
+        OrderGrid.FontFamily = new System.Windows.Media.FontFamily(settings.FontFamily);
         UpdateRowHeight();
+    }
+
+    /// <summary>表示設定ダイアログからのフォントリアルタイムプレビュー用</summary>
+    public void PreviewFont(string fontFamily, double fixedSize) {
+        if (!string.IsNullOrEmpty(fontFamily))
+            OrderGrid.FontFamily = new System.Windows.Media.FontFamily(fontFamily);
+        if (fixedSize > 0)
+            OrderGrid.FontSize = fixedSize;
     }
 
     /// <summary>工程列の表示行数（工程名＋期限日/標準時間の設定状況）と各列のフォントサイズから行の高さを計算する</summary>
