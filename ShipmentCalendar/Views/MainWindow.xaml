@@ -54,13 +54,13 @@
                         <MenuItem Click="BtnDisplaySettings_Click" Header="表示設定" />
                         <Separator />
                         <MenuItem Header="列の表示設定">
-                            <MenuItem Name="MnuColDeliveryDate" IsCheckable="True" Header="出荷日" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
-                            <MenuItem Name="MnuColCompletionDate" IsCheckable="True" Header="完了日" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
-                            <MenuItem Name="MnuColItemNumber" IsCheckable="True" Header="品目番号" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
-                            <MenuItem Name="MnuColModelCode" IsCheckable="True" Header="機種コード" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
-                            <MenuItem Name="MnuColProductName" IsCheckable="True" Header="品目名" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
-                            <MenuItem Name="MnuColManufactureNumber" IsCheckable="True" Header="製番" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
-                            <MenuItem Name="MnuColPlannedQuantity" IsCheckable="True" Header="計画数" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem Name="MnuColDeliveryDate" IsCheckable="True" StaysOpenOnClick="True" Header="出荷日" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem Name="MnuColCompletionDate" IsCheckable="True" StaysOpenOnClick="True" Header="完了日" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem Name="MnuColItemNumber" IsCheckable="True" StaysOpenOnClick="True" Header="品目番号" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem Name="MnuColModelCode" IsCheckable="True" StaysOpenOnClick="True" Header="機種コード" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem Name="MnuColProductName" IsCheckable="True" StaysOpenOnClick="True" Header="品目名" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem Name="MnuColManufactureNumber" IsCheckable="True" StaysOpenOnClick="True" Header="製番" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem Name="MnuColPlannedQuantity" IsCheckable="True" StaysOpenOnClick="True" Header="計画数" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
                         </MenuItem>
                     </MenuItem>
                 </Menu>
