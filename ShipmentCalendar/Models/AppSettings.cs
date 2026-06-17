@@ -39,8 +39,6 @@ public class AppSettings
     /// <summary>メイン画面の「計画数」列を表示するか</summary>
     public bool ShowColumnPlannedQuantity { get; set; } = true;
 
-    /// <summary>メイン画面のフォントファミリー</summary>
-    public string FontFamily { get; set; } = "Yu Gothic UI";
     /// <summary>メイン画面の固定列（出荷日〜計画数）のフォントサイズ</summary>
     public double FixedColumnFontSize { get; set; } = 12;
     /// <summary>メイン画面の工程列（工程名・期限日・標準時間）のフォントサイズ</summary>
