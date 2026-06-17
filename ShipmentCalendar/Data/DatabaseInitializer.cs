@@ -22,8 +22,8 @@ public static class DatabaseInitializer {
         command.CommandText = @"
             CREATE TABLE IF NOT EXISTS Products (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ProductName TEXT NOT NULL UNIQUE,
-                ItemNumber TEXT NOT NULL DEFAULT ''
+                ProductNumber TEXT NOT NULL UNIQUE,
+                DisplayName TEXT NOT NULL DEFAULT ''
             );
 
             CREATE TABLE IF NOT EXISTS ProcessDefinitions (
