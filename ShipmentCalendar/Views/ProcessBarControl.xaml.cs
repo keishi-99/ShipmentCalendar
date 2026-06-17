@@ -76,8 +76,8 @@ public partial class ProcessBarControl : UserControl {
             BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(initialOffset, GridUnitType.Star) });
             // 初期オフセット（空き時間）を薄いハッチング背景で表現
             var offsetBorder = new Border {
-                Background = new SolidColorBrush(Color.FromArgb(40, 180, 180, 180)),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(100, 150, 150, 150)),
+                Background = new SolidColorBrush(Color.FromArgb(90, 160, 160, 160)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(160, 120, 120, 120)),
                 BorderThickness = new Thickness(0, 0, 1, 0),
                 ToolTip = "空き時間",
             };
