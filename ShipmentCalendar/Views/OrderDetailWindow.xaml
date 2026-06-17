@@ -200,6 +200,14 @@
                     Width="80"
                     Binding="{Binding OutsourceLeadDaysText}"
                     Header="外注待ち" />
+                <DataGridTextColumn
+                    Width="90"
+                    Binding="{Binding CoolTimeText}"
+                    Header="クールタイム" />
+                <DataGridTextColumn
+                    Width="90"
+                    Binding="{Binding WarningDaysText}"
+                    Header="警告日数" />
             </DataGrid.Columns>
         </DataGrid>
     </DockPanel>

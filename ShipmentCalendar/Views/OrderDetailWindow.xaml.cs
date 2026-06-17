@@ -38,6 +38,12 @@ public partial class OrderDetailWindow : Window {
         public string OutsourceLeadDaysText => Process.OutsourceLeadDays > 0
             ? $"{Process.OutsourceLeadDays}日"
             : "-";
+        public string CoolTimeText => Process.CoolTimeMinutes > 0
+            ? $"{Process.CoolTimeMinutes / 60.0:F1}h"
+            : "-";
+        public string WarningDaysText => Process.WarningDaysBeforeDeadline > 0
+            ? $"{Process.WarningDaysBeforeDeadline}日前"
+            : "-";
     }
 }
 
