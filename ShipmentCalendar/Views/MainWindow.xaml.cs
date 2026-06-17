@@ -69,8 +69,8 @@ public partial class MainWindow : Window {
     }
 
     // 列表示設定MenuItemと対応するDataGridColumn・設定プロパティの組み合わせ（初回アクセス時に生成してキャッシュする）
-    private (MenuItem MenuItem, DataGridColumn Column, Func<AppSettings, bool> Getter, Action<AppSettings, bool> Setter)[]? _columnVisibilityMappings;
-    private (MenuItem MenuItem, DataGridColumn Column, Func<AppSettings, bool> Getter, Action<AppSettings, bool> Setter)[] ColumnVisibilityMappings => _columnVisibilityMappings ??= [
+    private (System.Windows.Controls.MenuItem MenuItem, DataGridColumn Column, Func<AppSettings, bool> Getter, Action<AppSettings, bool> Setter)[]? _columnVisibilityMappings;
+    private (System.Windows.Controls.MenuItem MenuItem, DataGridColumn Column, Func<AppSettings, bool> Getter, Action<AppSettings, bool> Setter)[] ColumnVisibilityMappings => _columnVisibilityMappings ??= [
         (MnuColDeliveryDate,      ColDeliveryDate,      s => s.ShowColumnDeliveryDate,      (s, v) => s.ShowColumnDeliveryDate = v),
         (MnuColCompletionDate,    ColCompletionDate,    s => s.ShowColumnCompletionDate,    (s, v) => s.ShowColumnCompletionDate = v),
         (MnuColItemNumber,        ColItemNumber,        s => s.ShowColumnItemNumber,        (s, v) => s.ShowColumnItemNumber = v),
