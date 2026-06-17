@@ -46,14 +46,9 @@ public partial class ProcessBarControl : UserControl {
                 businessDays.Add(d);
         }
 
-        // 日付バー・工程バーとも同じ列構造（1列=1営業日）
-        foreach (var _ in businessDays) {
-            DateBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        }
-
-        // 日付バー
+        // 日付バー: 1列=480*（1営業日=480分相当）で統一することで工程バーと分単位で位置が合う
         foreach (var (date, col) in businessDays.Select((d, i) => (d, i))) {
+            DateBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(480, GridUnitType.Star) });
             var border = new Border {
                 Background = new SolidColorBrush(Color.FromRgb(220, 230, 241)),
                 BorderBrush = Brushes.White,
@@ -70,14 +65,22 @@ public partial class ProcessBarControl : UserControl {
             DateBarGrid.Children.Add(border);
         }
 
-        // 工程バー（StartDate〜DueDateを日付グリッドに対応させてColumnSpanで配置）
-        foreach (var process in Processes) {
-            var startCol = businessDays.FindIndex(d => d >= process.StartDate);
-            var endCol = businessDays.FindLastIndex(d => d <= process.DueDate);
-            if (startCol < 0) startCol = 0;
-            if (endCol < 0) endCol = startCol;
-            var span = Math.Max(1, endCol - startCol + 1);
+        // 工程バー: RequiredMinutes単位のStarで配置し、日付バーと分単位でスケールを合わせる
+        // 逆算スケジュールのため最初の工程は日中から始まる場合があり、初期オフセットを空白列で表現する
+        var totalDayMinutes = businessDays.Count * 480.0;
+        var totalProcessMinutes = Processes.Sum(p => p.RequiredMinutes + p.CoolTimeMinutes + p.OutsourceLeadDays * 480.0);
+        var initialOffset = Math.Max(0, totalDayMinutes - totalProcessMinutes);
 
+        int barCol = 0;
+        if (initialOffset > 0) {
+            BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(initialOffset, GridUnitType.Star) });
+            barCol++;
+        }
+
+        foreach (var process in Processes) {
+            BarGrid.ColumnDefinitions.Add(new ColumnDefinition {
+                Width = new GridLength(Math.Max(1, process.RequiredMinutes), GridUnitType.Star)
+            });
             var border = new Border {
                 Background = StatusToColorConverter.StatusToBrush(process.Status),
                 BorderBrush = Brushes.White,
@@ -93,9 +96,15 @@ public partial class ProcessBarControl : UserControl {
                     ClipToBounds = true,
                 }
             };
-            Grid.SetColumn(border, startCol);
-            Grid.SetColumnSpan(border, span);
+            Grid.SetColumn(border, barCol++);
             BarGrid.Children.Add(border);
+
+            // クールタイム・外注待ちは空白列として挿入
+            var gapMinutes = process.CoolTimeMinutes + process.OutsourceLeadDays * 480.0;
+            if (gapMinutes > 0) {
+                BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(gapMinutes, GridUnitType.Star) });
+                barCol++;
+            }
         }
     }
 }
