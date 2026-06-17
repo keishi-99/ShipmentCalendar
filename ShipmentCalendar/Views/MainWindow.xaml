@@ -68,15 +68,6 @@
                     列表示設定 ▾
                 </Button>
                 <Separator />
-                <!--  未完了工程の表示日切り替え（クリックで着手必須日/完了必須日を切り替え）  -->
-                <Button
-                    Name="BtnToggleDueDateDisplay"
-                    Padding="8,4"
-                    Background="Transparent"
-                    BorderThickness="0"
-                    Click="BtnToggleDueDateDisplay_Click"
-                    FontSize="14"
-                    Foreground="White" />
                 <!--  注文一覧の並び順切り替え（出荷日順/工程期限順）  -->
                 <Button
                     Name="BtnToggleSortMode"
@@ -86,7 +77,16 @@
                     Click="BtnToggleSortMode_Click"
                     FontSize="14"
                     Foreground="White" />
-                <!--  工程表示モード切り替え（バー/セル）  -->
+                <!--  未完了工程の表示日切り替え（クリックで着手必須日/完了必須日を切り替え）  -->
+                <Button
+                    Name="BtnToggleDueDateDisplay"
+                    Padding="8,4"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Click="BtnToggleDueDateDisplay_Click"
+                    FontSize="14"
+                    Foreground="White" />
+                <!--  工程表示モード切り替え（バー/リスト）  -->
                 <Button
                     Name="BtnToggleProcessMode"
                     Padding="8,4"
