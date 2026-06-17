@@ -129,6 +129,8 @@ public partial class MainWindow : Window {
         var mapping = ColumnVisibilityMappings.FirstOrDefault(m => m.MenuItem == menuItem);
         if (mapping.MenuItem == null) return;
 
+        // IsCheckable を使わないため Click で手動トグル
+        menuItem.IsChecked = !menuItem.IsChecked;
         var isChecked = menuItem.IsChecked;
         mapping.Column.Visibility = isChecked ? Visibility.Visible : Visibility.Collapsed;
         mapping.Setter(_viewModel.Settings, isChecked);
