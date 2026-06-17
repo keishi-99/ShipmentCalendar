@@ -92,8 +92,14 @@ public partial class DisplaySettingsWindow : Window
     }
 
     private void BtnCancel_Click(object sender, RoutedEventArgs e) {
-        _mainWindow.PreviewFontSizes(_savedFixedFontSize, _savedProcessBarFontSize, _savedProcessColumnFontSize);
-        _mainWindow.PreviewRowHeight(_savedManualRowHeight);
         DialogResult = false;
+    }
+
+    protected override void OnClosed(EventArgs e) {
+        base.OnClosed(e);
+        if (DialogResult != true) {
+            _mainWindow.PreviewFontSizes(_savedFixedFontSize, _savedProcessBarFontSize, _savedProcessColumnFontSize);
+            _mainWindow.PreviewRowHeight(_savedManualRowHeight);
+        }
     }
 }

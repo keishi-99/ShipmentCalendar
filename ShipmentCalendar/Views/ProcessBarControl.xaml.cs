@@ -80,7 +80,7 @@ public partial class ProcessBarControl : UserControl {
         // 工程バー: RequiredMinutes単位のStarで配置し、日付バーと分単位でスケールを合わせる
         // 逆算スケジュールのため最初の工程は日中から始まる場合があり、初期オフセットを空白列で表現する
         var totalDayMinutes = businessDays.Count * 480.0;
-        var totalProcessMinutes = Processes.Sum(p => p.RequiredMinutes + p.CoolTimeMinutes + p.OutsourceLeadDays * 480.0);
+        var totalProcessMinutes = Processes.Sum(p => Math.Max(1, p.RequiredMinutes) + p.CoolTimeMinutes + p.OutsourceLeadDays * 480.0);
         var initialOffset = Math.Max(0, totalDayMinutes - totalProcessMinutes);
 
         int barCol = 0;
