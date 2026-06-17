@@ -58,7 +58,8 @@ public partial class MainWindow : Window {
             if (WindowState == WindowState.Maximized)
                 WindowState = WindowState.Normal;
             WindowState = WindowState.Maximized;
-        } else {
+        }
+        else {
             WindowStyle = _previousWindowStyle;
             ResizeMode = _previousResizeMode;
             WindowState = _previousWindowState;
@@ -90,7 +91,18 @@ public partial class MainWindow : Window {
             checkBox.IsChecked = isVisible;
             column.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
         }
+        ChkColProcessBar.IsChecked = _viewModel.Settings.ShowProcessBar;
+        ChkColProcessColumns.IsChecked = _viewModel.Settings.ShowProcessColumns;
         _columnVisibilityEventsEnabled = true;
+    }
+
+    private void ProcessColumnCheckBox_Changed(object sender, RoutedEventArgs e) {
+        if (!_columnVisibilityEventsEnabled) return;
+        _viewModel.Settings.ShowProcessBar = ChkColProcessBar.IsChecked ?? true;
+        _viewModel.Settings.ShowProcessColumns = ChkColProcessColumns.IsChecked ?? true;
+        _viewModel.SaveSettings();
+        _lastColumnSignature = null;
+        BuildProcessColumns();
     }
 
     private void BtnColumnVisibility_Click(object sender, RoutedEventArgs e) {
@@ -120,8 +132,8 @@ public partial class MainWindow : Window {
     /// <summary>表示日切り替えボタンの文言を現在の設定に合わせて更新する</summary>
     private void UpdateDueDateDisplayButtonText() {
         BtnToggleDueDateDisplay.Content = _viewModel.Settings.ShowDueDateForNotStarted
-            ? "表示中：完了必須日"
-            : "表示中：着手必須日";
+            ? "表示中：完了期限"
+            : "表示中：着手期限";
     }
 
     /// <summary>並び順切り替えボタンの文言を現在の設定に合わせて更新する</summary>
@@ -153,13 +165,13 @@ public partial class MainWindow : Window {
     private void UpdateRowHeight() {
         var settings = _viewModel.Settings;
         var processLineCount = 1 + (settings.ShowProcessDate || settings.ShowProcessRequiredHours ? 1 : 0);
-        var processHeight = processLineCount * (settings.ProcessColumnFontSize * 1.8) + 10;
+        var processHeight = processLineCount * (settings.ProcessColumnFontSize * 1.8) + 10 + ProcessBarControl.DateBarHeight;
         var fixedHeight = settings.FixedColumnFontSize * 1.8 + 8;
         OrderGrid.RowHeight = Math.Max(processHeight, fixedHeight);
     }
 
     // 直前に構築した工程列の構成（変化がなければ再構築をスキップする）
-    private (int MaxProcessCount, bool ShowDueDateForNotStarted, bool ShowProcessDate, bool ShowProcessRequiredHours, double ProcessColumnFontSize)? _lastColumnSignature;
+    private (int MaxProcessCount, bool ShowDueDateForNotStarted, bool ShowProcessDate, bool ShowProcessRequiredHours, double ProcessColumnFontSize, bool ShowProcessBar, bool ShowProcessColumns)? _lastColumnSignature;
 
     /// <summary>工程列をインデックスベースで動的生成する（列ヘッダー: 1, 2, 3...）</summary>
     private void BuildProcessColumns() {
@@ -168,7 +180,7 @@ public partial class MainWindow : Window {
         // 全注文中の最大工程数を列数とする
         var maxProcessCount = _viewModel.Orders.Count > 0 ? _viewModel.Orders.Max(o => o.Processes.Count) : 0;
         var settings = _viewModel.Settings;
-        var signature = (maxProcessCount, settings.ShowDueDateForNotStarted, settings.ShowProcessDate, settings.ShowProcessRequiredHours, settings.ProcessColumnFontSize);
+        var signature = (maxProcessCount, settings.ShowDueDateForNotStarted, settings.ShowProcessDate, settings.ShowProcessRequiredHours, settings.ProcessColumnFontSize, settings.ShowProcessBar, settings.ShowProcessColumns);
         if (signature == _lastColumnSignature) return;
         _lastColumnSignature = signature;
 
@@ -177,6 +189,22 @@ public partial class MainWindow : Window {
             OrderGrid.Columns.RemoveAt(7);
 
         if (maxProcessCount == 0) return;
+
+        // 工程バー列（全工程を1本のバーで表示）
+        if (settings.ShowProcessBar) {
+            var barColumn = new DataGridTemplateColumn {
+                Header = "工程バー",
+                Width = new DataGridLength(1, DataGridLengthUnitType.Star),
+            };
+            var barTemplate = new DataTemplate();
+            var barFactory = new FrameworkElementFactory(typeof(ProcessBarControl));
+            barFactory.SetBinding(ProcessBarControl.ProcessesProperty, new Binding("Processes"));
+            barTemplate.VisualTree = barFactory;
+            barColumn.CellTemplate = barTemplate;
+            OrderGrid.Columns.Add(barColumn);
+        }
+
+        if (!settings.ShowProcessColumns) return;
 
         for (int i = 0; i < maxProcessCount; i++) {
             var index = i;

@@ -431,6 +431,19 @@ SelectionMode="Single"
                         Checked="ColumnVisibilityCheckBox_Changed"
                         Content="計画数"
                         Unchecked="ColumnVisibilityCheckBox_Changed" />
+                    <Separator Margin="0,4" />
+                    <CheckBox
+                        Name="ChkColProcessBar"
+                        Margin="2"
+                        Checked="ProcessColumnCheckBox_Changed"
+                        Content="工程バー"
+                        Unchecked="ProcessColumnCheckBox_Changed" />
+                    <CheckBox
+                        Name="ChkColProcessColumns"
+                        Margin="2"
+                        Checked="ProcessColumnCheckBox_Changed"
+                        Content="工程列（1工程1列）"
+                        Unchecked="ProcessColumnCheckBox_Changed" />
                 </StackPanel>
             </Border>
         </Popup>
