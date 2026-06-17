@@ -13,7 +13,7 @@ public static class SqliteProductDisplayNameRepository
         await connection.OpenAsync();
 
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT DisplayName FROM Products WHERE ProductNumber = $pn LIMIT 1";
+        command.CommandText = "SELECT DisplayName FROM Products WHERE ItemNumber = $pn LIMIT 1";
         command.Parameters.AddWithValue("$pn", itemNumber);
         var result = await command.ExecuteScalarAsync();
         return result is string s ? s : null;
@@ -27,7 +27,7 @@ public static class SqliteProductDisplayNameRepository
         await connection.OpenAsync();
 
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT ProductNumber, DisplayName FROM Products WHERE ProductNumber != '' AND DisplayName != ''";
+        command.CommandText = "SELECT ItemNumber, DisplayName FROM Products WHERE ItemNumber != '' AND DisplayName != ''";
         using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
             dict[reader.GetString(0)] = reader.GetString(1);
@@ -43,9 +43,9 @@ public static class SqliteProductDisplayNameRepository
 
         using var command = connection.CreateCommand();
         command.CommandText = @"
-            INSERT INTO Products (ProductNumber, DisplayName)
+            INSERT INTO Products (ItemNumber, DisplayName)
             VALUES ($pn, $dn)
-            ON CONFLICT(ProductNumber) DO UPDATE SET DisplayName = excluded.DisplayName";
+            ON CONFLICT(ItemNumber) DO UPDATE SET DisplayName = excluded.DisplayName";
         command.Parameters.AddWithValue("$pn", itemNumber);
         command.Parameters.AddWithValue("$dn", displayName);
         await command.ExecuteNonQueryAsync();
