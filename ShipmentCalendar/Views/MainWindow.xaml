@@ -52,21 +52,18 @@
                         <MenuItem Click="BtnHoliday_Click" Header="休日設定" />
                         <MenuItem Click="BtnDeptSetting_Click" Header="部署設定" />
                         <MenuItem Click="BtnDisplaySettings_Click" Header="表示設定" />
+                        <Separator />
+                        <MenuItem Header="列の表示設定">
+                            <MenuItem Name="MnuColDeliveryDate" IsCheckable="True" Header="出荷日" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem Name="MnuColCompletionDate" IsCheckable="True" Header="完了日" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem Name="MnuColItemNumber" IsCheckable="True" Header="品目番号" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem Name="MnuColModelCode" IsCheckable="True" Header="機種コード" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem Name="MnuColProductName" IsCheckable="True" Header="品目名" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem Name="MnuColManufactureNumber" IsCheckable="True" Header="製番" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem Name="MnuColPlannedQuantity" IsCheckable="True" Header="計画数" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                        </MenuItem>
                     </MenuItem>
                 </Menu>
-                <Separator />
-                <!--  列の表示/非表示設定  -->
-                <Button
-                    Name="BtnColumnVisibility"
-                    Padding="8,4"
-                    Background="Transparent"
-                    BorderThickness="0"
-                    Click="BtnColumnVisibility_Click"
-                    FontSize="14"
-                    Foreground="White"
-                    PreviewMouseLeftButtonDown="BtnColumnVisibility_PreviewMouseLeftButtonDown">
-                    列表示設定 ▾
-                </Button>
                 <Separator />
                 <!--  注文一覧の並び順切り替え（出荷日順/工程期限順）  -->
                 <Button
@@ -385,64 +382,6 @@ SelectionMode="Single"
                 </DataGrid.RowStyle>
             </DataGrid>
         </DockPanel>
-
-        <!--  列の表示/非表示設定ポップアップ  -->
-        <Popup
-            Name="ColumnVisibilityPopup"
-            Placement="Bottom"
-            PlacementTarget="{Binding ElementName=BtnColumnVisibility}"
-            StaysOpen="False">
-            <Border
-                Padding="8"
-                Background="White"
-                BorderBrush="#999999"
-                BorderThickness="1">
-                <StackPanel>
-                    <CheckBox
-                        Name="ChkColDeliveryDate"
-                        Margin="2"
-                        Checked="ColumnVisibilityCheckBox_Changed"
-                        Content="出荷日"
-                        Unchecked="ColumnVisibilityCheckBox_Changed" />
-                    <CheckBox
-                        Name="ChkColCompletionDate"
-                        Margin="2"
-                        Checked="ColumnVisibilityCheckBox_Changed"
-                        Content="完了日"
-                        Unchecked="ColumnVisibilityCheckBox_Changed" />
-                    <CheckBox
-                        Name="ChkColItemNumber"
-                        Margin="2"
-                        Checked="ColumnVisibilityCheckBox_Changed"
-                        Content="品目番号"
-                        Unchecked="ColumnVisibilityCheckBox_Changed" />
-                    <CheckBox
-                        Name="ChkColModelCode"
-                        Margin="2"
-                        Checked="ColumnVisibilityCheckBox_Changed"
-                        Content="機種コード"
-                        Unchecked="ColumnVisibilityCheckBox_Changed" />
-                    <CheckBox
-                        Name="ChkColProductName"
-                        Margin="2"
-                        Checked="ColumnVisibilityCheckBox_Changed"
-                        Content="品目名"
-                        Unchecked="ColumnVisibilityCheckBox_Changed" />
-                    <CheckBox
-                        Name="ChkColManufactureNumber"
-                        Margin="2"
-                        Checked="ColumnVisibilityCheckBox_Changed"
-                        Content="製番"
-                        Unchecked="ColumnVisibilityCheckBox_Changed" />
-                    <CheckBox
-                        Name="ChkColPlannedQuantity"
-                        Margin="2"
-                        Checked="ColumnVisibilityCheckBox_Changed"
-                        Content="計画数"
-                        Unchecked="ColumnVisibilityCheckBox_Changed" />
-                </StackPanel>
-            </Border>
-        </Popup>
 
         <!--  ローディングオーバーレイ（IsLoading=true のとき表示）  -->
         <Grid IsHitTestVisible="{Binding IsLoading}">

@@ -68,27 +68,27 @@ public partial class MainWindow : Window {
         BtnToggleFullScreen.Content = _isFullScreen ? "ウィンドウ表示" : "フルスクリーン";
     }
 
-    // 列表示設定チェックボックスと対応するDataGridColumn・設定プロパティの組み合わせ（初回アクセス時に生成してキャッシュする）
-    private (CheckBox CheckBox, DataGridColumn Column, Func<AppSettings, bool> Getter, Action<AppSettings, bool> Setter)[]? _columnVisibilityMappings;
-    private (CheckBox CheckBox, DataGridColumn Column, Func<AppSettings, bool> Getter, Action<AppSettings, bool> Setter)[] ColumnVisibilityMappings => _columnVisibilityMappings ??= [
-        (ChkColDeliveryDate,      ColDeliveryDate,      s => s.ShowColumnDeliveryDate,      (s, v) => s.ShowColumnDeliveryDate = v),
-        (ChkColCompletionDate,    ColCompletionDate,    s => s.ShowColumnCompletionDate,    (s, v) => s.ShowColumnCompletionDate = v),
-        (ChkColItemNumber,        ColItemNumber,        s => s.ShowColumnItemNumber,        (s, v) => s.ShowColumnItemNumber = v),
-        (ChkColModelCode,         ColModelCode,         s => s.ShowColumnModelCode,         (s, v) => s.ShowColumnModelCode = v),
-        (ChkColProductName,       ColProductName,       s => s.ShowColumnProductName,       (s, v) => s.ShowColumnProductName = v),
-        (ChkColManufactureNumber, ColManufactureNumber, s => s.ShowColumnManufactureNumber, (s, v) => s.ShowColumnManufactureNumber = v),
-        (ChkColPlannedQuantity,   ColPlannedQuantity,   s => s.ShowColumnPlannedQuantity,   (s, v) => s.ShowColumnPlannedQuantity = v),
+    // 列表示設定MenuItemと対応するDataGridColumn・設定プロパティの組み合わせ（初回アクセス時に生成してキャッシュする）
+    private (MenuItem MenuItem, DataGridColumn Column, Func<AppSettings, bool> Getter, Action<AppSettings, bool> Setter)[]? _columnVisibilityMappings;
+    private (MenuItem MenuItem, DataGridColumn Column, Func<AppSettings, bool> Getter, Action<AppSettings, bool> Setter)[] ColumnVisibilityMappings => _columnVisibilityMappings ??= [
+        (MnuColDeliveryDate,      ColDeliveryDate,      s => s.ShowColumnDeliveryDate,      (s, v) => s.ShowColumnDeliveryDate = v),
+        (MnuColCompletionDate,    ColCompletionDate,    s => s.ShowColumnCompletionDate,    (s, v) => s.ShowColumnCompletionDate = v),
+        (MnuColItemNumber,        ColItemNumber,        s => s.ShowColumnItemNumber,        (s, v) => s.ShowColumnItemNumber = v),
+        (MnuColModelCode,         ColModelCode,         s => s.ShowColumnModelCode,         (s, v) => s.ShowColumnModelCode = v),
+        (MnuColProductName,       ColProductName,       s => s.ShowColumnProductName,       (s, v) => s.ShowColumnProductName = v),
+        (MnuColManufactureNumber, ColManufactureNumber, s => s.ShowColumnManufactureNumber, (s, v) => s.ShowColumnManufactureNumber = v),
+        (MnuColPlannedQuantity,   ColPlannedQuantity,   s => s.ShowColumnPlannedQuantity,   (s, v) => s.ShowColumnPlannedQuantity = v),
     ];
 
-    // チェックボックスのChecked/Uncheckedイベントを設定値の反映として処理するか（初期化中はfalseにして保存を抑制する）
+    // MenuItemのChecked/Uncheckedイベントを設定値の反映として処理するか（初期化中はfalseにして保存を抑制する）
     private bool _columnVisibilityEventsEnabled;
 
-    /// <summary>保存済みの設定値をチェックボックスとDataGridColumnの表示状態に反映する（保存はしない）</summary>
+    /// <summary>保存済みの設定値をMenuItemとDataGridColumnの表示状態に反映する（保存はしない）</summary>
     private void InitializeColumnVisibility() {
         _columnVisibilityEventsEnabled = false;
-        foreach (var (checkBox, column, getter, _) in ColumnVisibilityMappings) {
+        foreach (var (menuItem, column, getter, _) in ColumnVisibilityMappings) {
             var isVisible = getter(_viewModel.Settings);
-            checkBox.IsChecked = isVisible;
+            menuItem.IsChecked = isVisible;
             column.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
         }
         UpdateProcessModeButtonText();
@@ -122,25 +122,14 @@ public partial class MainWindow : Window {
         };
     }
 
-    private void BtnColumnVisibility_Click(object sender, RoutedEventArgs e) {
-        ColumnVisibilityPopup.IsOpen = !ColumnVisibilityPopup.IsOpen;
-    }
-
-    private void BtnColumnVisibility_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e) {
-        if (ColumnVisibilityPopup.IsOpen) {
-            ColumnVisibilityPopup.IsOpen = false;
-            e.Handled = true;
-        }
-    }
-
     private void ColumnVisibilityCheckBox_Changed(object sender, RoutedEventArgs e) {
         if (!_columnVisibilityEventsEnabled) return;
 
-        var checkBox = (CheckBox)sender;
-        var mapping = ColumnVisibilityMappings.FirstOrDefault(m => m.CheckBox == checkBox);
-        if (mapping.CheckBox == null) return;
+        var menuItem = (MenuItem)sender;
+        var mapping = ColumnVisibilityMappings.FirstOrDefault(m => m.MenuItem == menuItem);
+        if (mapping.MenuItem == null) return;
 
-        var isChecked = checkBox.IsChecked ?? false;
+        var isChecked = menuItem.IsChecked;
         mapping.Column.Visibility = isChecked ? Visibility.Visible : Visibility.Collapsed;
         mapping.Setter(_viewModel.Settings, isChecked);
         _viewModel.SaveSettings();
@@ -368,7 +357,7 @@ public partial class MainWindow : Window {
 
     private void OrderRow_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e) {
         if (sender is not DataGridRow row || row.Item is not Order order) return;
-        new OrderDetailWindow(order) { Owner = this }.ShowDialog();
+        new OrderDetailWindow(order) { Owner = this }.Show();
     }
 }
 
