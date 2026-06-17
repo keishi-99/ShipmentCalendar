@@ -51,12 +51,12 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
             var def = sorted[i];
             double minutes = def.LeadTimeMinutes * order.PlannedQuantity;
             double adjusted = runningIn;
-            bool spansBoundary = minutes >= 480;
+            bool spansBoundary = false;
 
             // 外注リードタイム（数量に依存しない営業日単位の待機）。
             // この工程の後にOutsourceLeadDays日分の空白が入るため、その分だけ前倒しで締め切る
             if (def.OutsourceLeadDays > 0) {
-                var daysSoFar = Math.Max(1, (int)Math.Ceiling(cumulativeRunningTime / 480.0));
+                var daysSoFar = (int)(cumulativeRunningTime / 480.0) + 1;
                 adjusted = (daysSoFar + def.OutsourceLeadDays) * 480.0;
                 spansBoundary = true;
             }
@@ -76,9 +76,9 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
                 runningIn = startBucket[i] * 480.0;
             }
             else {
-                finishBucket[i] = Math.Max(1, (int)Math.Ceiling(adjusted / 480.0));
+                finishBucket[i] = (int)(adjusted / 480.0) + 1;
                 runningIn = adjusted + minutes;
-                startBucket[i] = Math.Max(1, (int)Math.Ceiling(runningIn / 480.0));
+                startBucket[i] = (int)((runningIn - 1) / 480.0) + 1;
             }
 
             cumulativeRunningTime += minutes + (def.OutsourceLeadDays * 480.0) + def.CoolTimeMinutes;
@@ -103,7 +103,8 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
                 SortOrder = def.SortOrder,
                 DepartmentId = def.DepartmentId,
                 RequiredMinutes = requiredMinutes,
-                OutsourceLeadDays = def.OutsourceLeadDays
+                OutsourceLeadDays = def.OutsourceLeadDays,
+                CoolTimeMinutes = def.CoolTimeMinutes
             });
         }
         return results;

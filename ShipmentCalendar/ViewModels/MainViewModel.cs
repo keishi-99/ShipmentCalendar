@@ -301,6 +301,7 @@ public partial class MainViewModel : ObservableObject {
                     var warningDays = productDefs
                         .FirstOrDefault(d => d.DestinationCode == process.DestinationCode)
                         ?.WarningDaysBeforeDeadline ?? 0;
+                    process.WarningDaysBeforeDeadline = warningDays;
                     process.Status = BusinessDayCalculator.DetermineStatus(process, today, warningDays);
                 }
 

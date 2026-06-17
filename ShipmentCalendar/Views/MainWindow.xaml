@@ -313,8 +313,7 @@
                 HeadersVisibility="Column"
                 IsReadOnly="True"
                 ItemsSource="{Binding Orders}"
-                SelectedItem="{Binding SelectedOrder}"
-                SelectionMode="Single"
+SelectionMode="Single"
                 SelectionUnit="Cell">
                 <DataGrid.Columns>
                     <DataGridTextColumn

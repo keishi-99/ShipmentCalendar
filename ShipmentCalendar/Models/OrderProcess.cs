@@ -21,6 +21,10 @@ public class OrderProcess
     public double RequiredMinutes { get; set; } = 0;
     /// <summary>この工程の後に発生する外注待ち日数（営業日）。0=外注待ちなし</summary>
     public int OutsourceLeadDays { get; set; } = 0;
+    /// <summary>この工程の後に発生する固定待機時間（分）。0=クールタイムなし</summary>
+    public double CoolTimeMinutes { get; set; } = 0;
+    /// <summary>完了必須日の何日前から警告状態にするか。0=警告なし</summary>
+    public int WarningDaysBeforeDeadline { get; set; } = 0;
 }
 
 public enum ProcessStatus
