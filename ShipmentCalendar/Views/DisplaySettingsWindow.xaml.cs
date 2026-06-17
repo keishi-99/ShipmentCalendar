@@ -11,6 +11,7 @@ public partial class DisplaySettingsWindow : Window
     // キャンセル時に復元するための保存値
     private readonly double _savedFixedFontSize;
     private readonly double _savedProcessBarFontSize;
+    private readonly double _savedProcessColumnFontSize;
     private readonly double _savedManualRowHeight;
 
     public DisplaySettingsWindow(MainViewModel viewModel, MainWindow mainWindow)
@@ -22,6 +23,7 @@ public partial class DisplaySettingsWindow : Window
         var settings = viewModel.Settings;
         _savedFixedFontSize = settings.FixedColumnFontSize;
         _savedProcessBarFontSize = settings.ProcessBarFontSize;
+        _savedProcessColumnFontSize = settings.ProcessColumnFontSize;
         _savedManualRowHeight = settings.ManualRowHeight;
 
         TxtFixedColumnFontSize.Text = settings.FixedColumnFontSize.ToString();
@@ -40,6 +42,11 @@ public partial class DisplaySettingsWindow : Window
     private void TxtProcessBarFontSize_TextChanged(object sender, TextChangedEventArgs e) {
         if (double.TryParse(TxtProcessBarFontSize.Text, out var size) && size >= 5 && size <= 100)
             _mainWindow?.PreviewFontSizes(0, size);
+    }
+
+    private void TxtProcessColumnFontSize_TextChanged(object sender, TextChangedEventArgs e) {
+        if (double.TryParse(TxtProcessColumnFontSize.Text, out var size) && size >= 5 && size <= 100)
+            _mainWindow?.PreviewFontSizes(0, 0, size);
     }
 
     private void TxtManualRowHeight_TextChanged(object sender, TextChangedEventArgs e) {
@@ -85,7 +92,7 @@ public partial class DisplaySettingsWindow : Window
     }
 
     private void BtnCancel_Click(object sender, RoutedEventArgs e) {
-        _mainWindow.PreviewFontSizes(_savedFixedFontSize, _savedProcessBarFontSize);
+        _mainWindow.PreviewFontSizes(_savedFixedFontSize, _savedProcessBarFontSize, _savedProcessColumnFontSize);
         _mainWindow.PreviewRowHeight(_savedManualRowHeight);
         DialogResult = false;
     }

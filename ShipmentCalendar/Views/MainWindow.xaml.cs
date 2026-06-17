@@ -336,11 +336,19 @@ public partial class MainWindow : Window {
     }
 
     /// <summary>フォントサイズのリアルタイムプレビュー用（設定には保存しない）</summary>
-    public void PreviewFontSizes(double fixedSize, double processBarSize) {
+    public void PreviewFontSizes(double fixedSize, double processBarSize, double processColumnSize = 0) {
         if (fixedSize > 0)
             OrderGrid.FontSize = fixedSize;
+        var needRebuild = false;
         if (processBarSize > 0) {
             _viewModel.Settings.ProcessBarFontSize = processBarSize;
+            needRebuild = true;
+        }
+        if (processColumnSize > 0) {
+            _viewModel.Settings.ProcessColumnFontSize = processColumnSize;
+            needRebuild = true;
+        }
+        if (needRebuild) {
             _lastColumnSignature = null; // キャッシュを無効化して再構築を強制
             BuildProcessColumns();
         }

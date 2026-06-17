@@ -49,7 +49,8 @@
                        VerticalAlignment="Center" Margin="0,0,0,12"/>
             <TextBox Grid.Row="2" Grid.Column="1" Name="TxtProcessColumnFontSize"
                      Width="60" HorizontalAlignment="Left"
-                     VerticalContentAlignment="Center" Padding="4" Margin="0,0,0,12"/>
+                     VerticalContentAlignment="Center" Padding="4" Margin="0,0,0,12"
+                     TextChanged="TxtProcessColumnFontSize_TextChanged"/>
 
             <!-- 工程列：期限日表示 -->
             <TextBlock Grid.Row="3" Grid.Column="0" Text="工程列に期限日を表示："
