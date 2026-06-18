@@ -368,6 +368,7 @@ public partial class MainWindow : Window {
         if (needRebuild) {
             _lastColumnSignature = null; // キャッシュを無効化して再構築を強制
             BuildProcessColumns();
+            UpdateRowHeight();
         }
     }
 
