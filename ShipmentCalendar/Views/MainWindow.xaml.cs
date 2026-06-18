@@ -379,7 +379,7 @@ public partial class MainWindow : Window {
             processHeight = processLineCount * (settings.ProcessColumnFontSize * 1.8) + 10;
         }
         if (settings.ShowProcessBar)
-            processHeight = Math.Max(processHeight, ProcessBarControl.DateBarHeight + 16);
+            processHeight = Math.Max(processHeight, ProcessBarControl.DateBarHeight + (settings.ProcessBarFontSize * 1.8) + 8);
         return Math.Max(processHeight, settings.FixedColumnFontSize * 1.8 + 8);
     }
 
