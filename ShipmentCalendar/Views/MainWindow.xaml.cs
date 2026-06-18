@@ -403,19 +403,14 @@ public partial class MainWindow : Window {
 
 /// <summary>ProcessStatusを色ブラシに変換するコンバーター</summary>
 public class StatusToColorConverter : System.Windows.Data.IValueConverter {
-    private static readonly Brush _completed  = Freeze(Color.FromRgb(102, 187, 106));
-    private static readonly Brush _inProgress = Freeze(Color.FromRgb(255, 224, 102));
-    private static readonly Brush _warning    = Freeze(Color.FromRgb(255, 152,   0));
-    private static readonly Brush _overdue    = Freeze(Color.FromRgb(239,  83,  80));
-    private static readonly Brush _notStarted = Freeze(Color.FromRgb(210, 225, 245));
-    private static Brush Freeze(Color c) { var b = new SolidColorBrush(c); b.Freeze(); return b; }
+    private static Brush Res(string key) => (Brush)Application.Current.Resources[key];
 
     public static Brush StatusToBrush(ProcessStatus status) => status switch {
-        ProcessStatus.Completed  => _completed,
-        ProcessStatus.InProgress => _inProgress,
-        ProcessStatus.Warning    => _warning,
-        ProcessStatus.Overdue    => _overdue,
-        ProcessStatus.NotStarted => _notStarted,
+        ProcessStatus.Completed  => Res("StatusCompleted"),
+        ProcessStatus.InProgress => Res("StatusInProgress"),
+        ProcessStatus.Warning    => Res("StatusWarning"),
+        ProcessStatus.Overdue    => Res("StatusOverdue"),
+        ProcessStatus.NotStarted => Res("StatusNotStarted"),
         _ => Brushes.Transparent
     };
 
