@@ -72,10 +72,11 @@ public partial class ProcessBarControl : UserControl {
         // 全期間が週末のみ（例: 土〜日）の場合は描画不可
         if (businessDays.Count == 0) return;
 
-        // 日付バー: 1列=480*（1営業日=480分相当）で統一することで工程バーと分単位で位置が合う
+        // 日付バー・工程バーで同一の列定義（1列=1営業日）を共有し、SetColumnSpanで整合を保つ
         foreach (var (date, col) in businessDays.Select((d, i) => (d, i))) {
-            DateBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(480, GridUnitType.Star) });
-            var border = new Border {
+            DateBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var dateBorder = new Border {
                 Background = DateBarBackgroundBrush,
                 BorderBrush = DefaultBorderBrush,
                 BorderThickness = new Thickness(1),
@@ -87,42 +88,29 @@ public partial class ProcessBarControl : UserControl {
                     Foreground = Brushes.DimGray,
                 }
             };
-            Grid.SetColumn(border, col);
-            DateBarGrid.Children.Add(border);
+            Grid.SetColumn(dateBorder, col);
+            DateBarGrid.Children.Add(dateBorder);
         }
 
-        // 工程バー: 全工程を分単位のフラットタイムラインとして連続配置する
-        // 日付バーと同じ総スター幅（営業日数×480）を使うため、日付との整合が保たれる
-        var totalDayMinutes = businessDays.Count * 480.0;
-
-        // Math.Maxや閾値による端数が出るため、実際にグリッドへ追加するスター幅を先算して整合させる
-        double nonOffsetStars = 0;
-        foreach (var p in Processes) {
-            nonOffsetStars += Math.Max(1, p.RequiredMinutes);
-            var gap = p.CoolTimeMinutes + p.OutsourceLeadDays * 480.0;
-            if (gap >= 1) nonOffsetStars += gap;
-        }
-        var initialOffset = Math.Max(0, totalDayMinutes - nonOffsetStars);
-
-        int barCol = 0;
-
-        // 初期オフセット（最初の工程の着手前の空き時間）をグレーで表示
-        if (initialOffset >= 1) {
-            BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(initialOffset, GridUnitType.Star) });
+        // 最初の工程の着手前をグレーで表示
+        var firstStartCol = businessDays.IndexOf(Processes[0].StartDate);
+        if (firstStartCol > 0) {
             var offsetBorder = new Border {
                 Background = OffsetBackgroundBrush,
                 BorderBrush = OffsetBorderBrush,
                 BorderThickness = new Thickness(0, 0, 1, 0),
-                ToolTip = $"着手まで {initialOffset / 60.0:F1}h",
+                ToolTip = $"着手まで {firstStartCol}営業日",
             };
-            Grid.SetColumn(offsetBorder, barCol++);
+            Grid.SetColumn(offsetBorder, 0);
+            Grid.SetColumnSpan(offsetBorder, firstStartCol);
             BarGrid.Children.Add(offsetBorder);
         }
 
+        // 各工程を StartDate〜DueDate のセルスパンで配置
         foreach (var process in Processes) {
-            BarGrid.ColumnDefinitions.Add(new ColumnDefinition {
-                Width = new GridLength(Math.Max(1, process.RequiredMinutes), GridUnitType.Star)
-            });
+            var startCol = businessDays.IndexOf(process.StartDate);
+            var endCol   = businessDays.IndexOf(process.DueDate);
+            if (startCol < 0 || endCol < 0 || startCol > endCol) continue;
             var tooltip = $"{process.ProcessName}\n必要時間: {process.RequiredMinutes / 60.0:F1}h\n{process.StartDate:M/d} → {process.DueDate:M/d}";
             var border = new Border {
                 Background = StatusToColorConverter.StatusToBrush(process.Status),
@@ -140,15 +128,9 @@ public partial class ProcessBarControl : UserControl {
                     ClipToBounds = true,
                 }
             };
-            Grid.SetColumn(border, barCol++);
+            Grid.SetColumn(border, startCol);
+            Grid.SetColumnSpan(border, endCol - startCol + 1);
             BarGrid.Children.Add(border);
-
-            // クールタイム・外注待ちは空白列として挿入
-            var gapMinutes = process.CoolTimeMinutes + process.OutsourceLeadDays * 480.0;
-            if (gapMinutes >= 1) {
-                BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(gapMinutes, GridUnitType.Star) });
-                barCol++;
-            }
         }
     }
 }
