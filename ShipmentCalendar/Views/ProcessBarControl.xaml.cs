@@ -91,38 +91,34 @@ public partial class ProcessBarControl : UserControl {
             DateBarGrid.Children.Add(border);
         }
 
-        // 工程バー: 全工程を分単位のフラットタイムラインとして連続配置する
+        // 工程バー: StartDate の営業日インデックスを基準に正確な位置へ配置する
         // 日付バーと同じ総スター幅（営業日数×480）を使うため、日付との整合が保たれる
         var totalDayMinutes = businessDays.Count * 480.0;
-
-        // Math.Maxや閾値による端数が出るため、実際にグリッドへ追加するスター幅を先算して整合させる
-        double nonOffsetStars = 0;
-        foreach (var p in Processes) {
-            nonOffsetStars += Math.Max(1, p.RequiredMinutes);
-            var gap = p.CoolTimeMinutes + p.OutsourceLeadDays * 480.0;
-            if (gap >= 1) nonOffsetStars += gap;
-        }
-        var initialOffset = Math.Max(0, totalDayMinutes - nonOffsetStars);
-
+        double currentPos = 0;
         int barCol = 0;
 
-        // 初期オフセット（最初の工程の着手前の空き時間）をグレーで表示
-        if (initialOffset >= 1) {
-            BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(initialOffset, GridUnitType.Star) });
-            var offsetBorder = new Border {
-                Background = OffsetBackgroundBrush,
-                BorderBrush = OffsetBorderBrush,
-                BorderThickness = new Thickness(0, 0, 1, 0),
-                ToolTip = $"着手まで {initialOffset / 60.0:F1}h",
-            };
-            Grid.SetColumn(offsetBorder, barCol++);
-            BarGrid.Children.Add(offsetBorder);
-        }
-
         foreach (var process in Processes) {
-            BarGrid.ColumnDefinitions.Add(new ColumnDefinition {
-                Width = new GridLength(Math.Max(1, process.RequiredMinutes), GridUnitType.Star)
-            });
+            var startDayIdx = businessDays.IndexOf(process.StartDate);
+            if (startDayIdx < 0) continue; // 営業日外の開始日はスキップ
+
+            // 前の工程終了位置から今の工程開始位置までの空きをグレーで挿入
+            double targetStartPos = startDayIdx * 480.0;
+            if (targetStartPos > currentPos) {
+                double gap = targetStartPos - currentPos;
+                BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(gap, GridUnitType.Star) });
+                var gapBorder = new Border {
+                    Background = OffsetBackgroundBrush,
+                    BorderBrush = OffsetBorderBrush,
+                    BorderThickness = new Thickness(0, 0, 1, 0),
+                    ToolTip = $"空き時間 {gap / 60.0:F1}h",
+                };
+                Grid.SetColumn(gapBorder, barCol++);
+                BarGrid.Children.Add(gapBorder);
+                currentPos = targetStartPos;
+            }
+
+            double width = Math.Max(1, process.RequiredMinutes);
+            BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(width, GridUnitType.Star) });
             var tooltip = $"{process.ProcessName}\n必要時間: {process.RequiredMinutes / 60.0:F1}h\n{process.StartDate:M/d} → {process.DueDate:M/d}";
             var border = new Border {
                 Background = StatusToColorConverter.StatusToBrush(process.Status),
@@ -142,13 +138,28 @@ public partial class ProcessBarControl : UserControl {
             };
             Grid.SetColumn(border, barCol++);
             BarGrid.Children.Add(border);
+            currentPos += width;
 
             // クールタイム・外注待ちは空白列として挿入
             var gapMinutes = process.CoolTimeMinutes + process.OutsourceLeadDays * 480.0;
             if (gapMinutes >= 1) {
                 BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(gapMinutes, GridUnitType.Star) });
                 barCol++;
+                currentPos += gapMinutes;
             }
+        }
+
+        // 末尾に残った空き時間をグレーで埋める
+        if (totalDayMinutes > currentPos + 1) {
+            double finalGap = totalDayMinutes - currentPos;
+            BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(finalGap, GridUnitType.Star) });
+            var finalBorder = new Border {
+                Background = OffsetBackgroundBrush,
+                BorderBrush = OffsetBorderBrush,
+                BorderThickness = new Thickness(0, 0, 1, 0),
+            };
+            Grid.SetColumn(finalBorder, barCol++);
+            BarGrid.Children.Add(finalBorder);
         }
     }
 }
