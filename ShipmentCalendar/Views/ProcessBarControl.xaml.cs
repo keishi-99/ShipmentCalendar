@@ -89,9 +89,10 @@ public partial class ProcessBarControl : UserControl {
             if (!dayIndex.TryGetValue(process.DueDate, out var endCol)) endCol = businessDays.Count - 1;
             var span = Math.Max(1, endCol - startCol + 1);
 
-            // 逆算スケジュールでは工程はDueDateの終わりに向かって詰められるため、
-            // StartDate当日の着手オフセット = span日分 - 必要時間（分）
-            var offsetMinutes = Math.Max(0, span * 480 - process.RequiredMinutes);
+            // 着手オフセットは最初の工程のみ（逆算スケジュールで期間先頭に生じる空き時間）
+            var offsetMinutes = process.StartDate == minDate
+                ? Math.Max(0, span * 480 - process.RequiredMinutes)
+                : 0;
 
             var tooltip = $"{process.ProcessName}\n必要時間: {process.RequiredMinutes / 60.0:F1}h\n{process.StartDate:M/d} → {process.DueDate:M/d}";
             var processBorder = new Border {
