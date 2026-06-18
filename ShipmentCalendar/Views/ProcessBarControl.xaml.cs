@@ -10,6 +10,17 @@ public partial class ProcessBarControl : UserControl {
     // 日付バーの高さ（UpdateRowHeight で参照する）
     public const double DateBarHeight = 16;
 
+    private static readonly Brush DateBarBackgroundBrush = CreateFrozenBrush(Color.FromRgb(220, 230, 241));
+    private static readonly Brush DefaultBorderBrush     = CreateFrozenBrush(Color.FromRgb(154, 176, 204));
+    private static readonly Brush OffsetBackgroundBrush  = CreateFrozenBrush(Color.FromArgb(90, 160, 160, 160));
+    private static readonly Brush OffsetBorderBrush      = CreateFrozenBrush(Color.FromArgb(160, 120, 120, 120));
+
+    private static SolidColorBrush CreateFrozenBrush(Color color) {
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        return brush;
+    }
+
     public static readonly DependencyProperty ProcessesProperty =
         DependencyProperty.Register(
             nameof(Processes),
@@ -58,12 +69,15 @@ public partial class ProcessBarControl : UserControl {
                 businessDays.Add(d);
         }
 
+        // 全期間が週末のみ（例: 土〜日）の場合は描画不可
+        if (businessDays.Count == 0) return;
+
         // 日付バー: 1列=480*（1営業日=480分相当）で統一することで工程バーと分単位で位置が合う
         foreach (var (date, col) in businessDays.Select((d, i) => (d, i))) {
             DateBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(480, GridUnitType.Star) });
             var border = new Border {
-                Background = new SolidColorBrush(Color.FromRgb(220, 230, 241)),
-                BorderBrush = new SolidColorBrush(Color.FromRgb(154, 176, 204)),
+                Background = DateBarBackgroundBrush,
+                BorderBrush = DefaultBorderBrush,
                 BorderThickness = new Thickness(1),
                 Child = new TextBlock {
                     Text = date.ToString("M/d"),
@@ -96,8 +110,8 @@ public partial class ProcessBarControl : UserControl {
         if (initialOffset >= 1) {
             BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(initialOffset, GridUnitType.Star) });
             var offsetBorder = new Border {
-                Background = new SolidColorBrush(Color.FromArgb(90, 160, 160, 160)),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(160, 120, 120, 120)),
+                Background = OffsetBackgroundBrush,
+                BorderBrush = OffsetBorderBrush,
                 BorderThickness = new Thickness(0, 0, 1, 0),
                 ToolTip = $"着手まで {initialOffset / 60.0:F1}h",
             };
@@ -112,7 +126,7 @@ public partial class ProcessBarControl : UserControl {
             var tooltip = $"{process.ProcessName}\n必要時間: {process.RequiredMinutes / 60.0:F1}h\n{process.StartDate:M/d} → {process.DueDate:M/d}";
             var border = new Border {
                 Background = StatusToColorConverter.StatusToBrush(process.Status),
-                BorderBrush = new SolidColorBrush(Color.FromRgb(154, 176, 204)),
+                BorderBrush = DefaultBorderBrush,
                 BorderThickness = new Thickness(1),
                 ToolTip = tooltip,
                 Child = new TextBlock {

@@ -330,7 +330,7 @@ public partial class MainViewModel : ObservableObject {
                 // ステータスを警告日数込みで確定
                 foreach (var process in order.Processes) {
                     var warningDays = productDefs
-                        .FirstOrDefault(d => d.DestinationCode.Equals(process.DestinationCode, StringComparison.OrdinalIgnoreCase))
+                        .FirstOrDefault(d => string.Equals(d.DestinationCode, process.DestinationCode, StringComparison.OrdinalIgnoreCase))
                         ?.WarningDaysBeforeDeadline ?? 0;
                     process.WarningDaysBeforeDeadline = warningDays;
                     process.Status = BusinessDayCalculator.DetermineStatus(process, today, warningDays);
