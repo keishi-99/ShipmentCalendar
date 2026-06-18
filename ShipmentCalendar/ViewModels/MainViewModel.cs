@@ -328,7 +328,9 @@ public partial class MainViewModel : ObservableObject {
                 }
 
                 // DestinationCodeをキーにした辞書でO(1)ルックアップ
-                var defByDest = productDefs.ToDictionary(d => d.DestinationCode, StringComparer.OrdinalIgnoreCase);
+                var defByDest = productDefs
+                    .GroupBy(d => d.DestinationCode, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
                 // ステータスを警告日数込みで確定
                 foreach (var process in order.Processes) {

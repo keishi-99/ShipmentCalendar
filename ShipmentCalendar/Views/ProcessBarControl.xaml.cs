@@ -80,8 +80,15 @@ public partial class ProcessBarControl : UserControl {
         // 工程バー: 全工程を分単位のフラットタイムラインとして連続配置する
         // 日付バーと同じ総スター幅（営業日数×480）を使うため、日付との整合が保たれる
         var totalDayMinutes = businessDays.Count * 480.0;
-        var totalProcessMinutes = Processes.Sum(p => p.RequiredMinutes + p.CoolTimeMinutes + p.OutsourceLeadDays * 480.0);
-        var initialOffset = Math.Max(0, totalDayMinutes - totalProcessMinutes);
+
+        // Math.Maxや閾値による端数が出るため、実際にグリッドへ追加するスター幅を先算して整合させる
+        double nonOffsetStars = 0;
+        foreach (var p in Processes) {
+            nonOffsetStars += Math.Max(1, p.RequiredMinutes);
+            var gap = p.CoolTimeMinutes + p.OutsourceLeadDays * 480.0;
+            if (gap >= 1) nonOffsetStars += gap;
+        }
+        var initialOffset = Math.Max(0, totalDayMinutes - nonOffsetStars);
 
         int barCol = 0;
 

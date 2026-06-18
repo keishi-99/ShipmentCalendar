@@ -50,7 +50,10 @@ public partial class DisplaySettingsWindow : Window
     }
 
     private void TxtManualRowHeight_TextChanged(object sender, TextChangedEventArgs e) {
-        if (double.TryParse(TxtManualRowHeight.Text, out var h) && h >= 0)
+        var text = TxtManualRowHeight.Text;
+        if (string.IsNullOrEmpty(text))
+            _mainWindow?.PreviewRowHeight(0);
+        else if (double.TryParse(text, out var h) && h >= 0)
             _mainWindow?.PreviewRowHeight(h);
     }
 
@@ -74,7 +77,8 @@ public partial class DisplaySettingsWindow : Window
             return;
         }
 
-        if (!double.TryParse(TxtManualRowHeight.Text, out var manualRowHeight) || manualRowHeight < 0)
+        double manualRowHeight = 0;
+        if (!string.IsNullOrEmpty(TxtManualRowHeight.Text) && (!double.TryParse(TxtManualRowHeight.Text, out manualRowHeight) || manualRowHeight < 0))
         {
             MessageBox.Show("行の高さには0以上の数値を入力してください。", "入力エラー", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
