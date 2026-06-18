@@ -91,6 +91,8 @@ public partial class MainWindow : Window {
             menuItem.IsChecked = isVisible;
             column.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
         }
+        MnuColProcessBar.IsChecked = _viewModel.Settings.ShowProcessBar;
+        MnuColProcessColumns.IsChecked = _viewModel.Settings.ShowProcessColumns;
         UpdateProcessModeButtonText();
         _columnVisibilityEventsEnabled = true;
     }
@@ -133,6 +135,18 @@ public partial class MainWindow : Window {
         mapping.Column.Visibility = isChecked ? Visibility.Visible : Visibility.Collapsed;
         mapping.Setter(_viewModel.Settings, isChecked);
         _viewModel.SaveSettings();
+    }
+
+    private void ProcessVisibilityCheckBox_Changed(object sender, RoutedEventArgs e) {
+        if (!_columnVisibilityEventsEnabled) return;
+
+        var settings = _viewModel.Settings;
+        settings.ShowProcessBar = MnuColProcessBar.IsChecked;
+        settings.ShowProcessColumns = MnuColProcessColumns.IsChecked;
+        _viewModel.SaveSettings();
+        _lastColumnSignature = null;
+        BuildProcessColumns();
+        UpdateProcessModeButtonText();
     }
 
     /// <summary>表示日切り替えボタンの文言を現在の設定に合わせて更新する</summary>
@@ -383,7 +397,7 @@ public partial class MainWindow : Window {
 
     private void OrderRow_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e) {
         if (sender is not DataGridRow row || row.Item is not Order order) return;
-        new OrderDetailWindow(order) { Owner = this }.Show();
+        new OrderDetailWindow(order) { Owner = this }.ShowDialog();
     }
 }
 
