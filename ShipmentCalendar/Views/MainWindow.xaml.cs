@@ -337,8 +337,11 @@ public partial class MainWindow : Window {
 
     /// <summary>フォントサイズのリアルタイムプレビュー用（設定には保存しない）</summary>
     public void PreviewFontSizes(double fixedSize, double processBarSize, double processColumnSize = 0) {
-        if (fixedSize > 0)
+        if (fixedSize > 0) {
+            _viewModel.Settings.FixedColumnFontSize = fixedSize;
             OrderGrid.FontSize = fixedSize;
+            UpdateRowHeight();
+        }
         var needRebuild = false;
         if (processBarSize > 0) {
             _viewModel.Settings.ProcessBarFontSize = processBarSize;
