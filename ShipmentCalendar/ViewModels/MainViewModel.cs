@@ -11,6 +11,7 @@ namespace ShipmentCalendar.ViewModels;
 public partial class MainViewModel : ObservableObject {
     private readonly IHolidayRepository _holidayRepository;
     private readonly DispatcherTimer _refreshTimer;
+    private readonly DispatcherTimer _filterDebounceTimer;
 
     // 全件キャッシュ（フィルター用）
     private List<Order> _allOrders = [];
@@ -52,9 +53,14 @@ public partial class MainViewModel : ObservableObject {
     /// <summary>選択中の担当部署ID（0=全て）</summary>
     [ObservableProperty] private int _filterDepartmentId = 0;
 
-    partial void OnFilterItemNumberChanged(string value) => ApplyFilter();
-    partial void OnFilterProductNameChanged(string value) => ApplyFilter();
-    partial void OnFilterManufactureNumberChanged(string value) => ApplyFilter();
+    partial void OnFilterItemNumberChanged(string value) => ScheduleFilter();
+    partial void OnFilterProductNameChanged(string value) => ScheduleFilter();
+    partial void OnFilterManufactureNumberChanged(string value) => ScheduleFilter();
+
+    private void ScheduleFilter() {
+        _filterDebounceTimer.Stop();
+        _filterDebounceTimer.Start();
+    }
     partial void OnFilterDeliveryFromChanged(DateTime? value) => ApplyFilter();
     partial void OnFilterDeliveryToChanged(DateTime? value) => ApplyFilter();
     partial void OnFilterHideCompletedChanged(bool value) => ApplyFilter();
@@ -144,7 +150,7 @@ public partial class MainViewModel : ObservableObject {
                     .FirstOrDefault();
                 var isOverdue  = FilterOverdueOnly  && o.HasOverdue;
                 var isWarning  = FilterWarningOnly  && o.Processes.Any(p => p.Status == ProcessStatus.Warning);
-                var isToday    = FilterTodayTask    && next != null && next.StartDate <= today && today <= next.DueDate;
+                var isToday    = FilterTodayTask    && next != null && next.Status == ProcessStatus.InProgress;
                 return isOverdue || isWarning || isToday;
             });
         }
@@ -215,6 +221,9 @@ public partial class MainViewModel : ObservableObject {
         _refreshTimer.Tick += async (_, _) => await LoadOrdersAsync();
         ApplyRefreshInterval();
         RefreshFilterDateRange();
+
+        _filterDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+        _filterDebounceTimer.Tick += (_, _) => { _filterDebounceTimer.Stop(); ApplyFilter(); };
     }
 
     /// <summary>タイマー間隔を設定から再適用する</summary>
@@ -286,18 +295,14 @@ public partial class MainViewModel : ObservableObject {
                 };
             }).ToList();
 
-            // 品目番号をキーにした工程グループを構築
-            var defGroups = allDefs
-                .GroupBy(d => d.ItemNumber)
-                .Select(g => new { ItemNumber = g.Key, Defs = g.ToList() })
-                .ToList();
+            // 品目番号をキーにした工程定義辞書を構築（O(1)ルックアップ）
+            var defDict = allDefs
+                .GroupBy(d => d.ItemNumber, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
 
             foreach (var order in orders) {
-                // 品目番号の完全一致で工程定義を取得
-                var productDefs = defGroups
-                    .Where(g => order.ItemNumber.Equals(g.ItemNumber, StringComparison.OrdinalIgnoreCase))
-                    .SelectMany(g => g.Defs)
-                    .ToList();
+                defDict.TryGetValue(order.ItemNumber, out var productDefs);
+                productDefs ??= [];
 
                 order.CompletionDate = calculator.SubtractBusinessDays(order.DeliveryDate, Settings.CompletionDateLeadDays);
 
@@ -322,11 +327,13 @@ public partial class MainViewModel : ObservableObject {
                         process.Status = ProcessStatus.Completed;
                 }
 
+                // DestinationCodeをキーにした辞書でO(1)ルックアップ
+                var defByDest = productDefs.ToDictionary(d => d.DestinationCode, StringComparer.OrdinalIgnoreCase);
+
                 // ステータスを警告日数込みで確定
                 foreach (var process in order.Processes) {
-                    var warningDays = productDefs
-                        .FirstOrDefault(d => d.DestinationCode == process.DestinationCode)
-                        ?.WarningDaysBeforeDeadline ?? 0;
+                    var warningDays = defByDest.TryGetValue(process.DestinationCode, out var def)
+                        ? def.WarningDaysBeforeDeadline : 0;
                     process.WarningDaysBeforeDeadline = warningDays;
                     process.Status = BusinessDayCalculator.DetermineStatus(process, today, warningDays);
                 }

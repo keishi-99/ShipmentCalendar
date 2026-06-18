@@ -63,8 +63,8 @@ public partial class ProcessBarControl : UserControl {
             DateBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(480, GridUnitType.Star) });
             var border = new Border {
                 Background = new SolidColorBrush(Color.FromRgb(220, 230, 241)),
-                BorderBrush = Brushes.White,
-                BorderThickness = new Thickness(0.5),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(154, 176, 204)),
+                BorderThickness = new Thickness(1),
                 Child = new TextBlock {
                     Text = date.ToString("M/d"),
                     FontSize = Math.Max(6, BarFontSize - 2),
@@ -105,8 +105,8 @@ public partial class ProcessBarControl : UserControl {
             var tooltip = $"{process.ProcessName}\n必要時間: {process.RequiredMinutes / 60.0:F1}h\n{process.StartDate:M/d} → {process.DueDate:M/d}";
             var border = new Border {
                 Background = StatusToColorConverter.StatusToBrush(process.Status),
-                BorderBrush = Brushes.White,
-                BorderThickness = new Thickness(0.5),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(154, 176, 204)),
+                BorderThickness = new Thickness(1),
                 ToolTip = tooltip,
                 Child = new TextBlock {
                     Text = process.ProcessName,
