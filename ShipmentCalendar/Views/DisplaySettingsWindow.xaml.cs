@@ -8,6 +8,7 @@ public partial class DisplaySettingsWindow : Window
 {
     private readonly MainViewModel _viewModel;
     private readonly MainWindow _mainWindow;
+    private bool _isInitializing = true;
     // キャンセル時に復元するための保存値
     private readonly double _savedFixedFontSize;
     private readonly double _savedProcessBarFontSize;
@@ -32,24 +33,29 @@ public partial class DisplaySettingsWindow : Window
         ChkShowProcessDate.IsChecked = settings.ShowProcessDate;
         ChkShowProcessRequiredHours.IsChecked = settings.ShowProcessRequiredHours;
         TxtManualRowHeight.Text = settings.ManualRowHeight.ToString();
+        _isInitializing = false;
     }
 
     private void TxtFixedFontSize_TextChanged(object sender, TextChangedEventArgs e) {
+        if (_isInitializing) return;
         if (double.TryParse(TxtFixedColumnFontSize.Text, out var size) && size >= 5 && size <= 100)
             _mainWindow?.PreviewFontSizes(size, 0);
     }
 
     private void TxtProcessBarFontSize_TextChanged(object sender, TextChangedEventArgs e) {
+        if (_isInitializing) return;
         if (double.TryParse(TxtProcessBarFontSize.Text, out var size) && size >= 5 && size <= 100)
             _mainWindow?.PreviewFontSizes(0, size);
     }
 
     private void TxtProcessColumnFontSize_TextChanged(object sender, TextChangedEventArgs e) {
+        if (_isInitializing) return;
         if (double.TryParse(TxtProcessColumnFontSize.Text, out var size) && size >= 5 && size <= 100)
             _mainWindow?.PreviewFontSizes(0, 0, size);
     }
 
     private void TxtManualRowHeight_TextChanged(object sender, TextChangedEventArgs e) {
+        if (_isInitializing) return;
         var text = TxtManualRowHeight.Text;
         if (string.IsNullOrEmpty(text))
             _mainWindow?.PreviewRowHeight(0);

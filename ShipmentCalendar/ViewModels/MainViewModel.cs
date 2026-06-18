@@ -327,15 +327,11 @@ public partial class MainViewModel : ObservableObject {
                         process.Status = ProcessStatus.Completed;
                 }
 
-                // DestinationCodeをキーにした辞書でO(1)ルックアップ
-                var defByDest = productDefs
-                    .GroupBy(d => d.DestinationCode, StringComparer.OrdinalIgnoreCase)
-                    .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
-
                 // ステータスを警告日数込みで確定
                 foreach (var process in order.Processes) {
-                    var warningDays = defByDest.TryGetValue(process.DestinationCode, out var def)
-                        ? def.WarningDaysBeforeDeadline : 0;
+                    var warningDays = productDefs
+                        .FirstOrDefault(d => d.DestinationCode.Equals(process.DestinationCode, StringComparison.OrdinalIgnoreCase))
+                        ?.WarningDaysBeforeDeadline ?? 0;
                     process.WarningDaysBeforeDeadline = warningDays;
                     process.Status = BusinessDayCalculator.DetermineStatus(process, today, warningDays);
                 }

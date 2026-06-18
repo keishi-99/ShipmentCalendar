@@ -49,7 +49,7 @@ public partial class ProcessBarControl : UserControl {
         var maxDate = Processes.Max(p => p.DueDate);
 
         // 未設定日付や異常に広い範囲（365日超）はスキップ
-        if (minDate == default || maxDate == default || minDate > maxDate || minDate.AddDays(365) < maxDate) return;
+        if (minDate == default || maxDate == default || minDate > maxDate || maxDate.DayNumber - minDate.DayNumber > 365) return;
 
         // 週末をスキップして営業日リストを生成（日付バー・工程バーで共有）
         var businessDays = new List<DateOnly>();
