@@ -144,7 +144,7 @@ public partial class MainViewModel : ObservableObject {
                     .FirstOrDefault();
                 var isOverdue  = FilterOverdueOnly  && o.HasOverdue;
                 var isWarning  = FilterWarningOnly  && o.Processes.Any(p => p.Status == ProcessStatus.Warning);
-                var isToday    = FilterTodayTask    && next != null && next.StartDate == today;
+                var isToday    = FilterTodayTask    && next != null && next.StartDate <= today && today <= next.DueDate;
                 return isOverdue || isWarning || isToday;
             });
         }
