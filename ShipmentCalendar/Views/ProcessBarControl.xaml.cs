@@ -89,8 +89,12 @@ public partial class ProcessBarControl : UserControl {
             if (!dayIndex.TryGetValue(process.DueDate, out var endCol)) endCol = businessDays.Count - 1;
             var span = Math.Max(1, endCol - startCol + 1);
 
+            // 逆算スケジュールでは工程はDueDateの終わりに向かって詰められるため、
+            // StartDate当日の着手オフセット = span日分 - 必要時間（分）
+            var offsetMinutes = Math.Max(0, span * 480 - process.RequiredMinutes);
+
             var tooltip = $"{process.ProcessName}\n必要時間: {process.RequiredMinutes / 60.0:F1}h\n{process.StartDate:M/d} → {process.DueDate:M/d}";
-            var border = new Border {
+            var processBorder = new Border {
                 Background = StatusToColorConverter.StatusToBrush(process.Status),
                 BorderBrush = Brushes.White,
                 BorderThickness = new Thickness(0.5),
@@ -106,9 +110,29 @@ public partial class ProcessBarControl : UserControl {
                     ClipToBounds = true,
                 }
             };
-            Grid.SetColumn(border, startCol);
-            Grid.SetColumnSpan(border, span);
-            BarGrid.Children.Add(border);
+
+            FrameworkElement cell;
+            if (offsetMinutes > 0) {
+                // 着手オフセットをグレーで表示し、日中の着手タイミングを可視化する
+                var innerGrid = new Grid();
+                innerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(offsetMinutes, GridUnitType.Star) });
+                innerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(process.RequiredMinutes, GridUnitType.Star) });
+                var offsetBorder = new Border {
+                    Background = new SolidColorBrush(Color.FromArgb(60, 160, 160, 160)),
+                    ToolTip = $"着手まで {offsetMinutes / 60.0:F1}h",
+                };
+                Grid.SetColumn(offsetBorder, 0);
+                Grid.SetColumn(processBorder, 1);
+                innerGrid.Children.Add(offsetBorder);
+                innerGrid.Children.Add(processBorder);
+                cell = innerGrid;
+            } else {
+                cell = processBorder;
+            }
+
+            Grid.SetColumn(cell, startCol);
+            Grid.SetColumnSpan(cell, span);
+            BarGrid.Children.Add(cell);
         }
     }
 }
