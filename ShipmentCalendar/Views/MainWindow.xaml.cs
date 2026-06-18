@@ -12,6 +12,8 @@ namespace ShipmentCalendar.Views;
 
 public partial class MainWindow : Window {
     private readonly MainViewModel _viewModel;
+    // プレビュー中の行高さ（null=プレビューなし、0=自動）
+    private double? _previewManualRowHeight;
 
     public MainWindow() {
         InitializeComponent();
@@ -185,7 +187,9 @@ public partial class MainWindow : Window {
     /// <summary>工程列の表示行数（工程名＋期限日/標準時間の設定状況）と各列のフォントサイズから行の高さを計算する</summary>
     private void UpdateRowHeight() {
         var settings = _viewModel.Settings;
-        OrderGrid.RowHeight = settings.ManualRowHeight > 0 ? settings.ManualRowHeight : CalculateAutoRowHeight();
+        // プレビュー中はダイアログの値を優先（0=自動、正値=手動、null=プレビューなし）
+        var effectiveManual = _previewManualRowHeight ?? settings.ManualRowHeight;
+        OrderGrid.RowHeight = effectiveManual > 0 ? effectiveManual : CalculateAutoRowHeight();
     }
 
     // 直前に構築した工程列の構成（変化がなければ再構築をスキップする）
@@ -346,6 +350,7 @@ public partial class MainWindow : Window {
 
     /// <summary>表示設定ダイアログからのリアルタイムプレビュー用（設定には保存しない）</summary>
     public void PreviewRowHeight(double height) {
+        _previewManualRowHeight = height;
         OrderGrid.RowHeight = height > 0 ? height : CalculateAutoRowHeight();
     }
 
@@ -386,7 +391,9 @@ public partial class MainWindow : Window {
 
     private void BtnDisplaySettings_Click(object sender, RoutedEventArgs e) {
         var window = new DisplaySettingsWindow(_viewModel, this) { Owner = this };
-        if (window.ShowDialog() == true) {
+        window.ShowDialog();
+        _previewManualRowHeight = null;
+        if (window.DialogResult == true) {
             ApplyFixedColumnFontSize();
             BuildProcessColumns();
         }
