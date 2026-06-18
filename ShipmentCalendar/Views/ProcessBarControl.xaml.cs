@@ -10,10 +10,12 @@ public partial class ProcessBarControl : UserControl {
     // 日付バーの高さ（UpdateRowHeight で参照する）
     public const double DateBarHeight = 16;
 
-    private static readonly Brush DateBarBackgroundBrush = CreateFrozenBrush(Color.FromRgb(220, 230, 241));
-    private static readonly Brush DefaultBorderBrush     = CreateFrozenBrush(Color.FromRgb(154, 176, 204));
-    private static readonly Brush OffsetBackgroundBrush  = CreateFrozenBrush(Color.FromArgb(90, 160, 160, 160));
-    private static readonly Brush OffsetBorderBrush      = CreateFrozenBrush(Color.FromArgb(160, 120, 120, 120));
+    private static readonly Brush DateBarBackgroundBrush  = CreateFrozenBrush(Color.FromRgb(220, 230, 241));
+    private static readonly Brush DefaultBorderBrush      = CreateFrozenBrush(Color.FromRgb(154, 176, 204));
+    private static readonly Brush OffsetBackgroundBrush   = CreateFrozenBrush(Color.FromArgb(90, 160, 160, 160));
+    private static readonly Brush OffsetBorderBrush       = CreateFrozenBrush(Color.FromArgb(160, 120, 120, 120));
+    private static readonly Brush CoolTimeBrush           = CreateFrozenBrush(Color.FromRgb(200, 230, 201));
+    private static readonly Brush OutsourceLeadBrush      = CreateFrozenBrush(Color.FromRgb(248, 187, 208));
 
     private static SolidColorBrush CreateFrozenBrush(Color color) {
         var brush = new SolidColorBrush(color);
@@ -143,11 +145,30 @@ public partial class ProcessBarControl : UserControl {
             Grid.SetColumn(border, barCol++);
             BarGrid.Children.Add(border);
 
-            // クールタイム・外注待ちは空白列として挿入
-            var gapMinutes = process.CoolTimeMinutes + process.OutsourceLeadDays * 480.0;
-            if (gapMinutes >= 1) {
-                BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(gapMinutes, GridUnitType.Star) });
-                barCol++;
+            // クールタイムを色付き列として挿入
+            if (process.CoolTimeMinutes >= 1) {
+                BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(process.CoolTimeMinutes, GridUnitType.Star) });
+                var coolBorder = new Border {
+                    Background = CoolTimeBrush,
+                    BorderBrush = DefaultBorderBrush,
+                    BorderThickness = new Thickness(0, 0, 1, 0),
+                    ToolTip = $"クールタイム {process.CoolTimeMinutes / 60.0:F1}h",
+                };
+                Grid.SetColumn(coolBorder, barCol++);
+                BarGrid.Children.Add(coolBorder);
+            }
+            // 外注待ちを色付き列として挿入
+            var outsourceMinutes = process.OutsourceLeadDays * 480.0;
+            if (outsourceMinutes >= 1) {
+                BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(outsourceMinutes, GridUnitType.Star) });
+                var outsourceBorder = new Border {
+                    Background = OutsourceLeadBrush,
+                    BorderBrush = DefaultBorderBrush,
+                    BorderThickness = new Thickness(0, 0, 1, 0),
+                    ToolTip = $"外注待ち {process.OutsourceLeadDays}日",
+                };
+                Grid.SetColumn(outsourceBorder, barCol++);
+                BarGrid.Children.Add(outsourceBorder);
             }
         }
     }
