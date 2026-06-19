@@ -37,7 +37,7 @@ public static class DatabaseInitializer {
                 DestinationCode TEXT NOT NULL DEFAULT '',
                 WarningDaysBeforeDeadline INTEGER NOT NULL DEFAULT 0,
                 DepartmentId INTEGER NOT NULL DEFAULT 0,
-                CoolTimeMinutes REAL NOT NULL DEFAULT 0,
+                DwellTimeMinutes REAL NOT NULL DEFAULT 0,
                 OutsourceLeadDays INTEGER NOT NULL DEFAULT 0
             );
 

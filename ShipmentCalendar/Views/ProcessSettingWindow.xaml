@@ -202,8 +202,8 @@
                     Header="作業時間（分）" />
                 <DataGridTextColumn
                     Width="90"
-                    Binding="{Binding CoolTimeMinutes, UpdateSourceTrigger=PropertyChanged}"
-                    Header="クールタイム（分）" />
+                    Binding="{Binding DwellTimeMinutes, UpdateSourceTrigger=PropertyChanged}"
+                    Header="滞留時間（分）" />
                 <DataGridTextColumn
                     Width="90"
                     Binding="{Binding OutsourceLeadDays, UpdateSourceTrigger=PropertyChanged}"

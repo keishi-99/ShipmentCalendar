@@ -196,7 +196,7 @@ public partial class MainWindow : Window {
     }
 
     // 直前に構築した工程列の構成（変化がなければ再構築をスキップする）
-    private (int MaxProcessCount, bool ShowDueDateForNotStarted, bool ShowProcessDate, bool ShowProcessRequiredHours, double ProcessColumnFontSize, double ProcessBarFontSize, bool ShowProcessBar, bool ShowProcessColumns)? _lastColumnSignature;
+    private (int MaxProcessCount, bool ShowDueDateForNotStarted, bool ShowProcessDate, bool ShowProcessRequiredHours, bool ShowRequiredTimeInMinutes, double ProcessColumnFontSize, double ProcessBarFontSize, bool ShowProcessBar, bool ShowProcessColumns)? _lastColumnSignature;
 
     /// <summary>工程列をインデックスベースで動的生成する（列ヘッダー: 1, 2, 3...）</summary>
     private void BuildProcessColumns() {
@@ -205,7 +205,7 @@ public partial class MainWindow : Window {
         // 全注文中の最大工程数を列数とする
         var maxProcessCount = _viewModel.Orders.Count > 0 ? _viewModel.Orders.Max(o => o.Processes.Count) : 0;
         var settings = _viewModel.Settings;
-        var signature = (maxProcessCount, settings.ShowDueDateForNotStarted, settings.ShowProcessDate, settings.ShowProcessRequiredHours, settings.ProcessColumnFontSize, settings.ProcessBarFontSize, settings.ShowProcessBar, settings.ShowProcessColumns);
+        var signature = (maxProcessCount, settings.ShowDueDateForNotStarted, settings.ShowProcessDate, settings.ShowProcessRequiredHours, settings.ShowRequiredTimeInMinutes, settings.ProcessColumnFontSize, settings.ProcessBarFontSize, settings.ShowProcessBar, settings.ShowProcessColumns);
         if (signature == _lastColumnSignature) return;
         _lastColumnSignature = signature;
 
@@ -225,6 +225,7 @@ public partial class MainWindow : Window {
             var barFactory = new FrameworkElementFactory(typeof(ProcessBarControl));
             barFactory.SetBinding(ProcessBarControl.ProcessesProperty, new Binding("Processes"));
             barFactory.SetValue(ProcessBarControl.BarFontSizeProperty, settings.ProcessBarFontSize);
+            barFactory.SetValue(ProcessBarControl.ShowRequiredTimeInMinutesProperty, settings.ShowRequiredTimeInMinutes);
             barTemplate.VisualTree = barFactory;
             barColumn.CellTemplate = barTemplate;
             OrderGrid.Columns.Add(barColumn);
@@ -285,7 +286,8 @@ public partial class MainWindow : Window {
                     Converter = new ProcessIndexToDateAndHoursConverter(
                         _viewModel.Settings.ShowDueDateForNotStarted,
                         _viewModel.Settings.ShowProcessDate,
-                        _viewModel.Settings.ShowProcessRequiredHours)
+                        _viewModel.Settings.ShowProcessRequiredHours,
+                        _viewModel.Settings.ShowRequiredTimeInMinutes)
                 };
                 dateHoursBinding.Bindings.Add(new Binding("Processes"));
                 dateHoursBinding.Bindings.Add(new Binding() { Source = index });
@@ -409,7 +411,7 @@ public partial class MainWindow : Window {
 
     private void OrderRow_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e) {
         if (sender is not DataGridRow row || row.Item is not Order order) return;
-        new OrderDetailWindow(order) { Owner = this }.ShowDialog();
+        new OrderDetailWindow(order, _viewModel.Settings.ShowRequiredTimeInMinutes) { Owner = this }.ShowDialog();
     }
 }
 
@@ -471,7 +473,7 @@ public class ProcessIndexToNameConverter : System.Windows.Data.IMultiValueConver
 }
 
 /// <summary>インデックスでProcessリストを検索して期限日・標準時間（必要時間）テキストを1行にまとめて返すコンバーター</summary>
-public class ProcessIndexToDateAndHoursConverter(bool showDueDateForNotStarted, bool showDate, bool showHours) : System.Windows.Data.IMultiValueConverter {
+public class ProcessIndexToDateAndHoursConverter(bool showDueDateForNotStarted, bool showDate, bool showHours, bool showRequiredTimeInMinutes) : System.Windows.Data.IMultiValueConverter {
 
     public object Convert(object[] values, Type targetType, object parameter, System.Globalization.CultureInfo culture) {
         if (values[0] is not IEnumerable<OrderProcess> processes) return string.Empty;
@@ -499,11 +501,12 @@ public class ProcessIndexToDateAndHoursConverter(bool showDueDateForNotStarted, 
     }
 
     /// <summary>完了工程は標準時間を表示しない</summary>
-    private static string GetHoursText(OrderProcess process) {
+    private string GetHoursText(OrderProcess process) {
         if (process.Status == ProcessStatus.Completed) return string.Empty;
 
-        var hours = process.RequiredMinutes / 60.0;
-        return $"({hours:F1}h)";
+        return showRequiredTimeInMinutes
+            ? $"({process.RequiredMinutes:F0}分)"
+            : $"({process.RequiredMinutes / 60.0:F1}h)";
     }
 
     public object[] ConvertBack(object value, Type[] targetTypes, object parameter, System.Globalization.CultureInfo culture)

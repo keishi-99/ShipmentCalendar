@@ -314,7 +314,7 @@ public partial class MainViewModel : ObservableObject {
                     IsVisible = db.IsVisible,
                     WarningDaysBeforeDeadline = db.WarningDaysBeforeDeadline,
                     DepartmentId = db.DepartmentId,
-                    CoolTimeMinutes = db.CoolTimeMinutes,
+                    DwellTimeMinutes = db.DwellTimeMinutes,
                     OutsourceLeadDays = db.OutsourceLeadDays
                 };
             }).ToList();

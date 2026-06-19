@@ -14,7 +14,7 @@
         <SolidColorBrush x:Key="AccentColor" Color="#1976D2" />
 
         <!--  工程バー・凡例で共有する色定義  -->
-        <SolidColorBrush x:Key="CoolTimeBrush" Color="#C8E6C9" />
+        <SolidColorBrush x:Key="DwellTimeBrush" Color="#C8E6C9" />
         <SolidColorBrush x:Key="OutsourceLeadBrush" Color="#F8BBD0" />
     </Application.Resources>
 </Application>

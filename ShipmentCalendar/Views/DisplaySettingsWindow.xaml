@@ -1,7 +1,7 @@
 <Window x:Class="ShipmentCalendar.Views.DisplaySettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="表示設定" Height="390" Width="420"
+        Title="表示設定" Height="420" Width="420"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize">
     <DockPanel Margin="16">
@@ -16,6 +16,7 @@
 
         <Grid DockPanel.Dock="Top">
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
@@ -64,10 +65,16 @@
             <CheckBox Grid.Row="4" Grid.Column="1" Name="ChkShowProcessRequiredHours"
                       VerticalAlignment="Center" Margin="0,0,0,12"/>
 
+            <!-- 必要時間の表示単位 -->
+            <TextBlock Grid.Row="5" Grid.Column="0" Text="必要時間を分単位で表示："
+                       VerticalAlignment="Center" Margin="0,0,0,12"/>
+            <CheckBox Grid.Row="5" Grid.Column="1" Name="ChkShowRequiredTimeInMinutes"
+                      VerticalAlignment="Center" Margin="0,0,0,12"/>
+
             <!-- 行の高さ（手動指定） -->
-            <TextBlock Grid.Row="5" Grid.Column="0" Text="行の高さ（px、0=自動）："
+            <TextBlock Grid.Row="6" Grid.Column="0" Text="行の高さ（px、0=自動）："
                        VerticalAlignment="Center"/>
-            <TextBox Grid.Row="5" Grid.Column="1" Name="TxtManualRowHeight"
+            <TextBox Grid.Row="6" Grid.Column="1" Name="TxtManualRowHeight"
                      Width="60" HorizontalAlignment="Left"
                      VerticalContentAlignment="Center" Padding="4"
                      TextChanged="TxtManualRowHeight_TextChanged"/>

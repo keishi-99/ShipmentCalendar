@@ -32,6 +32,7 @@ public partial class DisplaySettingsWindow : Window
         TxtProcessColumnFontSize.Text = settings.ProcessColumnFontSize.ToString();
         ChkShowProcessDate.IsChecked = settings.ShowProcessDate;
         ChkShowProcessRequiredHours.IsChecked = settings.ShowProcessRequiredHours;
+        ChkShowRequiredTimeInMinutes.IsChecked = settings.ShowRequiredTimeInMinutes;
         TxtManualRowHeight.Text = settings.ManualRowHeight.ToString();
         _isInitializing = false;
     }
@@ -95,6 +96,7 @@ public partial class DisplaySettingsWindow : Window
         _viewModel.Settings.ProcessColumnFontSize = processFontSize;
         _viewModel.Settings.ShowProcessDate = ChkShowProcessDate.IsChecked == true;
         _viewModel.Settings.ShowProcessRequiredHours = ChkShowProcessRequiredHours.IsChecked == true;
+        _viewModel.Settings.ShowRequiredTimeInMinutes = ChkShowRequiredTimeInMinutes.IsChecked == true;
         _viewModel.Settings.ManualRowHeight = manualRowHeight;
 
         _viewModel.SaveSettings();

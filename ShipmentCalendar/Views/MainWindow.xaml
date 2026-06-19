@@ -391,13 +391,13 @@
                             Width="80"
                             Height="20"
                             Margin="2"
-                            Background="{StaticResource CoolTimeBrush}"
+                            Background="{StaticResource DwellTimeBrush}"
                             CornerRadius="3">
                             <TextBlock
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
                                 FontSize="11"
-                                Text="クールタイム" />
+                                Text="滞留時間" />
                         </Border>
                         <Border
                             Width="80"
