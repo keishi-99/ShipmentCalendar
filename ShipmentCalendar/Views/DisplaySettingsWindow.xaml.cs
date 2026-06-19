@@ -39,28 +39,28 @@ public partial class DisplaySettingsWindow : Window
     private void TxtFixedFontSize_TextChanged(object sender, TextChangedEventArgs e) {
         if (_isInitializing) return;
         if (double.TryParse(TxtFixedColumnFontSize.Text, out var size) && size >= 5 && size <= 100)
-            _mainWindow?.PreviewFontSizes(size, 0);
+            _mainWindow.PreviewFontSizes(size, 0);
     }
 
     private void TxtProcessBarFontSize_TextChanged(object sender, TextChangedEventArgs e) {
         if (_isInitializing) return;
         if (double.TryParse(TxtProcessBarFontSize.Text, out var size) && size >= 5 && size <= 100)
-            _mainWindow?.PreviewFontSizes(0, size);
+            _mainWindow.PreviewFontSizes(0, size);
     }
 
     private void TxtProcessColumnFontSize_TextChanged(object sender, TextChangedEventArgs e) {
         if (_isInitializing) return;
         if (double.TryParse(TxtProcessColumnFontSize.Text, out var size) && size >= 5 && size <= 100)
-            _mainWindow?.PreviewFontSizes(0, 0, size);
+            _mainWindow.PreviewFontSizes(0, 0, size);
     }
 
     private void TxtManualRowHeight_TextChanged(object sender, TextChangedEventArgs e) {
         if (_isInitializing) return;
         var text = TxtManualRowHeight.Text;
         if (string.IsNullOrEmpty(text))
-            _mainWindow?.PreviewRowHeight(0);
+            _mainWindow.PreviewRowHeight(0);
         else if (double.TryParse(text, out var h) && h >= 0)
-            _mainWindow?.PreviewRowHeight(h);
+            _mainWindow.PreviewRowHeight(h);
     }
 
     private void BtnSave_Click(object sender, RoutedEventArgs e)
