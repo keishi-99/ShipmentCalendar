@@ -26,11 +26,9 @@ public partial class OrderDetailWindow : Window {
         public DateOnly DueDate => Process.DueDate;
         public DateOnly? ActualDate => Process.ActualDate;
         public ProcessStatus Status => Process.Status;
-        public string RequiredHoursText => Process.RequiredMinutes <= 0
-            ? "-"
-            : ShowRequiredTimeInMinutes
-                ? $"{Process.RequiredMinutes:F0}分"
-                : $"{Process.RequiredMinutes / 60.0:F1}h";
+        public string RequiredHoursText => ShowRequiredTimeInMinutes
+            ? $"{Process.RequiredMinutes:F0}分"
+            : $"{Process.RequiredMinutes / 60.0:F1}h";
         public string OutsourceLeadDaysText => Process.OutsourceLeadDays > 0
             ? $"{Process.OutsourceLeadDays}日"
             : "-";
