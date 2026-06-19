@@ -11,6 +11,7 @@ namespace ShipmentCalendar.ViewModels;
 public partial class MainViewModel : ObservableObject {
     private readonly IHolidayRepository _holidayRepository;
     private readonly DispatcherTimer _refreshTimer;
+    private readonly DispatcherTimer _filterDebounceTimer;
 
     // 全件キャッシュ（フィルター用）
     private List<Order> _allOrders = [];
@@ -52,12 +53,29 @@ public partial class MainViewModel : ObservableObject {
     /// <summary>選択中の担当部署ID（0=全て）</summary>
     [ObservableProperty] private int _filterDepartmentId = 0;
 
-    partial void OnFilterItemNumberChanged(string value) => ApplyFilter();
-    partial void OnFilterProductNameChanged(string value) => ApplyFilter();
-    partial void OnFilterManufactureNumberChanged(string value) => ApplyFilter();
+    partial void OnFilterItemNumberChanged(string value) => ScheduleFilter();
+    partial void OnFilterProductNameChanged(string value) => ScheduleFilter();
+    partial void OnFilterManufactureNumberChanged(string value) => ScheduleFilter();
+
+    private void ScheduleFilter() {
+        _filterDebounceTimer.Stop();
+        _filterDebounceTimer.Start();
+    }
     partial void OnFilterDeliveryFromChanged(DateTime? value) => ApplyFilter();
     partial void OnFilterDeliveryToChanged(DateTime? value) => ApplyFilter();
     partial void OnFilterHideCompletedChanged(bool value) => ApplyFilter();
+
+    /// <summary>超過工程がある注文のみ表示</summary>
+    [ObservableProperty] private bool _filterOverdueOnly = false;
+    partial void OnFilterOverdueOnlyChanged(bool value) => ApplyFilter();
+
+    /// <summary>警告工程がある注文のみ表示</summary>
+    [ObservableProperty] private bool _filterWarningOnly = false;
+    partial void OnFilterWarningOnlyChanged(bool value) => ApplyFilter();
+
+    /// <summary>次の未完了工程の着手〜完了期間が今日を含む注文のみ表示</summary>
+    [ObservableProperty] private bool _filterTodayTask = false;
+    partial void OnFilterTodayTaskChanged(bool value) => ApplyFilter();
 
     /// <summary>「本日のみ」トグル：ONなら出荷日範囲を今日に固定し、OFFなら範囲をクリアする</summary>
     partial void OnFilterTodayOnlyChanged(bool value) {
@@ -122,6 +140,23 @@ public partial class MainViewModel : ObservableObject {
 
         if (FilterHideCompleted)
             result = result.Where(o => o.Processes.Count == 0 || o.Processes.Any(p => p.Status != ProcessStatus.Completed));
+
+        if (FilterOverdueOnly || FilterWarningOnly || FilterTodayTask) {
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            result = result.Where(o => {
+                var isOverdue = FilterOverdueOnly && o.HasOverdue;
+                var isWarning = FilterWarningOnly && o.Processes.Any(p => p.Status == ProcessStatus.Warning);
+                var isToday   = false;
+                if (FilterTodayTask) {
+                    var next = o.Processes
+                        .Where(p => p.Status != ProcessStatus.Completed)
+                        .OrderBy(p => p.SortOrder)
+                        .FirstOrDefault();
+                    isToday = next != null && today >= next.StartDate && today <= next.DueDate;
+                }
+                return isOverdue || isWarning || isToday;
+            });
+        }
 
         // 製品/半製品/どちらでもないフィルター（機種コード登録マスタの区分で判定）
         if (FilterProductCategory == "製品")
@@ -189,6 +224,9 @@ public partial class MainViewModel : ObservableObject {
         _refreshTimer.Tick += async (_, _) => await LoadOrdersAsync();
         ApplyRefreshInterval();
         RefreshFilterDateRange();
+
+        _filterDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+        _filterDebounceTimer.Tick += (_, _) => { _filterDebounceTimer.Stop(); ApplyFilter(); };
     }
 
     /// <summary>タイマー間隔を設定から再適用する</summary>
@@ -260,18 +298,14 @@ public partial class MainViewModel : ObservableObject {
                 };
             }).ToList();
 
-            // 品目番号をキーにした工程グループを構築
-            var defGroups = allDefs
-                .GroupBy(d => d.ItemNumber)
-                .Select(g => new { ItemNumber = g.Key, Defs = g.ToList() })
-                .ToList();
+            // 品目番号をキーにした工程定義辞書を構築（O(1)ルックアップ）
+            var defDict = allDefs
+                .GroupBy(d => d.ItemNumber, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
 
             foreach (var order in orders) {
-                // 品目番号の完全一致で工程定義を取得
-                var productDefs = defGroups
-                    .Where(g => order.ItemNumber.Equals(g.ItemNumber, StringComparison.OrdinalIgnoreCase))
-                    .SelectMany(g => g.Defs)
-                    .ToList();
+                defDict.TryGetValue(order.ItemNumber, out var productDefs);
+                productDefs ??= [];
 
                 order.CompletionDate = calculator.SubtractBusinessDays(order.DeliveryDate, Settings.CompletionDateLeadDays);
 
@@ -299,7 +333,7 @@ public partial class MainViewModel : ObservableObject {
                 // ステータスを警告日数込みで確定
                 foreach (var process in order.Processes) {
                     var warningDays = productDefs
-                        .FirstOrDefault(d => d.DestinationCode == process.DestinationCode)
+                        .FirstOrDefault(d => string.Equals(d.DestinationCode, process.DestinationCode, StringComparison.OrdinalIgnoreCase))
                         ?.WarningDaysBeforeDeadline ?? 0;
                     process.WarningDaysBeforeDeadline = warningDays;
                     process.Status = BusinessDayCalculator.DetermineStatus(process, today, warningDays);

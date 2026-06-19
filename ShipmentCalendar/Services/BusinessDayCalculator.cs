@@ -121,7 +121,7 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
         if (warningDays > 0 && (process.DueDate.DayNumber - today.DayNumber) <= warningDays)
             return ProcessStatus.Warning;
 
-        if (today == process.DueDate)
+        if (today >= process.StartDate)
             return ProcessStatus.InProgress;
 
         return ProcessStatus.NotStarted;

@@ -6,10 +6,15 @@
     StartupUri="Views/MainWindow.xaml">
     <Application.Resources>
         <!--  工程ステータス色定義  -->
-        <SolidColorBrush x:Key="StatusNotStarted" Color="#F0F0F0" />
+        <SolidColorBrush x:Key="StatusNotStarted" Color="#D2E1F5" />
         <SolidColorBrush x:Key="StatusInProgress" Color="#FFE066" />
+        <SolidColorBrush x:Key="StatusWarning" Color="#FF9800" />
         <SolidColorBrush x:Key="StatusCompleted" Color="#66BB6A" />
         <SolidColorBrush x:Key="StatusOverdue" Color="#EF5350" />
         <SolidColorBrush x:Key="AccentColor" Color="#1976D2" />
+
+        <!--  工程バー・凡例で共有する色定義  -->
+        <SolidColorBrush x:Key="CoolTimeBrush" Color="#C8E6C9" />
+        <SolidColorBrush x:Key="OutsourceLeadBrush" Color="#F8BBD0" />
     </Application.Resources>
 </Application>

@@ -52,31 +52,22 @@
                         <MenuItem Click="BtnHoliday_Click" Header="休日設定" />
                         <MenuItem Click="BtnDeptSetting_Click" Header="部署設定" />
                         <MenuItem Click="BtnDisplaySettings_Click" Header="表示設定" />
+                        <Separator />
+                        <MenuItem Header="列の表示設定">
+                            <MenuItem Name="MnuColDeliveryDate" IsCheckable="True" StaysOpenOnClick="True" Header="出荷日" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem Name="MnuColCompletionDate" IsCheckable="True" StaysOpenOnClick="True" Header="完了日" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem Name="MnuColItemNumber" IsCheckable="True" StaysOpenOnClick="True" Header="品目番号" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem Name="MnuColModelCode" IsCheckable="True" StaysOpenOnClick="True" Header="機種コード" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem Name="MnuColProductName" IsCheckable="True" StaysOpenOnClick="True" Header="品目名" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem Name="MnuColManufactureNumber" IsCheckable="True" StaysOpenOnClick="True" Header="製番" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem Name="MnuColPlannedQuantity" IsCheckable="True" StaysOpenOnClick="True" Header="計画数" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <Separator />
+                            <MenuItem Name="MnuColProcessBar" IsCheckable="True" StaysOpenOnClick="True" Header="工程バー" Checked="ProcessVisibilityCheckBox_Changed" Unchecked="ProcessVisibilityCheckBox_Changed" />
+                            <MenuItem Name="MnuColProcessColumns" IsCheckable="True" StaysOpenOnClick="True" Header="工程列（1工程1列）" Checked="ProcessVisibilityCheckBox_Changed" Unchecked="ProcessVisibilityCheckBox_Changed" />
+                        </MenuItem>
                     </MenuItem>
                 </Menu>
                 <Separator />
-                <!--  列の表示/非表示設定  -->
-                <Button
-                    Name="BtnColumnVisibility"
-                    Padding="8,4"
-                    Background="Transparent"
-                    BorderThickness="0"
-                    Click="BtnColumnVisibility_Click"
-                    FontSize="14"
-                    Foreground="White"
-                    PreviewMouseLeftButtonDown="BtnColumnVisibility_PreviewMouseLeftButtonDown">
-                    列表示設定 ▾
-                </Button>
-                <Separator />
-                <!--  未完了工程の表示日切り替え（クリックで着手必須日/完了必須日を切り替え）  -->
-                <Button
-                    Name="BtnToggleDueDateDisplay"
-                    Padding="8,4"
-                    Background="Transparent"
-                    BorderThickness="0"
-                    Click="BtnToggleDueDateDisplay_Click"
-                    FontSize="14"
-                    Foreground="White" />
                 <!--  注文一覧の並び順切り替え（出荷日順/工程期限順）  -->
                 <Button
                     Name="BtnToggleSortMode"
@@ -86,6 +77,107 @@
                     Click="BtnToggleSortMode_Click"
                     FontSize="14"
                     Foreground="White" />
+                <!--  未完了工程の表示日切り替え（クリックで着手必須日/完了必須日を切り替え）  -->
+                <Button
+                    Name="BtnToggleDueDateDisplay"
+                    Padding="8,4"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Click="BtnToggleDueDateDisplay_Click"
+                    FontSize="14"
+                    Foreground="White" />
+                <!--  工程表示モード切り替え（バー/リスト）  -->
+                <Button
+                    Name="BtnToggleProcessMode"
+                    Padding="8,4"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Click="BtnToggleProcessMode_Click"
+                    FontSize="14"
+                    Foreground="White" />
+                <Separator />
+                <!--  クイックフィルター（超過・警告・今日対応）  -->
+                <ToggleButton
+                    Margin="2,0"
+                    Padding="10,4"
+                    BorderThickness="0"
+                    Content="超過"
+                    FontSize="13"
+                    FontWeight="SemiBold"
+                    Foreground="White"
+                    IsChecked="{Binding FilterOverdueOnly}">
+                    <ToggleButton.Style>
+                        <Style TargetType="ToggleButton">
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="Foreground" Value="White" />
+                            <Setter Property="BorderThickness" Value="0" />
+                            <Style.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter Property="Background" Value="#B71C1C" />
+                                    <Setter Property="BorderThickness" Value="0,0,0,3" />
+                                    <Setter Property="BorderBrush" Value="White" />
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#C62828" />
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ToggleButton.Style>
+                </ToggleButton>
+                <ToggleButton
+                    Margin="2,0"
+                    Padding="10,4"
+                    BorderThickness="0"
+                    Content="警告"
+                    FontSize="13"
+                    FontWeight="SemiBold"
+                    Foreground="White"
+                    IsChecked="{Binding FilterWarningOnly}">
+                    <ToggleButton.Style>
+                        <Style TargetType="ToggleButton">
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="Foreground" Value="White" />
+                            <Setter Property="BorderThickness" Value="0" />
+                            <Style.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter Property="Background" Value="#E65100" />
+                                    <Setter Property="BorderThickness" Value="0,0,0,3" />
+                                    <Setter Property="BorderBrush" Value="White" />
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#EF6C00" />
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ToggleButton.Style>
+                </ToggleButton>
+                <ToggleButton
+                    Margin="2,0"
+                    Padding="10,4"
+                    BorderThickness="0"
+                    Content="進行中"
+                    FontSize="13"
+                    FontWeight="SemiBold"
+                    Foreground="White"
+                    IsChecked="{Binding FilterTodayTask}">
+                    <ToggleButton.Style>
+                        <Style TargetType="ToggleButton">
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="Foreground" Value="White" />
+                            <Setter Property="BorderThickness" Value="0" />
+                            <Style.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter Property="Background" Value="#0D47A1" />
+                                    <Setter Property="BorderThickness" Value="0,0,0,3" />
+                                    <Setter Property="BorderBrush" Value="White" />
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#1565C0" />
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ToggleButton.Style>
+                </ToggleButton>
                 <Separator />
                 <!--  担当部署フィルターボタン（動的生成）  -->
                 <ItemsControl ItemsSource="{Binding DepartmentFilters}">
@@ -295,6 +387,30 @@
                                 Foreground="White"
                                 Text="超過" />
                         </Border>
+                        <Border
+                            Width="80"
+                            Height="20"
+                            Margin="2"
+                            Background="{StaticResource CoolTimeBrush}"
+                            CornerRadius="3">
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                FontSize="11"
+                                Text="クールタイム" />
+                        </Border>
+                        <Border
+                            Width="80"
+                            Height="20"
+                            Margin="2"
+                            Background="{StaticResource OutsourceLeadBrush}"
+                            CornerRadius="3">
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                FontSize="11"
+                                Text="外注待ち" />
+                        </Border>
                     </StackPanel>
                 </StatusBarItem>
                 <StatusBarItem>
@@ -376,64 +492,6 @@ SelectionMode="Single"
                 </DataGrid.RowStyle>
             </DataGrid>
         </DockPanel>
-
-        <!--  列の表示/非表示設定ポップアップ  -->
-        <Popup
-            Name="ColumnVisibilityPopup"
-            Placement="Bottom"
-            PlacementTarget="{Binding ElementName=BtnColumnVisibility}"
-            StaysOpen="False">
-            <Border
-                Padding="8"
-                Background="White"
-                BorderBrush="#999999"
-                BorderThickness="1">
-                <StackPanel>
-                    <CheckBox
-                        Name="ChkColDeliveryDate"
-                        Margin="2"
-                        Checked="ColumnVisibilityCheckBox_Changed"
-                        Content="出荷日"
-                        Unchecked="ColumnVisibilityCheckBox_Changed" />
-                    <CheckBox
-                        Name="ChkColCompletionDate"
-                        Margin="2"
-                        Checked="ColumnVisibilityCheckBox_Changed"
-                        Content="完了日"
-                        Unchecked="ColumnVisibilityCheckBox_Changed" />
-                    <CheckBox
-                        Name="ChkColItemNumber"
-                        Margin="2"
-                        Checked="ColumnVisibilityCheckBox_Changed"
-                        Content="品目番号"
-                        Unchecked="ColumnVisibilityCheckBox_Changed" />
-                    <CheckBox
-                        Name="ChkColModelCode"
-                        Margin="2"
-                        Checked="ColumnVisibilityCheckBox_Changed"
-                        Content="機種コード"
-                        Unchecked="ColumnVisibilityCheckBox_Changed" />
-                    <CheckBox
-                        Name="ChkColProductName"
-                        Margin="2"
-                        Checked="ColumnVisibilityCheckBox_Changed"
-                        Content="品目名"
-                        Unchecked="ColumnVisibilityCheckBox_Changed" />
-                    <CheckBox
-                        Name="ChkColManufactureNumber"
-                        Margin="2"
-                        Checked="ColumnVisibilityCheckBox_Changed"
-                        Content="製番"
-                        Unchecked="ColumnVisibilityCheckBox_Changed" />
-                    <CheckBox
-                        Name="ChkColPlannedQuantity"
-                        Margin="2"
-                        Checked="ColumnVisibilityCheckBox_Changed"
-                        Content="計画数"
-                        Unchecked="ColumnVisibilityCheckBox_Changed" />
-                </StackPanel>
-            </Border>
-        </Popup>
 
         <!--  ローディングオーバーレイ（IsLoading=true のとき表示）  -->
         <Grid IsHitTestVisible="{Binding IsLoading}">

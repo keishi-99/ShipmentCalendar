@@ -11,7 +11,12 @@ using System.Windows.Media;
 namespace ShipmentCalendar.Views;
 
 public partial class MainWindow : Window {
+    // 外注待ち表示の背景色（App.xamlのリソースで一元管理、ProcessBarControlの外注待ちバーと同じ色）
+    private static Brush OutsourceLeadBrush => (Brush)Application.Current.Resources["OutsourceLeadBrush"];
+
     private readonly MainViewModel _viewModel;
+    // プレビュー中の行高さ（null=プレビューなし、0=自動）
+    private double? _previewManualRowHeight;
 
     public MainWindow() {
         InitializeComponent();
@@ -58,7 +63,8 @@ public partial class MainWindow : Window {
             if (WindowState == WindowState.Maximized)
                 WindowState = WindowState.Normal;
             WindowState = WindowState.Maximized;
-        } else {
+        }
+        else {
             WindowStyle = _previousWindowStyle;
             ResizeMode = _previousResizeMode;
             WindowState = _previousWindowState;
@@ -67,61 +73,92 @@ public partial class MainWindow : Window {
         BtnToggleFullScreen.Content = _isFullScreen ? "ウィンドウ表示" : "フルスクリーン";
     }
 
-    // 列表示設定チェックボックスと対応するDataGridColumn・設定プロパティの組み合わせ（初回アクセス時に生成してキャッシュする）
-    private (CheckBox CheckBox, DataGridColumn Column, Func<AppSettings, bool> Getter, Action<AppSettings, bool> Setter)[]? _columnVisibilityMappings;
-    private (CheckBox CheckBox, DataGridColumn Column, Func<AppSettings, bool> Getter, Action<AppSettings, bool> Setter)[] ColumnVisibilityMappings => _columnVisibilityMappings ??= [
-        (ChkColDeliveryDate,      ColDeliveryDate,      s => s.ShowColumnDeliveryDate,      (s, v) => s.ShowColumnDeliveryDate = v),
-        (ChkColCompletionDate,    ColCompletionDate,    s => s.ShowColumnCompletionDate,    (s, v) => s.ShowColumnCompletionDate = v),
-        (ChkColItemNumber,        ColItemNumber,        s => s.ShowColumnItemNumber,        (s, v) => s.ShowColumnItemNumber = v),
-        (ChkColModelCode,         ColModelCode,         s => s.ShowColumnModelCode,         (s, v) => s.ShowColumnModelCode = v),
-        (ChkColProductName,       ColProductName,       s => s.ShowColumnProductName,       (s, v) => s.ShowColumnProductName = v),
-        (ChkColManufactureNumber, ColManufactureNumber, s => s.ShowColumnManufactureNumber, (s, v) => s.ShowColumnManufactureNumber = v),
-        (ChkColPlannedQuantity,   ColPlannedQuantity,   s => s.ShowColumnPlannedQuantity,   (s, v) => s.ShowColumnPlannedQuantity = v),
+    // 列表示設定MenuItemと対応するDataGridColumn・設定プロパティの組み合わせ（初回アクセス時に生成してキャッシュする）
+    private (System.Windows.Controls.MenuItem MenuItem, DataGridColumn Column, Func<AppSettings, bool> Getter, Action<AppSettings, bool> Setter)[]? _columnVisibilityMappings;
+    private (System.Windows.Controls.MenuItem MenuItem, DataGridColumn Column, Func<AppSettings, bool> Getter, Action<AppSettings, bool> Setter)[] ColumnVisibilityMappings => _columnVisibilityMappings ??= [
+        (MnuColDeliveryDate,      ColDeliveryDate,      s => s.ShowColumnDeliveryDate,      (s, v) => s.ShowColumnDeliveryDate = v),
+        (MnuColCompletionDate,    ColCompletionDate,    s => s.ShowColumnCompletionDate,    (s, v) => s.ShowColumnCompletionDate = v),
+        (MnuColItemNumber,        ColItemNumber,        s => s.ShowColumnItemNumber,        (s, v) => s.ShowColumnItemNumber = v),
+        (MnuColModelCode,         ColModelCode,         s => s.ShowColumnModelCode,         (s, v) => s.ShowColumnModelCode = v),
+        (MnuColProductName,       ColProductName,       s => s.ShowColumnProductName,       (s, v) => s.ShowColumnProductName = v),
+        (MnuColManufactureNumber, ColManufactureNumber, s => s.ShowColumnManufactureNumber, (s, v) => s.ShowColumnManufactureNumber = v),
+        (MnuColPlannedQuantity,   ColPlannedQuantity,   s => s.ShowColumnPlannedQuantity,   (s, v) => s.ShowColumnPlannedQuantity = v),
     ];
 
-    // チェックボックスのChecked/Uncheckedイベントを設定値の反映として処理するか（初期化中はfalseにして保存を抑制する）
+    // MenuItemのChecked/Uncheckedイベントを設定値の反映として処理するか（初期化中はfalseにして保存を抑制する）
     private bool _columnVisibilityEventsEnabled;
 
-    /// <summary>保存済みの設定値をチェックボックスとDataGridColumnの表示状態に反映する（保存はしない）</summary>
+    /// <summary>保存済みの設定値をMenuItemとDataGridColumnの表示状態に反映する（保存はしない）</summary>
     private void InitializeColumnVisibility() {
         _columnVisibilityEventsEnabled = false;
-        foreach (var (checkBox, column, getter, _) in ColumnVisibilityMappings) {
+        foreach (var (menuItem, column, getter, _) in ColumnVisibilityMappings) {
             var isVisible = getter(_viewModel.Settings);
-            checkBox.IsChecked = isVisible;
+            menuItem.IsChecked = isVisible;
             column.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
         }
+        MnuColProcessBar.IsChecked = _viewModel.Settings.ShowProcessBar;
+        MnuColProcessColumns.IsChecked = _viewModel.Settings.ShowProcessColumns;
+        UpdateProcessModeButtonText();
         _columnVisibilityEventsEnabled = true;
     }
 
-    private void BtnColumnVisibility_Click(object sender, RoutedEventArgs e) {
-        ColumnVisibilityPopup.IsOpen = !ColumnVisibilityPopup.IsOpen;
+    private void BtnToggleProcessMode_Click(object sender, RoutedEventArgs e) {
+        var settings = _viewModel.Settings;
+        // バー→セル→バー の順でトグル
+        if (settings.ShowProcessBar && !settings.ShowProcessColumns) {
+            settings.ShowProcessBar = false;
+            settings.ShowProcessColumns = true;
+        } else {
+            settings.ShowProcessBar = true;
+            settings.ShowProcessColumns = false;
+        }
+        _viewModel.SaveSettings();
+        UpdateProcessModeButtonText();
+        _lastColumnSignature = null;
+        BuildProcessColumns();
     }
 
-    private void BtnColumnVisibility_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e) {
-        if (ColumnVisibilityPopup.IsOpen) {
-            ColumnVisibilityPopup.IsOpen = false;
-            e.Handled = true;
-        }
+    /// <summary>工程表示モードボタンの文言を現在の設定に合わせて更新する</summary>
+    private void UpdateProcessModeButtonText() {
+        var settings = _viewModel.Settings;
+        BtnToggleProcessMode.Content = (settings.ShowProcessBar, settings.ShowProcessColumns) switch {
+            (true, false) => "工程: バー",
+            (false, true) => "工程: リスト",
+            (true, true)  => "工程: バー＋リスト",
+            _             => "工程: なし",
+        };
     }
 
     private void ColumnVisibilityCheckBox_Changed(object sender, RoutedEventArgs e) {
         if (!_columnVisibilityEventsEnabled) return;
 
-        var checkBox = (CheckBox)sender;
-        var mapping = ColumnVisibilityMappings.FirstOrDefault(m => m.CheckBox == checkBox);
-        if (mapping.CheckBox == null) return;
+        var menuItem = (MenuItem)sender;
+        var mapping = ColumnVisibilityMappings.FirstOrDefault(m => m.MenuItem == menuItem);
+        if (mapping.MenuItem == null) return;
 
-        var isChecked = checkBox.IsChecked ?? false;
+        var isChecked = menuItem.IsChecked;
         mapping.Column.Visibility = isChecked ? Visibility.Visible : Visibility.Collapsed;
         mapping.Setter(_viewModel.Settings, isChecked);
         _viewModel.SaveSettings();
     }
 
+    private void ProcessVisibilityCheckBox_Changed(object sender, RoutedEventArgs e) {
+        if (!_columnVisibilityEventsEnabled) return;
+
+        var settings = _viewModel.Settings;
+        settings.ShowProcessBar = MnuColProcessBar.IsChecked;
+        settings.ShowProcessColumns = MnuColProcessColumns.IsChecked;
+        _viewModel.SaveSettings();
+        _lastColumnSignature = null;
+        BuildProcessColumns();
+        UpdateProcessModeButtonText();
+    }
+
     /// <summary>表示日切り替えボタンの文言を現在の設定に合わせて更新する</summary>
     private void UpdateDueDateDisplayButtonText() {
         BtnToggleDueDateDisplay.Content = _viewModel.Settings.ShowDueDateForNotStarted
-            ? "表示中：完了必須日"
-            : "表示中：着手必須日";
+            ? "表示中：完了期限"
+            : "表示中：着手期限";
     }
 
     /// <summary>並び順切り替えボタンの文言を現在の設定に合わせて更新する</summary>
@@ -143,23 +180,23 @@ public partial class MainWindow : Window {
         UpdateSortModeButtonText();
     }
 
-    /// <summary>固定列のフォントサイズを設定値から適用し、行の高さを再計算する</summary>
+    /// <summary>フォントサイズ設定を設定値から適用し、行の高さを再計算する</summary>
     private void ApplyFixedColumnFontSize() {
-        OrderGrid.FontSize = _viewModel.Settings.FixedColumnFontSize;
+        var settings = _viewModel.Settings;
+        OrderGrid.FontSize = settings.FixedColumnFontSize;
         UpdateRowHeight();
     }
 
     /// <summary>工程列の表示行数（工程名＋期限日/標準時間の設定状況）と各列のフォントサイズから行の高さを計算する</summary>
     private void UpdateRowHeight() {
         var settings = _viewModel.Settings;
-        var processLineCount = 1 + (settings.ShowProcessDate || settings.ShowProcessRequiredHours ? 1 : 0);
-        var processHeight = processLineCount * (settings.ProcessColumnFontSize * 1.8) + 10;
-        var fixedHeight = settings.FixedColumnFontSize * 1.8 + 8;
-        OrderGrid.RowHeight = Math.Max(processHeight, fixedHeight);
+        // プレビュー中はダイアログの値を優先（0=自動、正値=手動、null=プレビューなし）
+        var effectiveManual = _previewManualRowHeight ?? settings.ManualRowHeight;
+        OrderGrid.RowHeight = effectiveManual > 0 ? effectiveManual : CalculateAutoRowHeight();
     }
 
     // 直前に構築した工程列の構成（変化がなければ再構築をスキップする）
-    private (int MaxProcessCount, bool ShowDueDateForNotStarted, bool ShowProcessDate, bool ShowProcessRequiredHours, double ProcessColumnFontSize)? _lastColumnSignature;
+    private (int MaxProcessCount, bool ShowDueDateForNotStarted, bool ShowProcessDate, bool ShowProcessRequiredHours, double ProcessColumnFontSize, double ProcessBarFontSize, bool ShowProcessBar, bool ShowProcessColumns)? _lastColumnSignature;
 
     /// <summary>工程列をインデックスベースで動的生成する（列ヘッダー: 1, 2, 3...）</summary>
     private void BuildProcessColumns() {
@@ -168,7 +205,7 @@ public partial class MainWindow : Window {
         // 全注文中の最大工程数を列数とする
         var maxProcessCount = _viewModel.Orders.Count > 0 ? _viewModel.Orders.Max(o => o.Processes.Count) : 0;
         var settings = _viewModel.Settings;
-        var signature = (maxProcessCount, settings.ShowDueDateForNotStarted, settings.ShowProcessDate, settings.ShowProcessRequiredHours, settings.ProcessColumnFontSize);
+        var signature = (maxProcessCount, settings.ShowDueDateForNotStarted, settings.ShowProcessDate, settings.ShowProcessRequiredHours, settings.ProcessColumnFontSize, settings.ProcessBarFontSize, settings.ShowProcessBar, settings.ShowProcessColumns);
         if (signature == _lastColumnSignature) return;
         _lastColumnSignature = signature;
 
@@ -177,6 +214,23 @@ public partial class MainWindow : Window {
             OrderGrid.Columns.RemoveAt(7);
 
         if (maxProcessCount == 0) return;
+
+        // 工程バー列（全工程を1本のバーで表示）
+        if (settings.ShowProcessBar) {
+            var barColumn = new DataGridTemplateColumn {
+                Header = "工程バー",
+                Width = new DataGridLength(1, DataGridLengthUnitType.Star),
+            };
+            var barTemplate = new DataTemplate();
+            var barFactory = new FrameworkElementFactory(typeof(ProcessBarControl));
+            barFactory.SetBinding(ProcessBarControl.ProcessesProperty, new Binding("Processes"));
+            barFactory.SetValue(ProcessBarControl.BarFontSizeProperty, settings.ProcessBarFontSize);
+            barTemplate.VisualTree = barFactory;
+            barColumn.CellTemplate = barTemplate;
+            OrderGrid.Columns.Add(barColumn);
+        }
+
+        if (!settings.ShowProcessColumns) return;
 
         for (int i = 0; i < maxProcessCount; i++) {
             var index = i;
@@ -245,6 +299,7 @@ public partial class MainWindow : Window {
 
             // 外注待ち日数表示（OutsourceLeadDaysが設定されている工程のみ、区切り線付きの別セル風に表示）
             var gapBorderFactory = new FrameworkElementFactory(typeof(Border));
+            gapBorderFactory.SetValue(Border.BackgroundProperty, OutsourceLeadBrush);
             gapBorderFactory.SetValue(Border.BorderBrushProperty, Brushes.LightGray);
             gapBorderFactory.SetValue(Border.BorderThicknessProperty, new Thickness(1, 0, 0, 0));
             gapBorderFactory.SetValue(Border.PaddingProperty, new Thickness(2, 0, 0, 0));
@@ -297,9 +352,52 @@ public partial class MainWindow : Window {
         await _viewModel.RefreshDepartmentFiltersAsync();
     }
 
+    /// <summary>表示設定ダイアログからのリアルタイムプレビュー用（設定には保存しない）</summary>
+    public void PreviewRowHeight(double height) {
+        _previewManualRowHeight = height;
+        OrderGrid.RowHeight = height > 0 ? height : CalculateAutoRowHeight();
+    }
+
+    /// <summary>フォントサイズのリアルタイムプレビュー用（設定には保存しない）</summary>
+    public void PreviewFontSizes(double fixedSize, double processBarSize, double processColumnSize = 0) {
+        if (fixedSize > 0) {
+            _viewModel.Settings.FixedColumnFontSize = fixedSize;
+            OrderGrid.FontSize = fixedSize;
+            UpdateRowHeight();
+        }
+        var needRebuild = false;
+        if (processBarSize > 0) {
+            _viewModel.Settings.ProcessBarFontSize = processBarSize;
+            needRebuild = true;
+        }
+        if (processColumnSize > 0) {
+            _viewModel.Settings.ProcessColumnFontSize = processColumnSize;
+            needRebuild = true;
+        }
+        if (needRebuild) {
+            _lastColumnSignature = null; // キャッシュを無効化して再構築を強制
+            BuildProcessColumns();
+            UpdateRowHeight();
+        }
+    }
+
+    private double CalculateAutoRowHeight() {
+        var settings = _viewModel.Settings;
+        double processHeight = 0;
+        if (settings.ShowProcessColumns) {
+            var processLineCount = 1 + (settings.ShowProcessDate || settings.ShowProcessRequiredHours ? 1 : 0);
+            processHeight = processLineCount * (settings.ProcessColumnFontSize * 1.8) + 10;
+        }
+        if (settings.ShowProcessBar)
+            processHeight = Math.Max(processHeight, ProcessBarControl.DateBarHeight + (settings.ProcessBarFontSize * 1.8) + 8);
+        return Math.Max(processHeight, settings.FixedColumnFontSize * 1.8 + 8);
+    }
+
     private void BtnDisplaySettings_Click(object sender, RoutedEventArgs e) {
-        var window = new DisplaySettingsWindow(_viewModel) { Owner = this };
-        if (window.ShowDialog() == true) {
+        var window = new DisplaySettingsWindow(_viewModel, this) { Owner = this };
+        window.ShowDialog();
+        _previewManualRowHeight = null;
+        if (window.DialogResult == true) {
             ApplyFixedColumnFontSize();
             BuildProcessColumns();
         }
@@ -317,12 +415,14 @@ public partial class MainWindow : Window {
 
 /// <summary>ProcessStatusを色ブラシに変換するコンバーター</summary>
 public class StatusToColorConverter : System.Windows.Data.IValueConverter {
+    private static Brush Res(string key) => (Brush)Application.Current.Resources[key];
+
     public static Brush StatusToBrush(ProcessStatus status) => status switch {
-        ProcessStatus.Completed => new SolidColorBrush(Color.FromRgb(102, 187, 106)),
-        ProcessStatus.InProgress => new SolidColorBrush(Color.FromRgb(255, 224, 102)),
-        ProcessStatus.Warning => new SolidColorBrush(Color.FromRgb(255, 152, 0)),
-        ProcessStatus.Overdue => new SolidColorBrush(Color.FromRgb(239, 83, 80)),
-        ProcessStatus.NotStarted => new SolidColorBrush(Color.FromRgb(240, 240, 240)),
+        ProcessStatus.Completed  => Res("StatusCompleted"),
+        ProcessStatus.InProgress => Res("StatusInProgress"),
+        ProcessStatus.Warning    => Res("StatusWarning"),
+        ProcessStatus.Overdue    => Res("StatusOverdue"),
+        ProcessStatus.NotStarted => Res("StatusNotStarted"),
         _ => Brushes.Transparent
     };
 

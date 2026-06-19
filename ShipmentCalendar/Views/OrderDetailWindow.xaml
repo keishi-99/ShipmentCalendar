@@ -138,6 +138,19 @@
             </Grid>
         </Border>
 
+        <!--  工程バー  -->
+        <TextBlock
+            Margin="0,0,0,4"
+            DockPanel.Dock="Top"
+            FontSize="13"
+            FontWeight="SemiBold"
+            Text="工程バー" />
+        <views:ProcessBarControl
+            x:Name="DetailProcessBar"
+            Height="48"
+            Margin="0,0,0,12"
+            DockPanel.Dock="Top" />
+
         <!--  工程一覧  -->
         <TextBlock
             Margin="0,0,0,6"

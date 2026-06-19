@@ -7,6 +7,7 @@ public partial class OrderDetailWindow : Window {
     public OrderDetailWindow(Order order) {
         InitializeComponent();
         DataContext = order;
+        DetailProcessBar.Processes = order.Processes;
         ProcessGrid.ItemsSource = order.Processes
             .OrderBy(p => p.SortOrder)
             .Select(p => new ProcessRow(p))

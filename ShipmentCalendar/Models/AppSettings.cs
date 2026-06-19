@@ -43,10 +43,18 @@ public class AppSettings
     public double FixedColumnFontSize { get; set; } = 12;
     /// <summary>メイン画面の工程列（工程名・期限日・標準時間）のフォントサイズ</summary>
     public double ProcessColumnFontSize { get; set; } = 11;
+    /// <summary>工程バーのテキストフォントサイズ</summary>
+    public double ProcessBarFontSize { get; set; } = 10;
     /// <summary>工程列に「期限日」行を表示するか</summary>
     public bool ShowProcessDate { get; set; } = true;
     /// <summary>工程列に「標準時間（必要時間）」行を表示するか</summary>
     public bool ShowProcessRequiredHours { get; set; } = true;
+    /// <summary>メイン画面に「工程バー」列を表示するか</summary>
+    public bool ShowProcessBar { get; set; } = true;
+    /// <summary>メイン画面に「工程列（1工程1列）」を表示するか</summary>
+    public bool ShowProcessColumns { get; set; } = false;
+    /// <summary>メイン画面の行の高さ（px）。0=自動計算</summary>
+    public double ManualRowHeight { get; set; } = 0;
 
     /// <summary>ODBC接続設定が入力済みか</summary>
     public bool IsOdbcConfigured => !string.IsNullOrEmpty(OdbcDsn);
