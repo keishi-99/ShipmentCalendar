@@ -17,8 +17,22 @@ public partial class OdbcRetryPopup : Window {
     public OdbcRetryPopup() {
         InitializeComponent();
         Closing += OnClosing;
+        Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
         _timer.Tick += OnTick;
     }
+
+    // メインウィンドウが閉じられる際は、ポップアップが閉じるのを拒否してアプリが終了不能になるのを防ぐため、
+    // キャンセル扱いで先にポップアップを閉じる
+    private void OnLoaded(object sender, RoutedEventArgs e) {
+        if (Owner != null) Owner.Closing += Owner_Closing;
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e) {
+        if (Owner != null) Owner.Closing -= Owner_Closing;
+    }
+
+    private void Owner_Closing(object? sender, CancelEventArgs e) => Finish(cancelled: true);
 
     /// <summary>
     /// ポップアップを表示し、指定秒数のカウントダウンを行う。
