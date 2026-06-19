@@ -82,14 +82,14 @@ public partial class MainViewModel : ObservableObject {
         if (value) {
             FilterDeliveryFrom = DateTime.Today;
             FilterDeliveryTo = DateTime.Today;
-        } else {
+        }
+        else {
             FilterDeliveryFrom = null;
             FilterDeliveryTo = null;
         }
     }
     partial void OnFilterProductCategoryChanged(string value) => ApplyFilter();
-    partial void OnFilterDepartmentIdChanged(int value)
-    {
+    partial void OnFilterDepartmentIdChanged(int value) {
         // 各ボタンの選択状態を同期してからフィルターを適用
         foreach (var item in DepartmentFilters)
             item.IsSelected = item.Id == value;
@@ -146,7 +146,7 @@ public partial class MainViewModel : ObservableObject {
             result = result.Where(o => {
                 var isOverdue = FilterOverdueOnly && o.HasOverdue;
                 var isWarning = FilterWarningOnly && o.Processes.Any(p => p.Status == ProcessStatus.Warning);
-                var isToday   = false;
+                var isToday = false;
                 if (FilterTodayTask) {
                     var next = o.Processes
                         .Where(p => p.Status != ProcessStatus.Completed)
@@ -169,8 +169,7 @@ public partial class MainViewModel : ObservableObject {
             result = result.Where(o => !_productModelCodes.Contains(o.ModelCode) && !_semiProductModelCodes.Contains(o.ModelCode));
 
         // 担当部署フィルター：未完了工程のうち SortOrder 最小のものが選択部署の行のみ表示
-        if (FilterDepartmentId > 0)
-        {
+        if (FilterDepartmentId > 0) {
             result = result.Where(o => {
                 var next = o.Processes
                     .Where(p => p.Status != ProcessStatus.Completed)
@@ -187,8 +186,7 @@ public partial class MainViewModel : ObservableObject {
     }
 
     /// <summary>部署マスタを再取得してフィルターボタンリストを更新する</summary>
-    public async Task RefreshDepartmentFiltersAsync()
-    {
+    public async Task RefreshDepartmentFiltersAsync() {
         var departments = await Repositories.SqliteDepartmentRepository.GetAllAsync();
         DepartmentFilters.Clear();
         DepartmentFilters.Add(new DepartmentFilterItem { Id = 0, Name = "全て", IsSelected = FilterDepartmentId == 0 });
@@ -196,8 +194,7 @@ public partial class MainViewModel : ObservableObject {
             DepartmentFilters.Add(new DepartmentFilterItem { Id = d.Id, Name = d.Name, IsSelected = FilterDepartmentId == d.Id });
     }
 
-    private void RefreshFilterDateRange()
-    {
+    private void RefreshFilterDateRange() {
         FilterDateMin = DateTime.Today.AddDays(-Settings.DeliveryDatePastDays);
         FilterDateMax = DateTime.Today.AddDays(Settings.DeliveryDateRangeDays);
     }
@@ -245,21 +242,45 @@ public partial class MainViewModel : ObservableObject {
             return;
         }
 
+        // 自動更新タイマー等からの呼び出しが、リトライ待機中の呼び出しと多重実行されるのを防ぐ
+        if (IsLoading) return;
+
         StatusMessage = "読み込み中...";
         IsLoading = true;
 
-        try {
-            // ODBC呼び出しは同期処理のためTask.Runでスレッドプールに逃がす
-            var settings = Settings;
-            var (orders, allOdbcDefs) = await Task.Run(() =>
-            {
-                var repo = new OdbcOrderRepository(settings);
-                var o = repo.GetAll().ToList();
+        const int maxRetryCount = 3;
+        const int retryIntervalSeconds = 60;
 
-                var processRepo = new OdbcProcessDefinitionRepository(settings);
-                var defs = processRepo.GetAll().ToList();
-                return (o, defs);
-            });
+        try {
+            var settings = Settings;
+            List<Order> orders = [];
+            List<ProcessDefinition> allOdbcDefs = [];
+
+            for (var attempt = 0; attempt <= maxRetryCount; attempt++) {
+                (orders, allOdbcDefs) = await FetchOdbcDataAsync(settings);
+                if (orders.Count > 0) break;
+
+                // 取得範囲（過去/未来日数設定）の絞り込みによる正常な0件か、
+                // ERPの一時的な空読みかを、フィルター無しの存在確認で区別する
+                var hasAnyRecord = await Task.Run(() => new OdbcOrderRepository(settings).HasAnySeisanKeikakuRecord());
+                if (hasAnyRecord) break;
+
+                if (attempt == maxRetryCount) {
+                    StatusMessage = "受注データが取得できませんでした（0件）。ERPの状態を確認してください。";
+                    System.Windows.MessageBox.Show(
+                        $"受注データの取得を{maxRetryCount}回リトライしましたが、すべて0件でした。\nERPの状態を確認し、改めて再読み込みしてください。",
+                        "データ取得エラー", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                    return;
+                }
+
+                StatusMessage = $"受注データが0件のため、{retryIntervalSeconds}秒後にリトライします（{attempt + 1}/{maxRetryCount}回目）...";
+                var popup = new Views.OdbcRetryPopup { Owner = System.Windows.Application.Current.MainWindow };
+                var cancelled = await popup.ShowAndCountdownAsync(retryIntervalSeconds, attempt + 1, maxRetryCount);
+                if (cancelled) {
+                    StatusMessage = "読み込みを中止しました。";
+                    return;
+                }
+            }
 
             var holidays = await _holidayRepository.GetAllAsync();
             var calculator = new BusinessDayCalculator(holidays);
@@ -324,8 +345,7 @@ public partial class MainViewModel : ObservableObject {
                 // ※999番工程がIsVisible=falseで非表示でも判定できるよう、フィルタ前のproductDefsと
                 //   完了済み指示先番号セットから直接判定する
                 var def999 = productDefs.FirstOrDefault(d => d.SortOrder == 999);
-                if (def999 != null && completedByDestNumber.ContainsKey(def999.DestinationCode))
-                {
+                if (def999 != null && completedByDestNumber.ContainsKey(def999.DestinationCode)) {
                     foreach (var process in order.Processes)
                         process.Status = ProcessStatus.Completed;
                 }
@@ -373,6 +393,18 @@ public partial class MainViewModel : ObservableObject {
         } finally {
             IsLoading = false;
         }
+    }
+
+    /// <summary>ODBC（ERP）から注文と工程定義を取得する。同期処理のためTask.Runでスレッドプールに逃がす</summary>
+    private static async Task<(List<Order> Orders, List<ProcessDefinition> Defs)> FetchOdbcDataAsync(AppSettings settings) {
+        return await Task.Run(() => {
+            var repo = new OdbcOrderRepository(settings);
+            var orders = repo.GetAll().ToList();
+
+            var processRepo = new OdbcProcessDefinitionRepository(settings);
+            var defs = processRepo.GetAll().ToList();
+            return (orders, defs);
+        });
     }
 
     /// <summary>注文一覧の並び順（出荷日順/工程期限順）を切り替える</summary>

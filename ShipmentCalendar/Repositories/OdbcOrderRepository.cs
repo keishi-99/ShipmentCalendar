@@ -68,6 +68,20 @@ public class OdbcOrderRepository(AppSettings settings) {
         return orders.Values;
     }
 
+    /// <summary>生産計画ビューに日付フィルター無しで1件以上データが存在するか確認する。
+    /// GetAll()が0件だった場合に、取得範囲の絞り込みによる正常な0件なのか、
+    /// ERPの一時的な空読み（バックアップ処理等）なのかを区別するために使う</summary>
+    public bool HasAnySeisanKeikakuRecord() {
+        using var conn = OdbcConnectionFactory.Create(settings);
+        conn.Open();
+
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT 製番 FROM VP_生産計画情報_YD";
+
+        using var reader = cmd.ExecuteReader();
+        return reader.Read();
+    }
+
     /// <summary>生産計画ビューから注文を取得する。日付フィルターはSQL側で適用（文字列形式でドライバーの型差異を回避）</summary>
     private static Dictionary<string, Order> LoadSeisanKeikaku(OdbcConnection conn, DateOnly rangeStart, DateOnly rangeEnd) {
         Dictionary<string, Order> orders = [];
