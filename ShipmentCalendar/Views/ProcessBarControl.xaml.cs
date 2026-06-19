@@ -179,9 +179,7 @@ public partial class ProcessBarControl : UserControl {
 
     private Border CreateSegmentBorder(Segment segment) {
         var process = segment.Process;
-        var requiredTimeText = ShowRequiredTimeInMinutes
-            ? $"{process.RequiredMinutes:F0}分"
-            : $"{process.RequiredMinutes / 60.0:F1}h";
+        var requiredTimeText = process.GetRequiredTimeDescription(ShowRequiredTimeInMinutes);
         return segment.Kind switch {
             SegmentKind.Process => new Border {
                 Background = StatusToColorConverter.StatusToBrush(process.Status),

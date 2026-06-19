@@ -504,9 +504,7 @@ public class ProcessIndexToDateAndHoursConverter(bool showDueDateForNotStarted, 
     private string GetHoursText(OrderProcess process) {
         if (process.Status == ProcessStatus.Completed) return string.Empty;
 
-        return showRequiredTimeInMinutes
-            ? $"({process.RequiredMinutes:F0}分)"
-            : $"({process.RequiredMinutes / 60.0:F1}h)";
+        return $"({process.GetRequiredTimeDescription(showRequiredTimeInMinutes)})";
     }
 
     public object[] ConvertBack(object value, Type[] targetTypes, object parameter, System.Globalization.CultureInfo culture)
