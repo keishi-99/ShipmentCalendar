@@ -502,7 +502,7 @@ public class ProcessIndexToDateAndHoursConverter(bool showDueDateForNotStarted, 
 
     /// <summary>完了工程は標準時間を表示しない</summary>
     private string GetHoursText(OrderProcess process) {
-        if (process.Status == ProcessStatus.Completed) return string.Empty;
+        if (process.Status == ProcessStatus.Completed || process.RequiredMinutes <= 0) return string.Empty;
 
         return showRequiredTimeInMinutes
             ? $"({process.RequiredMinutes:F0}分)"
