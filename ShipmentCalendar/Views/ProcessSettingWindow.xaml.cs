@@ -367,7 +367,7 @@ public partial class ProcessSettingWindow : Window
                 IsVisible = db.IsVisible,
                 WarningDaysBeforeDeadline = db.WarningDaysBeforeDeadline,
                 DepartmentId = db.DepartmentId,
-                CoolTimeMinutes = db.CoolTimeMinutes,
+                DwellTimeMinutes = db.DwellTimeMinutes,
                 OutsourceLeadDays = db.OutsourceLeadDays
             };
         }).ToList();

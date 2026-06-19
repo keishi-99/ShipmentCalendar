@@ -21,10 +21,15 @@ public class OrderProcess
     public double RequiredMinutes { get; set; } = 0;
     /// <summary>この工程の後に発生する外注待ち日数（営業日）。0=外注待ちなし</summary>
     public int OutsourceLeadDays { get; set; } = 0;
-    /// <summary>この工程の後に発生する固定待機時間（分）。0=クールタイムなし</summary>
-    public double CoolTimeMinutes { get; set; } = 0;
+    /// <summary>この工程の後に発生する固定待機時間（分）。0=滞留時間なし</summary>
+    public double DwellTimeMinutes { get; set; } = 0;
     /// <summary>完了必須日の何日前から警告状態にするか。0=警告なし</summary>
     public int WarningDaysBeforeDeadline { get; set; } = 0;
+
+    /// <summary>必要時間の表示用テキストを返す（showInMinutes=trueなら分表記、falseなら時間表記）</summary>
+    public string GetRequiredTimeDescription(bool showInMinutes) => showInMinutes
+        ? $"{RequiredMinutes:F0}分"
+        : $"{RequiredMinutes / 60.0:F1}h";
 }
 
 public enum ProcessStatus

@@ -219,8 +219,8 @@
                     Header="外注待ち" />
                 <DataGridTextColumn
                     Width="90"
-                    Binding="{Binding CoolTimeText}"
-                    Header="クールタイム" />
+                    Binding="{Binding DwellTimeText}"
+                    Header="滞留時間" />
                 <DataGridTextColumn
                     Width="90"
                     Binding="{Binding WarningDaysText}"

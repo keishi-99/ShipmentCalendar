@@ -22,7 +22,7 @@ public class ProcessDefinition
     /// <summary>担当部署ID（0=未設定）</summary>
     public int DepartmentId { get; set; } = 0;
     /// <summary>この工程の後に発生する固定の待機時間（分・数量に依存しない）。0=なし</summary>
-    public double CoolTimeMinutes { get; set; } = 0;
+    public double DwellTimeMinutes { get; set; } = 0;
     /// <summary>この工程の後の外注待ち等で発生する営業日数。0=なし</summary>
     public int OutsourceLeadDays { get; set; } = 0;
 }

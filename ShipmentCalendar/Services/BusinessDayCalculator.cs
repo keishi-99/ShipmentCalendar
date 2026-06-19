@@ -61,11 +61,11 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
                 spansBoundary = true;
             }
 
-            // クールタイム（数量に依存しない固定の待機時間）。外注リードタイムや末尾工程など
+            // 滞留時間（数量に依存しない固定の待機時間）。外注リードタイムや末尾工程など
             // どのケースでも、adjustedの基準値に上乗せする。
             // 480分を超える分は、後段のceil計算により自動的に前営業日以前へ繰り越される
-            if (def.CoolTimeMinutes > 0) {
-                adjusted += def.CoolTimeMinutes;
+            if (def.DwellTimeMinutes > 0) {
+                adjusted += def.DwellTimeMinutes;
             }
 
             if (spansBoundary) {
@@ -81,7 +81,7 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
                 startBucket[i] = (int)((runningIn - 1) / 480.0) + 1;
             }
 
-            cumulativeRunningTime += minutes + (def.OutsourceLeadDays * 480.0) + def.CoolTimeMinutes;
+            cumulativeRunningTime += minutes + (def.OutsourceLeadDays * 480.0) + def.DwellTimeMinutes;
         }
 
         // 各工程の必須日 = 完了日 - (バケット番号 - 1) 営業日（バケット1=完了日当日）
@@ -104,7 +104,7 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
                 DepartmentId = def.DepartmentId,
                 RequiredMinutes = requiredMinutes,
                 OutsourceLeadDays = def.OutsourceLeadDays,
-                CoolTimeMinutes = def.CoolTimeMinutes
+                DwellTimeMinutes = def.DwellTimeMinutes
             });
         }
         return results;

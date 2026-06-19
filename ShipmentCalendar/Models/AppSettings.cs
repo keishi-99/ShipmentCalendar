@@ -49,6 +49,8 @@ public class AppSettings
     public bool ShowProcessDate { get; set; } = true;
     /// <summary>工程列に「標準時間（必要時間）」行を表示するか</summary>
     public bool ShowProcessRequiredHours { get; set; } = true;
+    /// <summary>必要時間の表示単位。true=分表記、false=時間表記</summary>
+    public bool ShowRequiredTimeInMinutes { get; set; } = false;
     /// <summary>メイン画面に「工程バー」列を表示するか</summary>
     public bool ShowProcessBar { get; set; } = true;
     /// <summary>メイン画面に「工程列（1工程1列）」を表示するか</summary>

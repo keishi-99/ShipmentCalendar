@@ -15,7 +15,7 @@ public partial class ProcessBarControl : UserControl {
     private static readonly Brush OffsetBackgroundBrush   = CreateFrozenBrush(Color.FromArgb(90, 160, 160, 160));
     private static readonly Brush OffsetBorderBrush       = CreateFrozenBrush(Color.FromArgb(160, 120, 120, 120));
     // クールタイム・外注待ちの色はApp.xamlのリソースで一元管理（凡例・リスト表示と共有）
-    private static Brush CoolTimeBrush      => (Brush)Application.Current.Resources["CoolTimeBrush"];
+    private static Brush DwellTimeBrush      => (Brush)Application.Current.Resources["DwellTimeBrush"];
     private static Brush OutsourceLeadBrush => (Brush)Application.Current.Resources["OutsourceLeadBrush"];
 
     private static SolidColorBrush CreateFrozenBrush(Color color) {
@@ -46,6 +46,19 @@ public partial class ProcessBarControl : UserControl {
     public double BarFontSize {
         get => (double)GetValue(BarFontSizeProperty);
         set => SetValue(BarFontSizeProperty, value);
+    }
+
+    public static readonly DependencyProperty ShowRequiredTimeInMinutesProperty =
+        DependencyProperty.Register(
+            nameof(ShowRequiredTimeInMinutes),
+            typeof(bool),
+            typeof(ProcessBarControl),
+            new PropertyMetadata(false, (d, _) => ((ProcessBarControl)d).RebuildBars()));
+
+    /// <summary>必要時間のツールチップ表示単位。true=分表記、false=時間表記</summary>
+    public bool ShowRequiredTimeInMinutes {
+        get => (bool)GetValue(ShowRequiredTimeInMinutesProperty);
+        set => SetValue(ShowRequiredTimeInMinutesProperty, value);
     }
 
     public ProcessBarControl() {
@@ -108,9 +121,9 @@ public partial class ProcessBarControl : UserControl {
             rawSegments.Add(new Segment(SegmentKind.Process, procWidth, process));
             pos += procWidth;
 
-            if (process.CoolTimeMinutes >= 1) {
-                rawSegments.Add(new Segment(SegmentKind.CoolTime, process.CoolTimeMinutes, process));
-                pos += process.CoolTimeMinutes;
+            if (process.DwellTimeMinutes >= 1) {
+                rawSegments.Add(new Segment(SegmentKind.DwellTime, process.DwellTimeMinutes, process));
+                pos += process.DwellTimeMinutes;
             }
 
             if (process.OutsourceLeadDays > 0) {
@@ -166,12 +179,13 @@ public partial class ProcessBarControl : UserControl {
 
     private Border CreateSegmentBorder(Segment segment) {
         var process = segment.Process;
+        var requiredTimeText = process.GetRequiredTimeDescription(ShowRequiredTimeInMinutes);
         return segment.Kind switch {
             SegmentKind.Process => new Border {
                 Background = StatusToColorConverter.StatusToBrush(process.Status),
                 BorderBrush = DefaultBorderBrush,
                 BorderThickness = new Thickness(1),
-                ToolTip = $"{process.ProcessName}\n必要時間: {process.RequiredMinutes / 60.0:F1}h\n{process.StartDate:M/d} → {process.DueDate:M/d}",
+                ToolTip = $"{process.ProcessName}\n必要時間: {requiredTimeText}\n{process.StartDate:M/d} → {process.DueDate:M/d}",
                 Child = new TextBlock {
                     Text = process.ProcessName,
                     TextTrimming = TextTrimming.CharacterEllipsis,
@@ -183,11 +197,11 @@ public partial class ProcessBarControl : UserControl {
                     ClipToBounds = true,
                 }
             },
-            SegmentKind.CoolTime => new Border {
-                Background = CoolTimeBrush,
+            SegmentKind.DwellTime => new Border {
+                Background = DwellTimeBrush,
                 BorderBrush = DefaultBorderBrush,
                 BorderThickness = new Thickness(0, 0, 1, 0),
-                ToolTip = $"クールタイム {process.CoolTimeMinutes / 60.0:F1}h",
+                ToolTip = $"滞留時間 {process.DwellTimeMinutes / 60.0:F1}h",
             },
             SegmentKind.Outsource => new Border {
                 Background = OutsourceLeadBrush,
@@ -208,7 +222,7 @@ public partial class ProcessBarControl : UserControl {
         return 480.0 - remainder;
     }
 
-    private enum SegmentKind { Process, CoolTime, PreGap, Outsource, PostGap }
+    private enum SegmentKind { Process, DwellTime, PreGap, Outsource, PostGap }
 
     private readonly record struct Segment(SegmentKind Kind, double Width, OrderProcess Process);
 }
