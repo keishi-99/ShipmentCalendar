@@ -97,16 +97,43 @@ public partial class ProcessBarControl : UserControl {
         // 日付バーと同じ総スター幅（営業日数×480）を使うため、日付との整合が保たれる
         var totalDayMinutes = businessDays.Count * 480.0;
 
-        // Math.Maxや閾値による端数が出るため、実際にグリッドへ追加するスター幅を先算して整合させる
-        double nonOffsetStars = 0;
-        foreach (var p in Processes) {
-            nonOffsetStars += Math.Max(1, p.RequiredMinutes);
-            var gap = p.CoolTimeMinutes + p.OutsourceLeadDays * 480.0;
-            if (gap >= 1) nonOffsetStars += gap;
+        // 外注待ちの後に挿入するpost-gapを後ろから計算する。
+        // 外注待ちの終了位置 = total - outsource - sum(後工程) であり、
+        // post-gapで後工程を480の倍数に揃えることで外注待ちを日付列境界に正確に収める。
+        var outsourcePostGaps = new double[Processes.Count];
+        {
+            double accumFromRight = 0;
+            for (int i = Processes.Count - 1; i >= 0; i--) {
+                var p = Processes[i];
+                if (p.OutsourceLeadDays > 0) {
+                    outsourcePostGaps[i] = (480.0 - accumFromRight % 480.0) % 480.0;
+                    accumFromRight += outsourcePostGaps[i];
+                    accumFromRight += p.OutsourceLeadDays * 480.0;
+                }
+                if (p.CoolTimeMinutes >= 1) accumFromRight += p.CoolTimeMinutes;
+                accumFromRight += Math.Max(1, p.RequiredMinutes);
+            }
         }
+
+        // 実際にグリッドへ追加するスター幅を先算して日付バーと整合させる
+        double currentPos = 0;
+        for (int idx = 0; idx < Processes.Count; idx++) {
+            var p = Processes[idx];
+            currentPos += Math.Max(1, p.RequiredMinutes);
+            if (p.CoolTimeMinutes >= 1) currentPos += p.CoolTimeMinutes;
+            if (p.OutsourceLeadDays > 0) {
+                var dayRemainder = currentPos % 480.0;
+                if (dayRemainder > 0) currentPos += 480.0 - dayRemainder; // pre-gap
+                currentPos += p.OutsourceLeadDays * 480.0;
+                currentPos += outsourcePostGaps[idx]; // post-gap
+            }
+        }
+        double nonOffsetStars = currentPos;
         var initialOffset = Math.Max(0, totalDayMinutes - nonOffsetStars);
 
         int barCol = 0;
+        double currentBarPos = initialOffset;
+        double barPos0 = 0; // nonOffsetStarsと同じ起点(0)でギャップ計算する
 
         // 初期オフセット（最初の工程の着手前の空き時間）をグレーで表示
         if (initialOffset >= 1) {
@@ -121,10 +148,10 @@ public partial class ProcessBarControl : UserControl {
             BarGrid.Children.Add(offsetBorder);
         }
 
-        foreach (var process in Processes) {
-            BarGrid.ColumnDefinitions.Add(new ColumnDefinition {
-                Width = new GridLength(Math.Max(1, process.RequiredMinutes), GridUnitType.Star)
-            });
+        for (int idx = 0; idx < Processes.Count; idx++) {
+            var process = Processes[idx];
+            double procWidth = Math.Max(1, process.RequiredMinutes);
+            BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(procWidth, GridUnitType.Star) });
             var tooltip = $"{process.ProcessName}\n必要時間: {process.RequiredMinutes / 60.0:F1}h\n{process.StartDate:M/d} → {process.DueDate:M/d}";
             var border = new Border {
                 Background = StatusToColorConverter.StatusToBrush(process.Status),
@@ -144,6 +171,8 @@ public partial class ProcessBarControl : UserControl {
             };
             Grid.SetColumn(border, barCol++);
             BarGrid.Children.Add(border);
+            currentBarPos += procWidth;
+            barPos0 += procWidth;
 
             // クールタイムを色付き列として挿入
             if (process.CoolTimeMinutes >= 1) {
@@ -156,10 +185,24 @@ public partial class ProcessBarControl : UserControl {
                 };
                 Grid.SetColumn(coolBorder, barCol++);
                 BarGrid.Children.Add(coolBorder);
+                currentBarPos += process.CoolTimeMinutes;
+                barPos0 += process.CoolTimeMinutes;
             }
-            // 外注待ちを色付き列として挿入
-            var outsourceMinutes = process.OutsourceLeadDays * 480.0;
-            if (outsourceMinutes >= 1) {
+
+            // 外注待ちがある場合、0起点のcurrentPosでギャップを計算して翌日境界へ揃える
+            // （currentBarPosはinitialOffset分ずれるため、nonOffsetStarsと不一致になりバーがはみ出す）
+            if (process.OutsourceLeadDays > 0) {
+                var dayRemainder = barPos0 % 480.0;
+                var dayEndGap = dayRemainder > 0 ? 480.0 - dayRemainder : 0;
+                if (dayEndGap >= 1) {
+                    BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(dayEndGap, GridUnitType.Star) });
+                    var gapBorder = new Border();
+                    Grid.SetColumn(gapBorder, barCol++);
+                    BarGrid.Children.Add(gapBorder);
+                    currentBarPos += dayEndGap;
+                    barPos0 += dayEndGap;
+                }
+                var outsourceMinutes = process.OutsourceLeadDays * 480.0;
                 BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(outsourceMinutes, GridUnitType.Star) });
                 var outsourceBorder = new Border {
                     Background = OutsourceLeadBrush,
@@ -169,6 +212,19 @@ public partial class ProcessBarControl : UserControl {
                 };
                 Grid.SetColumn(outsourceBorder, barCol++);
                 BarGrid.Children.Add(outsourceBorder);
+                currentBarPos += outsourceMinutes;
+                barPos0 += outsourceMinutes;
+
+                // post-gap: 外注待ち終了を日付列境界に揃えるための空白
+                var postGap = outsourcePostGaps[idx];
+                if (postGap >= 1) {
+                    BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(postGap, GridUnitType.Star) });
+                    var postGapBorder = new Border();
+                    Grid.SetColumn(postGapBorder, barCol++);
+                    BarGrid.Children.Add(postGapBorder);
+                    currentBarPos += postGap;
+                    barPos0 += postGap;
+                }
             }
         }
     }
