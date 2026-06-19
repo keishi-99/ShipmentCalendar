@@ -14,8 +14,9 @@ public partial class ProcessBarControl : UserControl {
     private static readonly Brush DefaultBorderBrush      = CreateFrozenBrush(Color.FromRgb(154, 176, 204));
     private static readonly Brush OffsetBackgroundBrush   = CreateFrozenBrush(Color.FromArgb(90, 160, 160, 160));
     private static readonly Brush OffsetBorderBrush       = CreateFrozenBrush(Color.FromArgb(160, 120, 120, 120));
-    private static readonly Brush CoolTimeBrush           = CreateFrozenBrush(Color.FromRgb(200, 230, 201));
-    private static readonly Brush OutsourceLeadBrush      = CreateFrozenBrush(Color.FromRgb(248, 187, 208));
+    // クールタイム・外注待ちの色はApp.xamlのリソースで一元管理（凡例・リスト表示と共有）
+    private static Brush CoolTimeBrush      => (Brush)Application.Current.Resources["CoolTimeBrush"];
+    private static Brush OutsourceLeadBrush => (Brush)Application.Current.Resources["OutsourceLeadBrush"];
 
     private static SolidColorBrush CreateFrozenBrush(Color color) {
         var brush = new SolidColorBrush(color);
@@ -97,43 +98,50 @@ public partial class ProcessBarControl : UserControl {
         // 日付バーと同じ総スター幅（営業日数×480）を使うため、日付との整合が保たれる
         var totalDayMinutes = businessDays.Count * 480.0;
 
-        // 外注待ちの後に挿入するpost-gapを後ろから計算する。
-        // 外注待ちの終了位置 = total - outsource - sum(後工程) であり、
-        // post-gapで後工程を480の倍数に揃えることで外注待ちを日付列境界に正確に収める。
-        var outsourcePostGaps = new double[Processes.Count];
-        {
-            double accumFromRight = 0;
-            for (int i = Processes.Count - 1; i >= 0; i--) {
-                var p = Processes[i];
-                if (p.OutsourceLeadDays > 0) {
-                    outsourcePostGaps[i] = (480.0 - accumFromRight % 480.0) % 480.0;
-                    accumFromRight += outsourcePostGaps[i];
-                    accumFromRight += p.OutsourceLeadDays * 480.0;
+        // セグメント（工程・クールタイム・外注待ち前のギャップ・外注待ち）を1回の走査で構築する。
+        // 外注待ちの開始位置は pre-gap で日付境界に揃うが、終了位置は外注待ち後に続く
+        // 工程の幅次第でずれるため、後ろから走査して post-gap を挿入し後続全体を480の倍数に揃える
+        var rawSegments = new List<Segment>();
+        double pos = 0;
+        foreach (var process in Processes) {
+            var procWidth = Math.Max(1, process.RequiredMinutes);
+            rawSegments.Add(new Segment(SegmentKind.Process, procWidth, process));
+            pos += procWidth;
+
+            if (process.CoolTimeMinutes >= 1) {
+                rawSegments.Add(new Segment(SegmentKind.CoolTime, process.CoolTimeMinutes, process));
+                pos += process.CoolTimeMinutes;
+            }
+
+            if (process.OutsourceLeadDays > 0) {
+                var preGap = GetDistanceToNextBoundary(pos);
+                if (preGap >= 1) {
+                    rawSegments.Add(new Segment(SegmentKind.PreGap, preGap, process));
+                    pos += preGap;
                 }
-                if (p.CoolTimeMinutes >= 1) accumFromRight += p.CoolTimeMinutes;
-                accumFromRight += Math.Max(1, p.RequiredMinutes);
+                var outsourceMinutes = process.OutsourceLeadDays * 480.0;
+                rawSegments.Add(new Segment(SegmentKind.Outsource, outsourceMinutes, process));
+                pos += outsourceMinutes;
             }
         }
 
-        // 実際にグリッドへ追加するスター幅を先算して日付バーと整合させる
-        double currentPos = 0;
-        for (int idx = 0; idx < Processes.Count; idx++) {
-            var p = Processes[idx];
-            currentPos += Math.Max(1, p.RequiredMinutes);
-            if (p.CoolTimeMinutes >= 1) currentPos += p.CoolTimeMinutes;
-            if (p.OutsourceLeadDays > 0) {
-                var dayRemainder = currentPos % 480.0;
-                if (dayRemainder > 0) currentPos += 480.0 - dayRemainder; // pre-gap
-                currentPos += p.OutsourceLeadDays * 480.0;
-                currentPos += outsourcePostGaps[idx]; // post-gap
+        var segments = new List<Segment>();
+        double trailingWidth = 0;
+        for (int i = rawSegments.Count - 1; i >= 0; i--) {
+            var seg = rawSegments[i];
+            if (seg.Kind == SegmentKind.Outsource) {
+                var postGap = GetDistanceToNextBoundary(trailingWidth);
+                if (postGap >= 1) {
+                    segments.Insert(0, new Segment(SegmentKind.PostGap, postGap, seg.Process));
+                    trailingWidth += postGap;
+                }
             }
+            segments.Insert(0, seg);
+            trailingWidth += seg.Width;
         }
-        double nonOffsetStars = currentPos;
-        var initialOffset = Math.Max(0, totalDayMinutes - nonOffsetStars);
+        var initialOffset = Math.Max(0, totalDayMinutes - trailingWidth);
 
         int barCol = 0;
-        double currentBarPos = initialOffset;
-        double barPos0 = 0; // nonOffsetStarsと同じ起点(0)でギャップ計算する
 
         // 初期オフセット（最初の工程の着手前の空き時間）をグレーで表示
         if (initialOffset >= 1) {
@@ -148,16 +156,22 @@ public partial class ProcessBarControl : UserControl {
             BarGrid.Children.Add(offsetBorder);
         }
 
-        for (int idx = 0; idx < Processes.Count; idx++) {
-            var process = Processes[idx];
-            double procWidth = Math.Max(1, process.RequiredMinutes);
-            BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(procWidth, GridUnitType.Star) });
-            var tooltip = $"{process.ProcessName}\n必要時間: {process.RequiredMinutes / 60.0:F1}h\n{process.StartDate:M/d} → {process.DueDate:M/d}";
-            var border = new Border {
+        foreach (var segment in segments) {
+            BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(segment.Width, GridUnitType.Star) });
+            var border = CreateSegmentBorder(segment);
+            Grid.SetColumn(border, barCol++);
+            BarGrid.Children.Add(border);
+        }
+    }
+
+    private Border CreateSegmentBorder(Segment segment) {
+        var process = segment.Process;
+        return segment.Kind switch {
+            SegmentKind.Process => new Border {
                 Background = StatusToColorConverter.StatusToBrush(process.Status),
                 BorderBrush = DefaultBorderBrush,
                 BorderThickness = new Thickness(1),
-                ToolTip = tooltip,
+                ToolTip = $"{process.ProcessName}\n必要時間: {process.RequiredMinutes / 60.0:F1}h\n{process.StartDate:M/d} → {process.DueDate:M/d}",
                 Child = new TextBlock {
                     Text = process.ProcessName,
                     TextTrimming = TextTrimming.CharacterEllipsis,
@@ -168,64 +182,33 @@ public partial class ProcessBarControl : UserControl {
                     Margin = new Thickness(2, 0, 2, 0),
                     ClipToBounds = true,
                 }
-            };
-            Grid.SetColumn(border, barCol++);
-            BarGrid.Children.Add(border);
-            currentBarPos += procWidth;
-            barPos0 += procWidth;
-
-            // クールタイムを色付き列として挿入
-            if (process.CoolTimeMinutes >= 1) {
-                BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(process.CoolTimeMinutes, GridUnitType.Star) });
-                var coolBorder = new Border {
-                    Background = CoolTimeBrush,
-                    BorderBrush = DefaultBorderBrush,
-                    BorderThickness = new Thickness(0, 0, 1, 0),
-                    ToolTip = $"クールタイム {process.CoolTimeMinutes / 60.0:F1}h",
-                };
-                Grid.SetColumn(coolBorder, barCol++);
-                BarGrid.Children.Add(coolBorder);
-                currentBarPos += process.CoolTimeMinutes;
-                barPos0 += process.CoolTimeMinutes;
-            }
-
-            // 外注待ちがある場合、0起点のcurrentPosでギャップを計算して翌日境界へ揃える
-            // （currentBarPosはinitialOffset分ずれるため、nonOffsetStarsと不一致になりバーがはみ出す）
-            if (process.OutsourceLeadDays > 0) {
-                var dayRemainder = barPos0 % 480.0;
-                var dayEndGap = dayRemainder > 0 ? 480.0 - dayRemainder : 0;
-                if (dayEndGap >= 1) {
-                    BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(dayEndGap, GridUnitType.Star) });
-                    var gapBorder = new Border();
-                    Grid.SetColumn(gapBorder, barCol++);
-                    BarGrid.Children.Add(gapBorder);
-                    currentBarPos += dayEndGap;
-                    barPos0 += dayEndGap;
-                }
-                var outsourceMinutes = process.OutsourceLeadDays * 480.0;
-                BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(outsourceMinutes, GridUnitType.Star) });
-                var outsourceBorder = new Border {
-                    Background = OutsourceLeadBrush,
-                    BorderBrush = DefaultBorderBrush,
-                    BorderThickness = new Thickness(0, 0, 1, 0),
-                    ToolTip = $"外注待ち {process.OutsourceLeadDays}日",
-                };
-                Grid.SetColumn(outsourceBorder, barCol++);
-                BarGrid.Children.Add(outsourceBorder);
-                currentBarPos += outsourceMinutes;
-                barPos0 += outsourceMinutes;
-
-                // post-gap: 外注待ち終了を日付列境界に揃えるための空白
-                var postGap = outsourcePostGaps[idx];
-                if (postGap >= 1) {
-                    BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(postGap, GridUnitType.Star) });
-                    var postGapBorder = new Border();
-                    Grid.SetColumn(postGapBorder, barCol++);
-                    BarGrid.Children.Add(postGapBorder);
-                    currentBarPos += postGap;
-                    barPos0 += postGap;
-                }
-            }
-        }
+            },
+            SegmentKind.CoolTime => new Border {
+                Background = CoolTimeBrush,
+                BorderBrush = DefaultBorderBrush,
+                BorderThickness = new Thickness(0, 0, 1, 0),
+                ToolTip = $"クールタイム {process.CoolTimeMinutes / 60.0:F1}h",
+            },
+            SegmentKind.Outsource => new Border {
+                Background = OutsourceLeadBrush,
+                BorderBrush = DefaultBorderBrush,
+                BorderThickness = new Thickness(0, 0, 1, 0),
+                ToolTip = $"外注待ち {process.OutsourceLeadDays}日",
+            },
+            SegmentKind.PreGap or SegmentKind.PostGap => new Border(), // 外注待ち前後の空白（その日の残り時間）
+            _ => throw new ArgumentOutOfRangeException(nameof(segment), segment.Kind, "未対応の SegmentKind です"),
+        };
     }
+
+    // 浮動小数点誤差（例: 960.0000000000001 % 480 ≈ 0 にならない）を許容しつつ
+    // 現在位置から次の480分境界までの距離を返す。境界上にある場合は 0 を返す
+    private static double GetDistanceToNextBoundary(double position) {
+        var remainder = position % 480.0;
+        if (remainder < 0.001 || remainder > 479.999) return 0;
+        return 480.0 - remainder;
+    }
+
+    private enum SegmentKind { Process, CoolTime, PreGap, Outsource, PostGap }
+
+    private readonly record struct Segment(SegmentKind Kind, double Width, OrderProcess Process);
 }

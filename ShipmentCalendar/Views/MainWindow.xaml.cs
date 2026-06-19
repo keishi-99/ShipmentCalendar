@@ -11,6 +11,9 @@ using System.Windows.Media;
 namespace ShipmentCalendar.Views;
 
 public partial class MainWindow : Window {
+    // 外注待ち表示の背景色（App.xamlのリソースで一元管理、ProcessBarControlの外注待ちバーと同じ色）
+    private static Brush OutsourceLeadBrush => (Brush)Application.Current.Resources["OutsourceLeadBrush"];
+
     private readonly MainViewModel _viewModel;
     // プレビュー中の行高さ（null=プレビューなし、0=自動）
     private double? _previewManualRowHeight;
@@ -296,6 +299,7 @@ public partial class MainWindow : Window {
 
             // 外注待ち日数表示（OutsourceLeadDaysが設定されている工程のみ、区切り線付きの別セル風に表示）
             var gapBorderFactory = new FrameworkElementFactory(typeof(Border));
+            gapBorderFactory.SetValue(Border.BackgroundProperty, OutsourceLeadBrush);
             gapBorderFactory.SetValue(Border.BorderBrushProperty, Brushes.LightGray);
             gapBorderFactory.SetValue(Border.BorderThicknessProperty, new Thickness(1, 0, 0, 0));
             gapBorderFactory.SetValue(Border.PaddingProperty, new Thickness(2, 0, 0, 0));

@@ -144,13 +144,16 @@ public partial class MainViewModel : ObservableObject {
         if (FilterOverdueOnly || FilterWarningOnly || FilterTodayTask) {
             var today = DateOnly.FromDateTime(DateTime.Today);
             result = result.Where(o => {
-                var next = o.Processes
-                    .Where(p => p.Status != ProcessStatus.Completed)
-                    .OrderBy(p => p.SortOrder)
-                    .FirstOrDefault();
-                var isOverdue  = FilterOverdueOnly  && o.HasOverdue;
-                var isWarning  = FilterWarningOnly  && o.Processes.Any(p => p.Status == ProcessStatus.Warning);
-                var isToday    = FilterTodayTask    && next != null && today >= next.StartDate && today <= next.DueDate;
+                var isOverdue = FilterOverdueOnly && o.HasOverdue;
+                var isWarning = FilterWarningOnly && o.Processes.Any(p => p.Status == ProcessStatus.Warning);
+                var isToday   = false;
+                if (FilterTodayTask) {
+                    var next = o.Processes
+                        .Where(p => p.Status != ProcessStatus.Completed)
+                        .OrderBy(p => p.SortOrder)
+                        .FirstOrDefault();
+                    isToday = next != null && today >= next.StartDate && today <= next.DueDate;
+                }
                 return isOverdue || isWarning || isToday;
             });
         }

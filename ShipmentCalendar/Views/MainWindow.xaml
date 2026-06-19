@@ -387,6 +387,30 @@
                                 Foreground="White"
                                 Text="超過" />
                         </Border>
+                        <Border
+                            Width="80"
+                            Height="20"
+                            Margin="2"
+                            Background="{StaticResource CoolTimeBrush}"
+                            CornerRadius="3">
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                FontSize="11"
+                                Text="クールタイム" />
+                        </Border>
+                        <Border
+                            Width="80"
+                            Height="20"
+                            Margin="2"
+                            Background="{StaticResource OutsourceLeadBrush}"
+                            CornerRadius="3">
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                FontSize="11"
+                                Text="外注待ち" />
+                        </Border>
                     </StackPanel>
                 </StatusBarItem>
                 <StatusBarItem>
