@@ -19,9 +19,15 @@ public partial class OrderDetailWindow : Window {
     }
 
     // 部署マスタをDBから取得し、工程一覧に担当部署名を付加して表示する
+    // DB接続エラー等で例外が出ても画面表示自体は継続させるため、失敗時は部署名なしにフォールバックする
     private async Task LoadProcessRowsAsync() {
-        var departmentNames = (await SqliteDepartmentRepository.GetAllAsync())
-            .ToDictionary(d => d.Id, d => d.Name);
+        var departmentNames = new Dictionary<int, string>();
+        try {
+            departmentNames = (await SqliteDepartmentRepository.GetAllAsync())
+                .ToDictionary(d => d.Id, d => d.Name);
+        } catch (Exception ex) {
+            System.Diagnostics.Debug.WriteLine($"部署マスタの取得に失敗しました: {ex.Message}");
+        }
         ProcessGrid.ItemsSource = _order.Processes
             .OrderBy(p => p.SortOrder)
             .Select(p => new ProcessRow(p, _showRequiredTimeInMinutes, departmentNames.GetValueOrDefault(p.DepartmentId, "")))

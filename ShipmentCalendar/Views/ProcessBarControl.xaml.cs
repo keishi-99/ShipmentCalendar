@@ -210,8 +210,7 @@ public partial class ProcessBarControl : UserControl {
                 BorderThickness = new Thickness(0, 0, 1, 0),
                 ToolTip = $"外注待ち {process.OutsourceLeadDays}日",
             },
-            // 外注待ち前後の空白（その日の残り時間）。背景を白にして行選択時のハイライト色が透けるのを防ぐ
-            SegmentKind.PreGap or SegmentKind.PostGap => new Border { Background = Brushes.White },
+            SegmentKind.PreGap or SegmentKind.PostGap => new Border(), // 外注待ち前後の空白（その日の残り時間）
             _ => throw new ArgumentOutOfRangeException(nameof(segment), segment.Kind, "未対応の SegmentKind です"),
         };
     }
