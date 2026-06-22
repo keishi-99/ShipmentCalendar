@@ -10,9 +10,9 @@ public partial class ProcessBarControl : UserControl {
     // 日付バーの高さ（UpdateRowHeight で参照する）
     public const double DateBarHeight = 16;
 
-    private static readonly Brush DefaultBorderBrush      = CreateFrozenBrush(Color.FromRgb(154, 176, 204));
-    private static readonly Brush OffsetBackgroundBrush   = CreateFrozenBrush(Color.FromArgb(90, 160, 160, 160));
-    private static readonly Brush OffsetBorderBrush       = CreateFrozenBrush(Color.FromArgb(160, 120, 120, 120));
+    private static readonly Brush _defaultBorderBrush      = CreateFrozenBrush(Color.FromRgb(154, 176, 204));
+    private static readonly Brush _offsetBackgroundBrush   = CreateFrozenBrush(Color.FromArgb(90, 160, 160, 160));
+    private static readonly Brush _offsetBorderBrush       = CreateFrozenBrush(Color.FromArgb(160, 120, 120, 120));
     // クールタイム・外注待ち・日付バーの色はApp.xamlのリソースで一元管理（凡例・リスト表示と共有）
     private static Brush DwellTimeBrush      => (Brush)Application.Current.Resources["DwellTimeBrush"];
     private static Brush OutsourceLeadBrush => (Brush)Application.Current.Resources["OutsourceLeadBrush"];
@@ -94,7 +94,7 @@ public partial class ProcessBarControl : UserControl {
             DateBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(480, GridUnitType.Star) });
             var dateBorder = new Border {
                 Background = col % 2 == 0 ? DateBarBackgroundBrushA : DateBarBackgroundBrushB,
-                BorderBrush = DefaultBorderBrush,
+                BorderBrush = _defaultBorderBrush,
                 BorderThickness = new Thickness(1),
                 Child = new TextBlock {
                     Text = date.ToString("M/d"),
@@ -161,8 +161,8 @@ public partial class ProcessBarControl : UserControl {
         if (initialOffset >= 1) {
             BarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(initialOffset, GridUnitType.Star) });
             var offsetBorder = new Border {
-                Background = OffsetBackgroundBrush,
-                BorderBrush = OffsetBorderBrush,
+                Background = _offsetBackgroundBrush,
+                BorderBrush = _offsetBorderBrush,
                 BorderThickness = new Thickness(0, 0, 1, 0),
                 ToolTip = $"着手まで {initialOffset / 60.0:F1}h",
             };
@@ -184,7 +184,7 @@ public partial class ProcessBarControl : UserControl {
         return segment.Kind switch {
             SegmentKind.Process => new Border {
                 Background = StatusToColorConverter.StatusToBrush(process.Status),
-                BorderBrush = DefaultBorderBrush,
+                BorderBrush = _defaultBorderBrush,
                 BorderThickness = new Thickness(1),
                 ToolTip = $"{process.ProcessName}\n必要時間: {requiredTimeText}\n{process.StartDate:M/d} → {process.DueDate:M/d}",
                 Child = new TextBlock {
@@ -200,13 +200,13 @@ public partial class ProcessBarControl : UserControl {
             },
             SegmentKind.DwellTime => new Border {
                 Background = DwellTimeBrush,
-                BorderBrush = DefaultBorderBrush,
+                BorderBrush = _defaultBorderBrush,
                 BorderThickness = new Thickness(0, 0, 1, 0),
                 ToolTip = $"滞留時間 {process.DwellTimeMinutes / 60.0:F1}h",
             },
             SegmentKind.Outsource => new Border {
                 Background = OutsourceLeadBrush,
-                BorderBrush = DefaultBorderBrush,
+                BorderBrush = _defaultBorderBrush,
                 BorderThickness = new Thickness(0, 0, 1, 0),
                 ToolTip = $"外注待ち {process.OutsourceLeadDays}日",
             },
