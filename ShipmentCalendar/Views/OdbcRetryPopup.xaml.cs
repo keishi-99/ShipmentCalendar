@@ -25,11 +25,11 @@ public partial class OdbcRetryPopup : Window {
     // メインウィンドウが閉じられる際は、ポップアップが閉じるのを拒否してアプリが終了不能になるのを防ぐため、
     // キャンセル扱いで先にポップアップを閉じる
     private void OnLoaded(object sender, RoutedEventArgs e) {
-        Owner?.Closing += Owner_Closing;
+        Owner.Closing += Owner_Closing;
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e) {
-        Owner?.Closing -= Owner_Closing;
+        Owner.Closing -= Owner_Closing;
     }
 
     private void Owner_Closing(object? sender, CancelEventArgs e) => Finish(cancelled: true);
