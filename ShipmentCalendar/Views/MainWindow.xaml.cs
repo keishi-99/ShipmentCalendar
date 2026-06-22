@@ -220,7 +220,10 @@ public partial class MainWindow : Window {
             barCellStyle.Triggers.Add(new Trigger {
                 Property = DataGridCell.IsSelectedProperty,
                 Value = true,
-                Setters = { new Setter(Control.BackgroundProperty, Brushes.Transparent) },
+                Setters = {
+                    new Setter(Control.BackgroundProperty, Brushes.Transparent),
+                    new Setter(Control.BorderBrushProperty, Brushes.Transparent),
+                },
             });
             barColumn.CellStyle = barCellStyle;
             OrderGrid.Columns.Add(barColumn);
