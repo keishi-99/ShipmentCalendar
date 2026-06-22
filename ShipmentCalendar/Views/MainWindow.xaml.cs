@@ -214,9 +214,14 @@ public partial class MainWindow : Window {
             barFactory.SetValue(ProcessBarControl.ShowRequiredTimeInMinutesProperty, settings.ShowRequiredTimeInMinutes);
             barTemplate.VisualTree = barFactory;
             barColumn.CellTemplate = barTemplate;
-            // 工程バー列はセル選択（フォーカス）自体を行わないようにして選択ハイライトを表示しない
+            // 工程バー列はフォーカス枠を出さず、選択状態になっても背景の青いハイライトを表示しない
             var barCellStyle = new Style(typeof(DataGridCell));
             barCellStyle.Setters.Add(new Setter(UIElement.FocusableProperty, false));
+            barCellStyle.Triggers.Add(new Trigger {
+                Property = DataGridCell.IsSelectedProperty,
+                Value = true,
+                Setters = { new Setter(Control.BackgroundProperty, Brushes.Transparent) },
+            });
             barColumn.CellStyle = barCellStyle;
             OrderGrid.Columns.Add(barColumn);
         }
