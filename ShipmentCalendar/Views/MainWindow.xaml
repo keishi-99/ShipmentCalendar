@@ -61,9 +61,6 @@
                             <MenuItem Name="MnuColProductName" IsCheckable="True" StaysOpenOnClick="True" Header="品目名" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
                             <MenuItem Name="MnuColManufactureNumber" IsCheckable="True" StaysOpenOnClick="True" Header="製番" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
                             <MenuItem Name="MnuColPlannedQuantity" IsCheckable="True" StaysOpenOnClick="True" Header="計画数" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
-                            <Separator />
-                            <MenuItem Name="MnuColProcessBar" IsCheckable="True" StaysOpenOnClick="True" Header="工程バー" Checked="ProcessVisibilityCheckBox_Changed" Unchecked="ProcessVisibilityCheckBox_Changed" />
-                            <MenuItem Name="MnuColProcessColumns" IsCheckable="True" StaysOpenOnClick="True" Header="工程列（1工程1列）" Checked="ProcessVisibilityCheckBox_Changed" Unchecked="ProcessVisibilityCheckBox_Changed" />
                         </MenuItem>
                     </MenuItem>
                 </Menu>
