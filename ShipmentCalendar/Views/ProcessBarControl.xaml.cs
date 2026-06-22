@@ -10,13 +10,14 @@ public partial class ProcessBarControl : UserControl {
     // 日付バーの高さ（UpdateRowHeight で参照する）
     public const double DateBarHeight = 16;
 
-    private static readonly Brush DateBarBackgroundBrush  = CreateFrozenBrush(Color.FromRgb(220, 230, 241));
     private static readonly Brush DefaultBorderBrush      = CreateFrozenBrush(Color.FromRgb(154, 176, 204));
     private static readonly Brush OffsetBackgroundBrush   = CreateFrozenBrush(Color.FromArgb(90, 160, 160, 160));
     private static readonly Brush OffsetBorderBrush       = CreateFrozenBrush(Color.FromArgb(160, 120, 120, 120));
-    // クールタイム・外注待ちの色はApp.xamlのリソースで一元管理（凡例・リスト表示と共有）
+    // クールタイム・外注待ち・日付バーの色はApp.xamlのリソースで一元管理（凡例・リスト表示と共有）
     private static Brush DwellTimeBrush      => (Brush)Application.Current.Resources["DwellTimeBrush"];
     private static Brush OutsourceLeadBrush => (Brush)Application.Current.Resources["OutsourceLeadBrush"];
+    private static Brush DateBarBackgroundBrushA => (Brush)Application.Current.Resources["DateBarBackgroundBrushA"];
+    private static Brush DateBarBackgroundBrushB => (Brush)Application.Current.Resources["DateBarBackgroundBrushB"];
 
     private static SolidColorBrush CreateFrozenBrush(Color color) {
         var brush = new SolidColorBrush(color);
@@ -92,7 +93,7 @@ public partial class ProcessBarControl : UserControl {
         foreach (var (date, col) in businessDays.Select((d, i) => (d, i))) {
             DateBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(480, GridUnitType.Star) });
             var dateBorder = new Border {
-                Background = DateBarBackgroundBrush,
+                Background = col % 2 == 0 ? DateBarBackgroundBrushA : DateBarBackgroundBrushB,
                 BorderBrush = DefaultBorderBrush,
                 BorderThickness = new Thickness(1),
                 Child = new TextBlock {
@@ -209,7 +210,8 @@ public partial class ProcessBarControl : UserControl {
                 BorderThickness = new Thickness(0, 0, 1, 0),
                 ToolTip = $"外注待ち {process.OutsourceLeadDays}日",
             },
-            SegmentKind.PreGap or SegmentKind.PostGap => new Border(), // 外注待ち前後の空白（その日の残り時間）
+            // 外注待ち前後の空白（その日の残り時間）。背景を白にして行選択時のハイライト色が透けるのを防ぐ
+            SegmentKind.PreGap or SegmentKind.PostGap => new Border { Background = Brushes.White },
             _ => throw new ArgumentOutOfRangeException(nameof(segment), segment.Kind, "未対応の SegmentKind です"),
         };
     }

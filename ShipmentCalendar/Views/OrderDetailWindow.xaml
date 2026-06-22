@@ -5,7 +5,7 @@
     xmlns:converters="clr-namespace:ShipmentCalendar.Converters"
     xmlns:views="clr-namespace:ShipmentCalendar.Views"
     Title="注文詳細"
-    Width="980"
+    Width="1200"
     Height="700"
     WindowStartupLocation="CenterOwner">
 
@@ -174,11 +174,15 @@
                     Binding="{Binding SortOrder}"
                     Header="#" />
                 <DataGridTextColumn
-                    Width="120"
+                    Width="250"
                     Binding="{Binding ProcessName}"
                     Header="工程名" />
                 <DataGridTextColumn
-                    Width="120"
+                    Width="90"
+                    Binding="{Binding DepartmentName}"
+                    Header="担当部署" />
+                <DataGridTextColumn
+                    Width="70"
                     Binding="{Binding DestinationCode}"
                     Header="指示先番号" />
                 <DataGridTextColumn

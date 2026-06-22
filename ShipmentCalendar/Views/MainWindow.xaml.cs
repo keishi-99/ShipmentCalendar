@@ -96,8 +96,6 @@ public partial class MainWindow : Window {
             menuItem.IsChecked = isVisible;
             column.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
         }
-        MnuColProcessBar.IsChecked = _viewModel.Settings.ShowProcessBar;
-        MnuColProcessColumns.IsChecked = _viewModel.Settings.ShowProcessColumns;
         UpdateProcessModeButtonText();
         _columnVisibilityEventsEnabled = true;
     }
@@ -140,18 +138,6 @@ public partial class MainWindow : Window {
         mapping.Column.Visibility = isChecked ? Visibility.Visible : Visibility.Collapsed;
         mapping.Setter(_viewModel.Settings, isChecked);
         _viewModel.SaveSettings();
-    }
-
-    private void ProcessVisibilityCheckBox_Changed(object sender, RoutedEventArgs e) {
-        if (!_columnVisibilityEventsEnabled) return;
-
-        var settings = _viewModel.Settings;
-        settings.ShowProcessBar = MnuColProcessBar.IsChecked;
-        settings.ShowProcessColumns = MnuColProcessColumns.IsChecked;
-        _viewModel.SaveSettings();
-        _lastColumnSignature = null;
-        BuildProcessColumns();
-        UpdateProcessModeButtonText();
     }
 
     /// <summary>表示日切り替えボタンの文言を現在の設定に合わせて更新する</summary>
@@ -228,6 +214,14 @@ public partial class MainWindow : Window {
             barFactory.SetValue(ProcessBarControl.ShowRequiredTimeInMinutesProperty, settings.ShowRequiredTimeInMinutes);
             barTemplate.VisualTree = barFactory;
             barColumn.CellTemplate = barTemplate;
+            // 工程バー列はセル選択時の青いハイライトを表示しない
+            var barCellStyle = new Style(typeof(DataGridCell));
+            barCellStyle.Triggers.Add(new Trigger {
+                Property = DataGridCell.IsSelectedProperty,
+                Value = true,
+                Setters = { new Setter(Control.BackgroundProperty, Brushes.Transparent) },
+            });
+            barColumn.CellStyle = barCellStyle;
             OrderGrid.Columns.Add(barColumn);
         }
 

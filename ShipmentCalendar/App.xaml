@@ -16,5 +16,9 @@
         <!--  工程バー・凡例で共有する色定義  -->
         <SolidColorBrush x:Key="DwellTimeBrush" Color="#C8E6C9" />
         <SolidColorBrush x:Key="OutsourceLeadBrush" Color="#F8BBD0" />
+
+        <!--  日付バーのゼブラ柄背景  -->
+        <SolidColorBrush x:Key="DateBarBackgroundBrushA" Color="#FFFFFF" />
+        <SolidColorBrush x:Key="DateBarBackgroundBrushB" Color="#DCE6F1" />
     </Application.Resources>
 </Application>

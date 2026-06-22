@@ -1,24 +1,37 @@
 using ShipmentCalendar.Models;
+using ShipmentCalendar.Repositories;
 using System.Windows;
 
 namespace ShipmentCalendar.Views;
 
 public partial class OrderDetailWindow : Window {
+    private readonly Order _order;
+    private readonly bool _showRequiredTimeInMinutes;
+
     public OrderDetailWindow(Order order, bool showRequiredTimeInMinutes = false) {
         InitializeComponent();
+        _order = order;
+        _showRequiredTimeInMinutes = showRequiredTimeInMinutes;
         DataContext = order;
         DetailProcessBar.Processes = order.Processes;
         DetailProcessBar.ShowRequiredTimeInMinutes = showRequiredTimeInMinutes;
-        ProcessGrid.ItemsSource = order.Processes
+        Loaded += async (_, _) => await LoadProcessRowsAsync();
+    }
+
+    // 部署マスタをDBから取得し、工程一覧に担当部署名を付加して表示する
+    private async Task LoadProcessRowsAsync() {
+        var departmentNames = (await SqliteDepartmentRepository.GetAllAsync())
+            .ToDictionary(d => d.Id, d => d.Name);
+        ProcessGrid.ItemsSource = _order.Processes
             .OrderBy(p => p.SortOrder)
-            .Select(p => new ProcessRow(p, showRequiredTimeInMinutes))
+            .Select(p => new ProcessRow(p, _showRequiredTimeInMinutes, departmentNames.GetValueOrDefault(p.DepartmentId, "")))
             .ToList();
     }
 
     private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();
 
     // DataGrid行用のラッパー（表示用テキストを付加する）
-    private record ProcessRow(OrderProcess Process, bool ShowRequiredTimeInMinutes) {
+    private record ProcessRow(OrderProcess Process, bool ShowRequiredTimeInMinutes, string DepartmentName) {
         public int SortOrder => Process.SortOrder;
         public string ProcessName => Process.ProcessName;
         public string DestinationCode => Process.DestinationCode;
