@@ -248,15 +248,15 @@ public partial class MainViewModel : ObservableObject {
         StatusMessage = "読み込み中...";
         IsLoading = true;
 
-        const int maxRetryCount = 3;
-        const int retryIntervalSeconds = 60;
+        const int MaxRetryCount = 3;
+        const int RetryIntervalSeconds = 60;
 
         try {
             var settings = Settings;
             List<Order> orders = [];
             List<ProcessDefinition> allOdbcDefs = [];
 
-            for (var attempt = 0; attempt <= maxRetryCount; attempt++) {
+            for (var attempt = 0; attempt <= MaxRetryCount; attempt++) {
                 (orders, allOdbcDefs) = await FetchOdbcDataAsync(settings);
                 if (orders.Count > 0) break;
 
@@ -265,17 +265,17 @@ public partial class MainViewModel : ObservableObject {
                 var hasAnyRecord = await Task.Run(() => new OdbcOrderRepository(settings).HasAnySeisanKeikakuRecord());
                 if (hasAnyRecord) break;
 
-                if (attempt == maxRetryCount) {
+                if (attempt == MaxRetryCount) {
                     StatusMessage = "受注データが取得できませんでした（0件）。ERPの状態を確認してください。";
                     System.Windows.MessageBox.Show(
-                        $"受注データの取得を{maxRetryCount}回リトライしましたが、すべて0件でした。\nERPの状態を確認し、改めて再読み込みしてください。",
+                        $"受注データの取得を{MaxRetryCount}回リトライしましたが、すべて0件でした。\nERPの状態を確認し、改めて再読み込みしてください。",
                         "データ取得エラー", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
                     return;
                 }
 
-                StatusMessage = $"受注データが0件のため、{retryIntervalSeconds}秒後にリトライします（{attempt + 1}/{maxRetryCount}回目）...";
+                StatusMessage = $"受注データが0件のため、{RetryIntervalSeconds}秒後にリトライします（{attempt + 1}/{MaxRetryCount}回目）...";
                 var popup = new Views.OdbcRetryPopup { Owner = System.Windows.Application.Current.MainWindow };
-                var cancelled = await popup.ShowAndCountdownAsync(retryIntervalSeconds, attempt + 1, maxRetryCount);
+                var cancelled = await popup.ShowAndCountdownAsync(RetryIntervalSeconds, attempt + 1, MaxRetryCount);
                 if (cancelled) {
                     StatusMessage = "読み込みを中止しました。";
                     return;

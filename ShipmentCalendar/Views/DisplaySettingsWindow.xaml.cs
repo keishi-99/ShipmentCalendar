@@ -8,7 +8,7 @@ public partial class DisplaySettingsWindow : Window
 {
     private readonly MainViewModel _viewModel;
     private readonly MainWindow _mainWindow;
-    private bool _isInitializing = true;
+    private readonly bool _isInitializing = true;
     // キャンセル時に復元するための保存値
     private readonly double _savedFixedFontSize;
     private readonly double _savedProcessBarFontSize;
