@@ -209,6 +209,15 @@ public partial class MainViewModel : ObservableObject {
 
     [ObservableProperty]
     private bool _isLoading;
+    partial void OnIsLoadingChanged(bool value) => OnPropertyChanged(nameof(IsBusy));
+
+    /// <summary>並び順・工程・表示切り替え等、ローカルUI操作の処理中フラグ（ODBCからのデータ取得とは独立）</summary>
+    [ObservableProperty]
+    private bool _isUiBusy;
+    partial void OnIsUiBusyChanged(bool value) => OnPropertyChanged(nameof(IsBusy));
+
+    /// <summary>データ取得中・ローカルUI操作中のいずれかであればtrue（オーバーレイ表示用）</summary>
+    public bool IsBusy => IsLoading || IsUiBusy;
 
     [ObservableProperty]
     private AppSettings _settings;
@@ -419,13 +428,16 @@ public partial class MainViewModel : ObservableObject {
     private const int BusyIndicatorMinDisplayMilliseconds = 200;
 
     /// <summary>並び順・工程・表示の切り替え処理中はスピナーを表示し、連打を防止する。
+    /// データ取得中(IsLoading)とは独立したIsUiBusyを使うため、ODBC読み込み中でもこれらの操作は可能。
     /// 同期処理のままだとUIスレッドがブロックされてスピナーが描画されないため、開始直後に一度UIスレッドへ制御を返す。
+    /// Task.Yield()はNormal優先度で継続するため、Render優先度の描画より先に走ってしまい描画が反映されない。
+    /// Background優先度でYieldすることで、保留中の描画を確実に処理させてから次に進む。
     /// 処理が速すぎてスピナーが一瞬で消えてしまわないよう、表示時間の下限を設ける</summary>
     public async Task RunWithBusyIndicatorAsync(Action work) {
-        if (IsLoading) return;
-        IsLoading = true;
+        if (IsUiBusy) return;
+        IsUiBusy = true;
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        await Task.Yield();
+        await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.Background);
         try {
             work();
         } catch (Exception ex) {
@@ -434,7 +446,7 @@ public partial class MainViewModel : ObservableObject {
         } finally {
             var remaining = BusyIndicatorMinDisplayMilliseconds - stopwatch.ElapsedMilliseconds;
             if (remaining > 0) await Task.Delay((int)remaining);
-            IsLoading = false;
+            IsUiBusy = false;
         }
     }
 
