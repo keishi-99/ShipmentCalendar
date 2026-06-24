@@ -425,7 +425,7 @@ public partial class MainViewModel : ObservableObject {
         if (IsLoading) return;
         IsLoading = true;
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.Render);
+        await Task.Yield();
         try {
             work();
         } catch (Exception ex) {
