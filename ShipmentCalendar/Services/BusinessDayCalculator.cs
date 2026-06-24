@@ -35,9 +35,9 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
     /// 着手しないと完了できない場合）、着手必須日と完了必須日が異なる日になる。
     /// </summary>
     /// <summary>
-    /// completedByDestNumber: 完了済み指示先番号→受入日 のマッピング（指示先番号は工程ごとに一意）
+    /// completedByDestNumber: 完了済み指示先番号→（受入日, 作業者名） のマッピング（指示先番号は工程ごとに一意）
     /// </summary>
-    public List<OrderProcess> BuildProcesses(Order order, IEnumerable<ProcessDefinition> definitions, Dictionary<string, DateOnly?> completedByDestNumber) {
+    public List<OrderProcess> BuildProcesses(Order order, IEnumerable<ProcessDefinition> definitions, Dictionary<string, (DateOnly? ActualDate, string WorkerName)> completedByDestNumber) {
         var sorted = definitions.OrderBy(d => d.SortOrder).ToList();
         if (sorted.Count == 0) return [];
 
@@ -92,19 +92,20 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
             var dueDate = SubtractBusinessDays(order.CompletionDate, finishBucket[i] - 1);
             var startDate = SubtractBusinessDays(order.CompletionDate, startBucket[i] - 1);
             // 指示先番号（一意）で完了判定。指示内容（表示名）の重複の影響を受けない
-            var isCompleted = completedByDestNumber.TryGetValue(def.DestinationCode, out var actualDate);
+            var isCompleted = completedByDestNumber.TryGetValue(def.DestinationCode, out var completed);
             results.Add(new OrderProcess {
                 ProcessName = def.ProcessName,
                 DestinationCode = def.DestinationCode,
                 StartDate = startDate,
                 DueDate = dueDate,
-                ActualDate = isCompleted ? actualDate : null,
+                ActualDate = isCompleted ? completed.ActualDate : null,
                 Status = isCompleted ? ProcessStatus.Completed : ProcessStatus.NotStarted,
                 SortOrder = def.SortOrder,
                 DepartmentId = def.DepartmentId,
                 RequiredMinutes = requiredMinutes,
                 OutsourceLeadDays = def.OutsourceLeadDays,
-                DwellTimeMinutes = def.DwellTimeMinutes
+                DwellTimeMinutes = def.DwellTimeMinutes,
+                WorkerName = isCompleted ? completed.WorkerName : string.Empty
             });
         }
         return results;

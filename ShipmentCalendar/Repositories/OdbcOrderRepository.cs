@@ -63,7 +63,8 @@ public class OdbcOrderRepository(AppSettings settings) {
         conn.Open();
 
         var orders = LoadSeisanKeikaku(conn, rangeStart, rangeEnd);
-        LoadUkeireJisseki(conn, orders);
+        var userNames = LoadUserNames(conn);
+        LoadUkeireJisseki(conn, orders, userNames);
 
         return orders.Values;
     }
@@ -117,7 +118,7 @@ public class OdbcOrderRepository(AppSettings settings) {
     }
 
     /// <summary>受入実績ビューから完了工程を取得して注文に仮登録する（製番リストを1000件ずつバッチ処理）</summary>
-    private static void LoadUkeireJisseki(OdbcConnection conn, Dictionary<string, Order> orders) {
+    private static void LoadUkeireJisseki(OdbcConnection conn, Dictionary<string, Order> orders, Dictionary<string, string> userNames) {
         if (orders.Count == 0) return;
 
         var keys = orders.Keys.ToList();
@@ -128,7 +129,7 @@ public class OdbcOrderRepository(AppSettings settings) {
             var seibanList = string.Join(",", batchKeys.Select(s => $"'{s.Replace("'", "''")}'"));
 
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = $@"SELECT 製番, 指示先番号, 受入日 FROM VP_受入実績情報_YD
+            cmd.CommandText = $@"SELECT 製番, 指示先番号, 受入日, 手配担当者 FROM VP_受入実績情報_YD
                 WHERE 製番 IN ({seibanList})
                   AND 指示先番号 IS NOT NULL
                   AND 指示先番号 <> '< NULL >'";
@@ -142,15 +143,34 @@ public class OdbcOrderRepository(AppSettings settings) {
 
                 // 完了工程を仮登録（ProcessName = 指示先番号。BuildProcessesで変換される）
                 if (!order.Processes.Any(p => p.ProcessName == processCode)) {
+                    var workerId = reader["手配担当者"]?.ToString()?.Trim() ?? string.Empty;
                     order.Processes.Add(new OrderProcess {
                         ProcessName = processCode,
                         DestinationCode = processCode,
                         Status = ProcessStatus.Completed,
-                        ActualDate = ToDateOnly(reader["受入日"])
+                        ActualDate = ToDateOnly(reader["受入日"]),
+                        WorkerName = userNames.GetValueOrDefault(workerId, "")
                     });
                 }
             }
         }
+    }
+
+    /// <summary>ユーザ情報ビューからユーザID→担当者名の辞書を取得する</summary>
+    private static Dictionary<string, string> LoadUserNames(OdbcConnection conn) {
+        var userNames = new Dictionary<string, string>();
+
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT ユーザID, 担当者名 FROM VP_ユーザ情報_YD";
+
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read()) {
+            var userId = reader["ユーザID"]?.ToString()?.Trim() ?? string.Empty;
+            if (string.IsNullOrEmpty(userId)) continue;
+            userNames[userId] = reader["担当者名"]?.ToString()?.Trim() ?? string.Empty;
+        }
+
+        return userNames;
     }
 
     private static DateOnly? ToDateOnly(object? value) {

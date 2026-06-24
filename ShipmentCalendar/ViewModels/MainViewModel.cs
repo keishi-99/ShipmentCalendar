@@ -333,11 +333,11 @@ public partial class MainViewModel : ObservableObject {
                 if (productDefs.Count == 0)
                     continue;
 
-                // 仮登録した完了済み指示先番号→受入日のマッピング（指示先番号は工程ごとに一意。重複は先着優先）
+                // 仮登録した完了済み指示先番号→受入日・作業者名のマッピング（指示先番号は工程ごとに一意。重複は先着優先）
                 var completedByDestNumber = order.Processes
                     .Where(p => p.Status == ProcessStatus.Completed)
                     .GroupBy(p => p.DestinationCode, StringComparer.OrdinalIgnoreCase)
-                    .ToDictionary(g => g.Key, g => g.First().ActualDate, StringComparer.OrdinalIgnoreCase);
+                    .ToDictionary(g => g.Key, g => (g.First().ActualDate, g.First().WorkerName), StringComparer.OrdinalIgnoreCase);
 
                 order.Processes = calculator.BuildProcesses(order, productDefs.Where(d => d.IsVisible), completedByDestNumber);
 
@@ -408,10 +408,31 @@ public partial class MainViewModel : ObservableObject {
     }
 
     /// <summary>注文一覧の並び順（出荷日順/工程期限順）を切り替える</summary>
-    public void ToggleSortMode() {
-        Settings.SortByProcessDeadline = !Settings.SortByProcessDeadline;
-        SaveSettings();
-        ApplyFilter();
+    public async Task ToggleSortModeAsync() {
+        await RunWithBusyIndicatorAsync(() => {
+            Settings.SortByProcessDeadline = !Settings.SortByProcessDeadline;
+            SaveSettings();
+            ApplyFilter();
+        });
+    }
+
+    private const int BusyIndicatorMinDisplayMilliseconds = 200;
+
+    /// <summary>並び順・工程・表示の切り替え処理中はスピナーを表示し、連打を防止する。
+    /// 同期処理のままだとUIスレッドがブロックされてスピナーが描画されないため、開始直後に一度UIスレッドへ制御を返す。
+    /// 処理が速すぎてスピナーが一瞬で消えてしまわないよう、表示時間の下限を設ける</summary>
+    public async Task RunWithBusyIndicatorAsync(Action work) {
+        if (IsLoading) return;
+        IsLoading = true;
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.Render);
+        try {
+            work();
+        } finally {
+            var remaining = BusyIndicatorMinDisplayMilliseconds - stopwatch.ElapsedMilliseconds;
+            if (remaining > 0) await Task.Delay((int)remaining);
+            IsLoading = false;
+        }
     }
 
     public void SaveSettings() {

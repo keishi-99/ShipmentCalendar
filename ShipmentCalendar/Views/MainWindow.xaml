@@ -73,7 +73,8 @@
                     BorderThickness="0"
                     Click="BtnToggleSortMode_Click"
                     FontSize="14"
-                    Foreground="White" />
+                    Foreground="White"
+                    IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBool}}" />
                 <!--  未完了工程の表示日切り替え（クリックで着手必須日/完了必須日を切り替え）  -->
                 <Button
                     Name="BtnToggleDueDateDisplay"
@@ -82,7 +83,8 @@
                     BorderThickness="0"
                     Click="BtnToggleDueDateDisplay_Click"
                     FontSize="14"
-                    Foreground="White" />
+                    Foreground="White"
+                    IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBool}}" />
                 <!--  工程表示モード切り替え（バー/リスト）  -->
                 <Button
                     Name="BtnToggleProcessMode"
@@ -91,7 +93,8 @@
                     BorderThickness="0"
                     Click="BtnToggleProcessMode_Click"
                     FontSize="14"
-                    Foreground="White" />
+                    Foreground="White"
+                    IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBool}}" />
                 <Separator />
                 <!--  クイックフィルター（超過・警告・今日対応）  -->
                 <ToggleButton

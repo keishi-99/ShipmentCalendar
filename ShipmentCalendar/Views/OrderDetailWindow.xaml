@@ -5,7 +5,7 @@
     xmlns:converters="clr-namespace:ShipmentCalendar.Converters"
     xmlns:views="clr-namespace:ShipmentCalendar.Views"
     Title="注文詳細"
-    Width="1200"
+    Width="1300"
     Height="700"
     WindowStartupLocation="CenterOwner">
 
@@ -197,6 +197,10 @@
                     Width="90"
                     Binding="{Binding ActualDate, StringFormat=yyyy/MM/dd}"
                     Header="実完了日" />
+                <DataGridTextColumn
+                    Width="90"
+                    Binding="{Binding WorkerName}"
+                    Header="担当者" />
                 <DataGridTemplateColumn Width="70" Header="ステータス">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
