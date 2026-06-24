@@ -428,6 +428,9 @@ public partial class MainViewModel : ObservableObject {
         await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.Render);
         try {
             work();
+        } catch (Exception ex) {
+            System.Windows.MessageBox.Show($"処理中にエラーが発生しました：{ex.Message}", "エラー",
+                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
         } finally {
             var remaining = BusyIndicatorMinDisplayMilliseconds - stopwatch.ElapsedMilliseconds;
             if (remaining > 0) await Task.Delay((int)remaining);
