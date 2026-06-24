@@ -13,6 +13,8 @@ public class OrderProcess
     public DateOnly DueDate { get; set; }
     /// <summary>実際の完了日（受入実績の受入日）。完了工程のみセット</summary>
     public DateOnly? ActualDate { get; set; }
+    /// <summary>この工程の作業者名（VP_ユーザ情報_YDから解決）。完了工程のみセット</summary>
+    public string WorkerName { get; set; } = string.Empty;
     public ProcessStatus Status { get; set; } = ProcessStatus.NotStarted;
     public int SortOrder { get; set; }
     /// <summary>担当部署ID（ProcessDefinitionから引き継ぐ）</summary>

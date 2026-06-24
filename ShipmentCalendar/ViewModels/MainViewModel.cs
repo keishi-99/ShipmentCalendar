@@ -333,11 +333,11 @@ public partial class MainViewModel : ObservableObject {
                 if (productDefs.Count == 0)
                     continue;
 
-                // 仮登録した完了済み指示先番号→受入日のマッピング（指示先番号は工程ごとに一意。重複は先着優先）
+                // 仮登録した完了済み指示先番号→受入日・作業者名のマッピング（指示先番号は工程ごとに一意。重複は先着優先）
                 var completedByDestNumber = order.Processes
                     .Where(p => p.Status == ProcessStatus.Completed)
                     .GroupBy(p => p.DestinationCode, StringComparer.OrdinalIgnoreCase)
-                    .ToDictionary(g => g.Key, g => g.First().ActualDate, StringComparer.OrdinalIgnoreCase);
+                    .ToDictionary(g => g.Key, g => (g.First().ActualDate, g.First().WorkerName), StringComparer.OrdinalIgnoreCase);
 
                 order.Processes = calculator.BuildProcesses(order, productDefs.Where(d => d.IsVisible), completedByDestNumber);
 

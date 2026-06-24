@@ -44,6 +44,7 @@ public partial class OrderDetailWindow : Window {
         public DateOnly StartDate => Process.StartDate;
         public DateOnly DueDate => Process.DueDate;
         public DateOnly? ActualDate => Process.ActualDate;
+        public string WorkerName => Process.WorkerName;
         public ProcessStatus Status => Process.Status;
         public string RequiredHoursText => Process.GetRequiredTimeDescription(ShowRequiredTimeInMinutes);
         public string OutsourceLeadDaysText => Process.OutsourceLeadDays > 0
