@@ -100,22 +100,20 @@ public partial class MainWindow : Window {
         _columnVisibilityEventsEnabled = true;
     }
 
-    private async void BtnToggleProcessMode_Click(object sender, RoutedEventArgs e) {
-        await _viewModel.RunWithBusyIndicatorAsync(() => {
-            var settings = _viewModel.Settings;
-            // バー→セル→バー の順でトグル
-            if (settings.ShowProcessBar && !settings.ShowProcessColumns) {
-                settings.ShowProcessBar = false;
-                settings.ShowProcessColumns = true;
-            } else {
-                settings.ShowProcessBar = true;
-                settings.ShowProcessColumns = false;
-            }
-            _viewModel.SaveSettings();
-            UpdateProcessModeButtonText();
-            _lastColumnSignature = null;
-            BuildProcessColumns();
-        });
+    private void BtnToggleProcessMode_Click(object sender, RoutedEventArgs e) {
+        var settings = _viewModel.Settings;
+        // バー→セル→バー の順でトグル
+        if (settings.ShowProcessBar && !settings.ShowProcessColumns) {
+            settings.ShowProcessBar = false;
+            settings.ShowProcessColumns = true;
+        } else {
+            settings.ShowProcessBar = true;
+            settings.ShowProcessColumns = false;
+        }
+        _viewModel.SaveSettings();
+        UpdateProcessModeButtonText();
+        _lastColumnSignature = null;
+        BuildProcessColumns();
     }
 
     /// <summary>工程表示モードボタンの文言を現在の設定に合わせて更新する</summary>
@@ -156,17 +154,15 @@ public partial class MainWindow : Window {
             : "並び順：出荷日";
     }
 
-    private async void BtnToggleDueDateDisplay_Click(object sender, RoutedEventArgs e) {
-        await _viewModel.RunWithBusyIndicatorAsync(() => {
-            _viewModel.Settings.ShowDueDateForNotStarted = !_viewModel.Settings.ShowDueDateForNotStarted;
-            UpdateDueDateDisplayButtonText();
-            _viewModel.SaveSettings();
-            _viewModel.ApplyFilter();
-        });
+    private void BtnToggleDueDateDisplay_Click(object sender, RoutedEventArgs e) {
+        _viewModel.Settings.ShowDueDateForNotStarted = !_viewModel.Settings.ShowDueDateForNotStarted;
+        UpdateDueDateDisplayButtonText();
+        _viewModel.SaveSettings();
+        _viewModel.ApplyFilter();
     }
 
-    private async void BtnToggleSortMode_Click(object sender, RoutedEventArgs e) {
-        await _viewModel.ToggleSortModeAsync();
+    private void BtnToggleSortMode_Click(object sender, RoutedEventArgs e) {
+        _viewModel.ToggleSortMode();
         UpdateSortModeButtonText();
     }
 
