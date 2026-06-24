@@ -128,7 +128,7 @@ public class OdbcOrderRepository(AppSettings settings) {
             var seibanList = string.Join(",", batchKeys.Select(s => $"'{s.Replace("'", "''")}'"));
 
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = $@"SELECT t1.製番, t1.指示先番号, t1.受入日, t2.担当者名
+            cmd.CommandText = $@"SELECT t1.製番 AS 製番, t1.指示先番号 AS 指示先番号, t1.受入日 AS 受入日, t2.担当者名 AS 担当者名
                 FROM VP_受入実績情報_YD t1
                 LEFT JOIN VP_ユーザ情報_YD t2 ON t1.手配担当者 = t2.ユーザID
                 WHERE t1.製番 IN ({seibanList})
