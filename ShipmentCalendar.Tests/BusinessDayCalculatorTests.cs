@@ -136,4 +136,63 @@ public class BusinessDayCalculatorTests
         var expectedADay = calculator.SubtractBusinessDays(order.CompletionDate, 5);
         Assert.Equal(expectedADay, a.DueDate);
     }
+
+    /// <summary>
+    /// PlannedQuantityが1より大きい場合、LeadTimeMinutes×数量で実際の所要時間が決まる。
+    /// 数量倍率を反映した所要時間でも、外注待ちゲートとの繰り越し計算が正しく動くことを確認する
+    /// （単価30分×10個=300分のAと外注待ちのBの組み合わせは、単一テストの300分のAと同じ結果になるはず）。
+    /// </summary>
+    [Fact]
+    public void BuildProcesses_PlannedQuantityGreaterThanOne_ShouldScaleMinutesBeforeGateCalculation() {
+        var calculator = new BusinessDayCalculator(holidays: []);
+        var order = MakeOrder(new DateOnly(2026, 6, 30), plannedQuantity: 10);
+
+        var defs = new[] {
+            Def(sortOrder: 1, setupMinutes: 30, destCode: "A"),  // ×10個=300分
+            Def(sortOrder: 2, setupMinutes: 20, destCode: "B", outsourceLeadDays: 2), // ×10個=200分
+            Def(sortOrder: 3, setupMinutes: 10, destCode: "C"),  // ×10個=100分
+        };
+
+        var processes = calculator.BuildProcesses(order, defs, completedByDestNumber: []);
+        var a = processes.Single(p => p.DestinationCode == "A");
+        var b = processes.Single(p => p.DestinationCode == "B");
+
+        var expectedBDay = calculator.SubtractBusinessDays(order.CompletionDate, 3);
+        Assert.Equal(expectedBDay, b.DueDate);
+
+        // AはBと同じ日に完了でき、着手はその1営業日前
+        Assert.Equal(expectedBDay, a.DueDate);
+        Assert.Equal(calculator.SubtractBusinessDays(order.CompletionDate, 4), a.StartDate);
+    }
+
+    /// <summary>
+    /// 外注待ちがなくても、滞留時間(DwellTimeMinutes)が480分を超えると単独で営業日を
+    /// またいで繰り越されることを確認する。
+    /// </summary>
+    [Fact]
+    public void BuildProcesses_DwellTimeOnly_ShouldCarryOverBusinessDayWithoutOutsource() {
+        var calculator = new BusinessDayCalculator(holidays: []);
+        var order = MakeOrder(new DateOnly(2026, 6, 30));
+
+        var defs = new[] {
+            Def(sortOrder: 1, setupMinutes: 30, destCode: "A"),
+            Def(sortOrder: 2, setupMinutes: 50, destCode: "B", dwellMinutes: 600), // 滞留600分
+            Def(sortOrder: 3, setupMinutes: 100, destCode: "C"),
+        };
+
+        var processes = calculator.BuildProcesses(order, defs, completedByDestNumber: []);
+        var a = processes.Single(p => p.DestinationCode == "A");
+        var b = processes.Single(p => p.DestinationCode == "B");
+        var c = processes.Single(p => p.DestinationCode == "C");
+
+        // Cは完了日当日（100分のみ）
+        Assert.Equal(order.CompletionDate, c.DueDate);
+
+        // Bは滞留600分が加わることで、Cと同じ日には収まらず1営業日前に繰り越る
+        var expectedBDay = calculator.SubtractBusinessDays(order.CompletionDate, 1);
+        Assert.Equal(expectedBDay, b.DueDate);
+
+        // AはBと同じ日に収まる（Bの所要時間+滞留時間がまだ480分の枠に余裕を残すため）
+        Assert.Equal(expectedBDay, a.DueDate);
+    }
 }
