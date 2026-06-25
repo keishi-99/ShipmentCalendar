@@ -108,52 +108,46 @@ public partial class ProcessBarControl : UserControl {
             DateBarGrid.Children.Add(dateBorder);
         }
 
-        // 工程バー: 全工程を分単位のフラットタイムラインとして連続配置する
+        // 工程バー: 全工程を分単位のフラットタイムラインとして配置する。
         // 日付バーと同じ総スター幅（営業日数×480）を使うため、日付との整合が保たれる
         var totalDayMinutes = businessDays.Count * 480.0;
 
-        // セグメント（工程・クールタイム・外注待ち前のギャップ・外注待ち）を1回の走査で構築する。
-        // 外注待ちの開始位置は pre-gap で日付境界に揃うが、終了位置は外注待ち後に続く
-        // 工程の幅次第でずれるため、後ろから走査して post-gap を挿入し後続全体を480の倍数に揃える
-        var rawSegments = new List<Segment>();
+        // BusinessDayCalculator.BuildProcessesと同じ考え方で、末尾工程から逆向きに積み上げる。
+        // 外注待ちのゲート（待機日数分の空白）は日付境界に固定し、工程自身の所要時間は
+        // 分単位で正確に積むことで、外注待ち直前の工程がその日の終わりにぴったり収まる
+        var segments = new List<Segment>();
         double pos = 0;
-        foreach (var process in Processes) {
-            var procWidth = Math.Max(1, process.RequiredMinutes);
-            rawSegments.Add(new Segment(SegmentKind.Process, procWidth, process));
-            pos += procWidth;
+        double cumulativeRunningTime = 0;
+        foreach (var process in Processes.AsEnumerable().Reverse()) {
+            if (process.OutsourceLeadDays > 0) {
+                var daysSoFar = (int)(cumulativeRunningTime / 480.0) + 1;
+                var gate = (daysSoFar + process.OutsourceLeadDays) * 480.0;
+
+                var preGap = GetDistanceToNextBoundary(pos);
+                if (preGap >= 1) {
+                    segments.Add(new Segment(SegmentKind.PreGap, preGap, process));
+                    pos += preGap;
+                }
+                var outsourceMinutes = gate - pos;
+                if (outsourceMinutes >= 1) {
+                    segments.Add(new Segment(SegmentKind.Outsource, outsourceMinutes, process));
+                    pos += outsourceMinutes;
+                }
+            }
 
             if (process.DwellTimeMinutes >= 1) {
-                rawSegments.Add(new Segment(SegmentKind.DwellTime, process.DwellTimeMinutes, process));
+                segments.Add(new Segment(SegmentKind.DwellTime, process.DwellTimeMinutes, process));
                 pos += process.DwellTimeMinutes;
             }
 
-            if (process.OutsourceLeadDays > 0) {
-                var preGap = GetDistanceToNextBoundary(pos);
-                if (preGap >= 1) {
-                    rawSegments.Add(new Segment(SegmentKind.PreGap, preGap, process));
-                    pos += preGap;
-                }
-                var outsourceMinutes = process.OutsourceLeadDays * 480.0;
-                rawSegments.Add(new Segment(SegmentKind.Outsource, outsourceMinutes, process));
-                pos += outsourceMinutes;
-            }
-        }
+            var procWidth = Math.Max(1, process.RequiredMinutes);
+            segments.Add(new Segment(SegmentKind.Process, procWidth, process));
+            pos += procWidth;
 
-        var segments = new List<Segment>();
-        double trailingWidth = 0;
-        for (int i = rawSegments.Count - 1; i >= 0; i--) {
-            var seg = rawSegments[i];
-            if (seg.Kind == SegmentKind.Outsource) {
-                var postGap = GetDistanceToNextBoundary(trailingWidth);
-                if (postGap >= 1) {
-                    segments.Insert(0, new Segment(SegmentKind.PostGap, postGap, seg.Process));
-                    trailingWidth += postGap;
-                }
-            }
-            segments.Insert(0, seg);
-            trailingWidth += seg.Width;
+            cumulativeRunningTime += process.RequiredMinutes + process.OutsourceLeadDays * 480.0 + process.DwellTimeMinutes;
         }
-        var initialOffset = Math.Max(0, totalDayMinutes - trailingWidth);
+        segments.Reverse();
+        var initialOffset = Math.Max(0, totalDayMinutes - pos);
 
         int barCol = 0;
 
@@ -210,7 +204,7 @@ public partial class ProcessBarControl : UserControl {
                 BorderThickness = new Thickness(0, 0, 1, 0),
                 ToolTip = $"外注待ち {process.OutsourceLeadDays}日",
             },
-            SegmentKind.PreGap or SegmentKind.PostGap => new Border(), // 外注待ち前後の空白（その日の残り時間）
+            SegmentKind.PreGap => new Border(), // 外注待ち前の空白（その日の残り時間）
             _ => throw new ArgumentOutOfRangeException(nameof(segment), segment.Kind, "未対応の SegmentKind です"),
         };
     }
@@ -223,7 +217,7 @@ public partial class ProcessBarControl : UserControl {
         return 480.0 - remainder;
     }
 
-    private enum SegmentKind { Process, DwellTime, PreGap, Outsource, PostGap }
+    private enum SegmentKind { Process, DwellTime, PreGap, Outsource }
 
     private readonly record struct Segment(SegmentKind Kind, double Width, OrderProcess Process);
 }

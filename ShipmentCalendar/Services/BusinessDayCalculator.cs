@@ -51,35 +51,29 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
             var def = sorted[i];
             double minutes = def.LeadTimeMinutes * order.PlannedQuantity;
             double adjusted = runningIn;
-            bool spansBoundary = false;
 
             // 外注リードタイム（数量に依存しない営業日単位の待機）。
-            // この工程の後にOutsourceLeadDays日分の空白が入るため、その分だけ前倒しで締め切る
+            // この工程の後にOutsourceLeadDays営業日分の空白（待機専用の日）が入るため、
+            // その日数分だけ完了必須日を前倒しする。待機ゲート自体は日単位で固定する
+            // （外注の出荷・受け取りは営業日単位で発生するため）。
             if (def.OutsourceLeadDays > 0) {
                 var daysSoFar = (int)(cumulativeRunningTime / 480.0) + 1;
                 adjusted = (daysSoFar + def.OutsourceLeadDays) * 480.0;
-                spansBoundary = true;
             }
 
             // 滞留時間（数量に依存しない固定の待機時間）。外注リードタイムや末尾工程など
             // どのケースでも、adjustedの基準値に上乗せする。
-            // 480分を超える分は、後段のceil計算により自動的に前営業日以前へ繰り越される
+            // 480分を超える分は、後段の計算により自動的に前営業日以前へ繰り越される
             if (def.DwellTimeMinutes > 0) {
                 adjusted += def.DwellTimeMinutes;
             }
 
-            if (spansBoundary) {
-                // 外注待ち・480分超の工程は前後の工程と日をまたいで共有しないため、
-                // 完了必須バケットは「後続工程群のバケットの次」から始まる
-                finishBucket[i] = (int)Math.Ceiling(adjusted / 480.0) + 1;
-                startBucket[i] = Math.Max(finishBucket[i], (int)Math.Ceiling(adjusted / 480.0) + (int)Math.Ceiling(minutes / 480.0));
-                runningIn = startBucket[i] * 480.0;
-            }
-            else {
-                finishBucket[i] = (int)(adjusted / 480.0) + 1;
-                runningIn = adjusted + minutes;
-                startBucket[i] = (int)((runningIn - 1) / 480.0) + 1;
-            }
+            // ゲート（待機日数分の空白）自体は共有させないが、工程自身の所要時間は
+            // 分単位で正確に積む。所要時間が480分未満で余りがある場合、その余りは
+            // 前工程（より着手が早い工程）が同じ日の枠として使えるようにする
+            finishBucket[i] = (int)(adjusted / 480.0) + 1;
+            runningIn = adjusted + minutes;
+            startBucket[i] = (int)((runningIn - 1) / 480.0) + 1;
 
             cumulativeRunningTime += minutes + (def.OutsourceLeadDays * 480.0) + def.DwellTimeMinutes;
         }
