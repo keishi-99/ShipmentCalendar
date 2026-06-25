@@ -44,7 +44,6 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
         // 末尾工程から逆向きに、完了日から数えた日チャンク番号
         // （1=完了日当日、2=その前営業日…）で着手・完了それぞれの必須バケットを求める
         double runningIn = 0;
-        double cumulativeRunningTime = 0;
         var startBucket = new int[sorted.Count];
         var finishBucket = new int[sorted.Count];
         for (int i = sorted.Count - 1; i >= 0; i--) {
@@ -56,8 +55,11 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
             // この工程の後にOutsourceLeadDays営業日分の空白（待機専用の日）が入るため、
             // その日数分だけ完了必須日を前倒しする。待機ゲート自体は日単位で固定する
             // （外注の出荷・受け取りは営業日単位で発生するため）。
+            // daysSoFarはrunningIn（後続工程が実際に消費した位置）を基準にする。
+            // 外注待ちが複数回連続する場合、前回の待機による丸め分（繰り越し）も
+            // ここに含まれている必要があるため、素の合計時間ではなくrunningInを使う
             if (def.OutsourceLeadDays > 0) {
-                var daysSoFar = (int)(cumulativeRunningTime / 480.0) + 1;
+                var daysSoFar = (int)(adjusted / 480.0) + 1;
                 adjusted = (daysSoFar + def.OutsourceLeadDays) * 480.0;
             }
 
@@ -74,8 +76,6 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
             finishBucket[i] = (int)(adjusted / 480.0) + 1;
             runningIn = adjusted + minutes;
             startBucket[i] = (int)((runningIn - 1) / 480.0) + 1;
-
-            cumulativeRunningTime += minutes + (def.OutsourceLeadDays * 480.0) + def.DwellTimeMinutes;
         }
 
         // 各工程の必須日 = 完了日 - (バケット番号 - 1) 営業日（バケット1=完了日当日）

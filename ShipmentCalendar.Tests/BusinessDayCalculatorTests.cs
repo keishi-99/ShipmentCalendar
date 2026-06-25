@@ -80,4 +80,37 @@ public class BusinessDayCalculatorTests
         Assert.Equal(order.CompletionDate, a.DueDate);
         Assert.Equal(calculator.SubtractBusinessDays(order.CompletionDate, 1), a.StartDate);
     }
+
+    /// <summary>
+    /// 外注待ちが2回連続する場合、2回目（より上流側）の外注ゲートは、1回目の外注待ちで
+    /// 生じた丸め分の繰り越しも引き継いだ上で計算されなければならない。
+    /// 引き継ぎが正しければ、Aの完了日とBの着手日の間にAの外注待ち日数(2営業日)分の
+    /// 空白がそのまま現れる。
+    /// </summary>
+    [Fact]
+    public void BuildProcesses_TwoConsecutiveOutsourceWaits_ShouldCarryOverRoundingToEarlierGate() {
+        var calculator = new BusinessDayCalculator(holidays: []);
+        var order = MakeOrder(new DateOnly(2026, 6, 30));
+
+        var defs = new[] {
+            Def(sortOrder: 1, setupMinutes: 30, destCode: "A", outsourceLeadDays: 2),
+            Def(sortOrder: 2, setupMinutes: 50, destCode: "B", outsourceLeadDays: 2),
+            Def(sortOrder: 3, setupMinutes: 100, destCode: "C"),
+        };
+
+        var processes = calculator.BuildProcesses(order, defs, completedByDestNumber: []);
+        var a = processes.Single(p => p.DestinationCode == "A");
+        var b = processes.Single(p => p.DestinationCode == "B");
+
+        // B: Cの100分が1日に丸められた後、外注待ち2日分前倒しされ、3営業日前の1日に収まる
+        var expectedBDay = calculator.SubtractBusinessDays(order.CompletionDate, 3);
+        Assert.Equal(expectedBDay, b.DueDate);
+        Assert.Equal(expectedBDay, b.StartDate);
+
+        // A: Bのゲート(1490分=3営業日強)を丸めた後、さらに外注待ち2日分前倒しされ、
+        // 6営業日前の1日に収まる（Bとの間に丸めた2営業日分の空白が生じる）
+        var expectedADay = calculator.SubtractBusinessDays(order.CompletionDate, 6);
+        Assert.Equal(expectedADay, a.DueDate);
+        Assert.Equal(expectedADay, a.StartDate);
+    }
 }
