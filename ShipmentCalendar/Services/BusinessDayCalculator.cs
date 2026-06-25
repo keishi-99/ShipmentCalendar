@@ -60,7 +60,9 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
             // ここに含まれている必要があるため、素の合計時間ではなくrunningInを使う
             if (def.OutsourceLeadDays > 0) {
                 // adjustedがちょうど480の倍数（例: 1440）の場合、floor+1だと1日多く繰り上がってしまう
-                // （1440分=3日ぴったり消費なのに4日と判定される）ため、Ceilingで判定する
+                // （1440分=3日ぴったり消費なのに4日と判定される）ため、Ceilingで判定する。
+                // adjusted=0（末尾工程自体が外注待ちで、後続が何も消費していない）の場合は
+                // Ceiling(0/480)=0となってしまうため、1日目として扱うために1に補正する
                 var daysSoFar = adjusted > 0 ? (int)Math.Ceiling(adjusted / 480.0) : 1;
                 adjusted = (daysSoFar + def.OutsourceLeadDays) * 480.0;
             }

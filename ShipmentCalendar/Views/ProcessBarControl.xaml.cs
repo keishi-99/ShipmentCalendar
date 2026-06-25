@@ -123,7 +123,8 @@ public partial class ProcessBarControl : UserControl {
                 // daysSoFarはpos（後続工程が実際に消費した位置）を基準にする。外注待ちが
                 // 複数回連続する場合、前回の待機による丸め分（繰り越し）も含める必要がある。
                 // posがちょうど480の倍数の場合、floor+1だと1日多く繰り上がってしまうため
-                // Ceilingで判定する
+                // Ceilingで判定する。pos=0（末尾工程自体が外注待ち）の場合はCeiling(0/480)=0
+                // となってしまうため、1日目として扱うために1に補正する
                 var daysSoFar = pos > 0 ? (int)Math.Ceiling(pos / 480.0) : 1;
                 var gate = (daysSoFar + process.OutsourceLeadDays) * 480.0;
 
@@ -214,14 +215,6 @@ public partial class ProcessBarControl : UserControl {
             SegmentKind.PreGap => new Border(), // 外注待ち前の空白（その日の残り時間）
             _ => throw new ArgumentOutOfRangeException(nameof(segment), segment.Kind, "未対応の SegmentKind です"),
         };
-    }
-
-    // 浮動小数点誤差（例: 960.0000000000001 % 480 ≈ 0 にならない）を許容しつつ
-    // 現在位置から次の480分境界までの距離を返す。境界上にある場合は 0 を返す
-    private static double GetDistanceToNextBoundary(double position) {
-        var remainder = position % 480.0;
-        if (remainder < 0.001 || remainder > 479.999) return 0;
-        return 480.0 - remainder;
     }
 
     private enum SegmentKind { Process, DwellTime, PreGap, Outsource }
