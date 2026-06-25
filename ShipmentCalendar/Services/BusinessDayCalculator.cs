@@ -44,44 +44,42 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
         // 末尾工程から逆向きに、完了日から数えた日チャンク番号
         // （1=完了日当日、2=その前営業日…）で着手・完了それぞれの必須バケットを求める
         double runningIn = 0;
-        double cumulativeRunningTime = 0;
         var startBucket = new int[sorted.Count];
         var finishBucket = new int[sorted.Count];
         for (int i = sorted.Count - 1; i >= 0; i--) {
             var def = sorted[i];
             double minutes = def.LeadTimeMinutes * order.PlannedQuantity;
             double adjusted = runningIn;
-            bool spansBoundary = false;
 
             // 外注リードタイム（数量に依存しない営業日単位の待機）。
-            // この工程の後にOutsourceLeadDays日分の空白が入るため、その分だけ前倒しで締め切る
+            // この工程の後にOutsourceLeadDays営業日分の空白（待機専用の日）が入るため、
+            // その日数分だけ完了必須日を前倒しする。待機ゲート自体は日単位で固定する
+            // （外注の出荷・受け取りは営業日単位で発生するため）。
+            // daysSoFarはrunningIn（後続工程が実際に消費した位置）を基準にする。
+            // 外注待ちが複数回連続する場合、前回の待機による丸め分（繰り越し）も
+            // ここに含まれている必要があるため、素の合計時間ではなくrunningInを使う
             if (def.OutsourceLeadDays > 0) {
-                var daysSoFar = (int)(cumulativeRunningTime / 480.0) + 1;
+                // adjustedがちょうど480の倍数（例: 1440）の場合、floor+1だと1日多く繰り上がってしまう
+                // （1440分=3日ぴったり消費なのに4日と判定される）ため、Ceilingで判定する。
+                // adjusted=0（末尾工程自体が外注待ちで、後続が何も消費していない）の場合は
+                // Ceiling(0/480)=0となってしまうため、1日目として扱うために1に補正する
+                var daysSoFar = adjusted > 0 ? (int)Math.Ceiling(adjusted / 480.0) : 1;
                 adjusted = (daysSoFar + def.OutsourceLeadDays) * 480.0;
-                spansBoundary = true;
             }
 
             // 滞留時間（数量に依存しない固定の待機時間）。外注リードタイムや末尾工程など
             // どのケースでも、adjustedの基準値に上乗せする。
-            // 480分を超える分は、後段のceil計算により自動的に前営業日以前へ繰り越される
+            // 480分を超える分は、後段の計算により自動的に前営業日以前へ繰り越される
             if (def.DwellTimeMinutes > 0) {
                 adjusted += def.DwellTimeMinutes;
             }
 
-            if (spansBoundary) {
-                // 外注待ち・480分超の工程は前後の工程と日をまたいで共有しないため、
-                // 完了必須バケットは「後続工程群のバケットの次」から始まる
-                finishBucket[i] = (int)Math.Ceiling(adjusted / 480.0) + 1;
-                startBucket[i] = Math.Max(finishBucket[i], (int)Math.Ceiling(adjusted / 480.0) + (int)Math.Ceiling(minutes / 480.0));
-                runningIn = startBucket[i] * 480.0;
-            }
-            else {
-                finishBucket[i] = (int)(adjusted / 480.0) + 1;
-                runningIn = adjusted + minutes;
-                startBucket[i] = (int)((runningIn - 1) / 480.0) + 1;
-            }
-
-            cumulativeRunningTime += minutes + (def.OutsourceLeadDays * 480.0) + def.DwellTimeMinutes;
+            // ゲート（待機日数分の空白）自体は共有させないが、工程自身の所要時間は
+            // 分単位で正確に積む。所要時間が480分未満で余りがある場合、その余りは
+            // 前工程（より着手が早い工程）が同じ日の枠として使えるようにする
+            finishBucket[i] = (int)(adjusted / 480.0) + 1;
+            runningIn = adjusted + minutes;
+            startBucket[i] = (int)((runningIn - 1) / 480.0) + 1;
         }
 
         // 各工程の必須日 = 完了日 - (バケット番号 - 1) 営業日（バケット1=完了日当日）
