@@ -117,11 +117,14 @@ public partial class ProcessBarControl : UserControl {
         // 分単位で正確に積むことで、外注待ち直前の工程がその日の終わりにぴったり収まる
         var segments = new List<Segment>();
         double pos = 0;
-        foreach (var process in Processes.AsEnumerable().Reverse()) {
+        for (int i = Processes.Count - 1; i >= 0; i--) {
+            var process = Processes[i];
             if (process.OutsourceLeadDays > 0) {
                 // daysSoFarはpos（後続工程が実際に消費した位置）を基準にする。外注待ちが
-                // 複数回連続する場合、前回の待機による丸め分（繰り越し）も含める必要がある
-                var daysSoFar = (int)(pos / 480.0) + 1;
+                // 複数回連続する場合、前回の待機による丸め分（繰り越し）も含める必要がある。
+                // posがちょうど480の倍数の場合、floor+1だと1日多く繰り上がってしまうため
+                // Ceilingで判定する
+                var daysSoFar = pos > 0 ? (int)Math.Ceiling(pos / 480.0) : 1;
                 var gate = (daysSoFar + process.OutsourceLeadDays) * 480.0;
 
                 // 外注待ちが連続する等でposの丸め誤差が累積している場合、totalGapが

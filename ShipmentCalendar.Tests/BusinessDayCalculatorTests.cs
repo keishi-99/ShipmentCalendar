@@ -113,4 +113,27 @@ public class BusinessDayCalculatorTests
         Assert.Equal(expectedADay, a.DueDate);
         Assert.Equal(expectedADay, a.StartDate);
     }
+
+    /// <summary>
+    /// 後続に所要時間0分の工程（外注待ちあり）が存在する場合、adjustedがちょうど480の倍数になり、
+    /// daysSoFarの境界判定を誤ると外注バッファが不要に1日分過大評価されてしまう。
+    /// </summary>
+    [Fact]
+    public void BuildProcesses_ZeroLeadTimeProcessWithOutsourceWait_ShouldNotOverestimateBuffer() {
+        var calculator = new BusinessDayCalculator(holidays: []);
+        var order = MakeOrder(new DateOnly(2026, 6, 30));
+
+        var defs = new[] {
+            Def(sortOrder: 1, setupMinutes: 30, destCode: "A", outsourceLeadDays: 2),
+            Def(sortOrder: 2, setupMinutes: 0, destCode: "B", outsourceLeadDays: 2), // 0分
+            Def(sortOrder: 3, setupMinutes: 100, destCode: "C"),
+        };
+
+        var processes = calculator.BuildProcesses(order, defs, completedByDestNumber: []);
+        var a = processes.Single(p => p.DestinationCode == "A");
+
+        // Bが0分のため、Aの完了日は5営業日前（過大評価されると6営業日前になってしまう）
+        var expectedADay = calculator.SubtractBusinessDays(order.CompletionDate, 5);
+        Assert.Equal(expectedADay, a.DueDate);
+    }
 }

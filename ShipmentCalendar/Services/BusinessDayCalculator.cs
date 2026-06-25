@@ -59,7 +59,9 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
             // 外注待ちが複数回連続する場合、前回の待機による丸め分（繰り越し）も
             // ここに含まれている必要があるため、素の合計時間ではなくrunningInを使う
             if (def.OutsourceLeadDays > 0) {
-                var daysSoFar = (int)(adjusted / 480.0) + 1;
+                // adjustedがちょうど480の倍数（例: 1440）の場合、floor+1だと1日多く繰り上がってしまう
+                // （1440分=3日ぴったり消費なのに4日と判定される）ため、Ceilingで判定する
+                var daysSoFar = adjusted > 0 ? (int)Math.Ceiling(adjusted / 480.0) : 1;
                 adjusted = (daysSoFar + def.OutsourceLeadDays) * 480.0;
             }
 
