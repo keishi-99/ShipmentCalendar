@@ -123,12 +123,17 @@ public partial class ProcessBarControl : UserControl {
                 var daysSoFar = (int)(cumulativeRunningTime / 480.0) + 1;
                 var gate = (daysSoFar + process.OutsourceLeadDays) * 480.0;
 
-                var preGap = GetDistanceToNextBoundary(pos);
+                // 外注待ちが連続する等でposの丸め誤差が累積している場合、totalGapが
+                // OutsourceLeadDays分の幅を下回ることがあるため、外注待ち分を優先的に
+                // 確保し、余りをpreGapに割り当てる
+                var totalGap = gate - pos;
+                var outsourceMinutes = Math.Min(totalGap, process.OutsourceLeadDays * 480.0);
+                var preGap = totalGap - outsourceMinutes;
+
                 if (preGap >= 1) {
                     segments.Add(new Segment(SegmentKind.PreGap, preGap, process));
                     pos += preGap;
                 }
-                var outsourceMinutes = gate - pos;
                 if (outsourceMinutes >= 1) {
                     segments.Add(new Segment(SegmentKind.Outsource, outsourceMinutes, process));
                     pos += outsourceMinutes;
