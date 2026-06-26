@@ -79,7 +79,8 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
             // 前工程（より着手が早い工程）が同じ日の枠として使えるようにする
             finishBucket[i] = (int)(adjusted / 480.0) + 1;
             runningIn = adjusted + minutes;
-            startBucket[i] = (int)((runningIn - 1) / 480.0) + 1;
+            // (runningIn - 1) / 480.0 は小数の場合に丸め誤差で1日不足することがあるため、Ceilingで判定する
+            startBucket[i] = runningIn > 0 ? (int)Math.Ceiling(runningIn / 480.0) : 1;
         }
 
         // 各工程の必須日 = 完了日 - (バケット番号 - 1) 営業日（バケット1=完了日当日）
