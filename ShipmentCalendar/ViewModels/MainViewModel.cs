@@ -337,7 +337,7 @@ public partial class MainViewModel : ObservableObject {
                 var completedByDestNumber = order.Processes
                     .Where(p => p.Status == ProcessStatus.Completed)
                     .GroupBy(p => p.DestinationCode, StringComparer.OrdinalIgnoreCase)
-                    .ToDictionary(g => g.Key, g => (g.First().ActualDate, g.First().WorkerName), StringComparer.OrdinalIgnoreCase);
+                    .ToDictionary(g => g.Key, g => (g.First().ActualDate, g.First().WorkerName, g.First().ActualWorkMinutes), StringComparer.OrdinalIgnoreCase);
 
                 order.Processes = calculator.BuildProcesses(order, productDefs.Where(d => d.IsVisible), completedByDestNumber);
 
