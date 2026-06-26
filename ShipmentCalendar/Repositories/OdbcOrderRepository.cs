@@ -143,6 +143,8 @@ public class OdbcOrderRepository(AppSettings settings) {
                 if (!orders.TryGetValue(seiban, out var order)) continue;
 
                 _ = double.TryParse(reader["作業時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double workMinutes);
+                var actualDate = ToDateOnly(reader["受入日"]);
+                var workerName = reader["担当者名"]?.ToString()?.Trim() ?? string.Empty;
 
                 // 完了工程を仮登録（ProcessName = 指示先番号。BuildProcessesで変換される）
                 var process = order.Processes.FirstOrDefault(p => p.ProcessName == processCode);
@@ -151,13 +153,18 @@ public class OdbcOrderRepository(AppSettings settings) {
                         ProcessName = processCode,
                         DestinationCode = processCode,
                         Status = ProcessStatus.Completed,
-                        ActualDate = ToDateOnly(reader["受入日"]),
-                        WorkerName = reader["担当者名"]?.ToString()?.Trim() ?? string.Empty,
+                        ActualDate = actualDate,
+                        WorkerName = workerName,
                         ActualWorkMinutes = workMinutes
                     });
                 } else {
                     // 同一工程に複数の受入実績がある場合は作業時間を合計する
                     process.ActualWorkMinutes += workMinutes;
+                    // クエリにORDER BYがなく順序不定のため、より新しい受入日が来た場合のみ完了日・担当者を更新する
+                    if (actualDate.HasValue && (!process.ActualDate.HasValue || actualDate > process.ActualDate)) {
+                        process.ActualDate = actualDate;
+                        process.WorkerName = workerName;
+                    }
                 }
             }
         }

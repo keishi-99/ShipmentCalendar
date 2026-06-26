@@ -32,13 +32,13 @@ public class OrderProcess
 
     /// <summary>必要時間の表示用テキストを返す（showInMinutes=trueなら分表記、falseなら時間表記）</summary>
     public string GetRequiredTimeDescription(bool showInMinutes) => showInMinutes
-        ? $"{RequiredMinutes:F1}分"
-        : $"{RequiredMinutes / 60.0:F1}h";
+        ? (RequiredMinutes <= 0 ? "0分" : $"{RequiredMinutes:F1}分")
+        : (RequiredMinutes <= 0 ? "0.0h" : $"{RequiredMinutes / 60.0:F1}h");
 
     /// <summary>実工数の表示用テキストを返す（showInMinutes=trueなら分表記、falseなら時間表記）</summary>
     public string GetActualWorkTimeDescription(bool showInMinutes) => showInMinutes
-        ? $"{ActualWorkMinutes:F1}分"
-        : $"{ActualWorkMinutes / 60.0:F1}h";
+        ? (ActualWorkMinutes <= 0 ? "0分" : $"{ActualWorkMinutes:F1}分")
+        : (ActualWorkMinutes <= 0 ? "0.0h" : $"{ActualWorkMinutes / 60.0:F1}h");
 }
 
 public enum ProcessStatus
