@@ -35,9 +35,9 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
     /// 着手しないと完了できない場合）、着手必須日と完了必須日が異なる日になる。
     /// </summary>
     /// <summary>
-    /// completedByDestNumber: 完了済み指示先番号→（受入日, 作業者名） のマッピング（指示先番号は工程ごとに一意）
+    /// completedByDestNumber: 完了済み指示先番号→（受入日, 作業者名, 実工数(分)） のマッピング（指示先番号は工程ごとに一意）
     /// </summary>
-    public List<OrderProcess> BuildProcesses(Order order, IEnumerable<ProcessDefinition> definitions, Dictionary<string, (DateOnly? ActualDate, string WorkerName)> completedByDestNumber) {
+    public List<OrderProcess> BuildProcesses(Order order, IEnumerable<ProcessDefinition> definitions, Dictionary<string, (DateOnly? ActualDate, string WorkerName, double ActualWorkMinutes)> completedByDestNumber) {
         var sorted = definitions.OrderBy(d => d.SortOrder).ToList();
         if (sorted.Count == 0) return [];
 
@@ -79,7 +79,8 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
             // 前工程（より着手が早い工程）が同じ日の枠として使えるようにする
             finishBucket[i] = (int)(adjusted / 480.0) + 1;
             runningIn = adjusted + minutes;
-            startBucket[i] = (int)((runningIn - 1) / 480.0) + 1;
+            // (runningIn - 1) / 480.0 は小数の場合に丸め誤差で1日不足することがあるため、Ceilingで判定する
+            startBucket[i] = runningIn > 0 ? (int)Math.Ceiling(runningIn / 480.0) : 1;
         }
 
         // 各工程の必須日 = 完了日 - (バケット番号 - 1) 営業日（バケット1=完了日当日）
@@ -103,7 +104,8 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
                 RequiredMinutes = requiredMinutes,
                 OutsourceLeadDays = def.OutsourceLeadDays,
                 DwellTimeMinutes = def.DwellTimeMinutes,
-                WorkerName = isCompleted ? completed.WorkerName : string.Empty
+                WorkerName = isCompleted ? completed.WorkerName : string.Empty,
+                ActualWorkMinutes = isCompleted ? completed.ActualWorkMinutes : 0
             });
         }
         return results;

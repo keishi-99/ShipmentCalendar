@@ -128,7 +128,7 @@ public class OdbcOrderRepository(AppSettings settings) {
             var seibanList = string.Join(",", batchKeys.Select(s => $"'{s.Replace("'", "''")}'"));
 
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = $@"SELECT t1.製番 AS 製番, t1.指示先番号 AS 指示先番号, t1.受入日 AS 受入日, t2.担当者名 AS 担当者名
+            cmd.CommandText = $@"SELECT t1.製番 AS 製番, t1.指示先番号 AS 指示先番号, t1.受入日 AS 受入日, t1.作業時間 AS 作業時間, t2.担当者名 AS 担当者名
                 FROM VP_受入実績情報_YD t1
                 LEFT JOIN VP_ユーザ情報_YD t2 ON t1.手配担当者 = t2.ユーザID
                 WHERE t1.製番 IN ({seibanList})
@@ -142,15 +142,29 @@ public class OdbcOrderRepository(AppSettings settings) {
                 if (string.IsNullOrEmpty(seiban) || string.IsNullOrEmpty(processCode)) continue;
                 if (!orders.TryGetValue(seiban, out var order)) continue;
 
+                _ = double.TryParse(reader["作業時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double workMinutes);
+                var actualDate = ToDateOnly(reader["受入日"]);
+                var workerName = reader["担当者名"]?.ToString()?.Trim() ?? string.Empty;
+
                 // 完了工程を仮登録（ProcessName = 指示先番号。BuildProcessesで変換される）
-                if (!order.Processes.Any(p => p.ProcessName == processCode)) {
+                var process = order.Processes.FirstOrDefault(p => p.ProcessName == processCode);
+                if (process == null) {
                     order.Processes.Add(new OrderProcess {
                         ProcessName = processCode,
                         DestinationCode = processCode,
                         Status = ProcessStatus.Completed,
-                        ActualDate = ToDateOnly(reader["受入日"]),
-                        WorkerName = reader["担当者名"]?.ToString()?.Trim() ?? string.Empty
+                        ActualDate = actualDate,
+                        WorkerName = workerName,
+                        ActualWorkMinutes = workMinutes
                     });
+                } else {
+                    // 同一工程に複数の受入実績がある場合は作業時間を合計する
+                    process.ActualWorkMinutes += workMinutes;
+                    // クエリにORDER BYがなく順序不定のため、より新しい受入日が来た場合のみ完了日・担当者を更新する
+                    if (actualDate.HasValue && (!process.ActualDate.HasValue || actualDate > process.ActualDate)) {
+                        process.ActualDate = actualDate;
+                        process.WorkerName = workerName;
+                    }
                 }
             }
         }

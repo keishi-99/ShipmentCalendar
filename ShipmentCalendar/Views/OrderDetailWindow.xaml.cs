@@ -47,6 +47,7 @@ public partial class OrderDetailWindow : Window {
         public string WorkerName => Process.WorkerName;
         public ProcessStatus Status => Process.Status;
         public string RequiredHoursText => Process.GetRequiredTimeDescription(ShowRequiredTimeInMinutes);
+        public string ActualWorkHoursText => Process.GetActualWorkTimeDescription(ShowRequiredTimeInMinutes);
         public string OutsourceLeadDaysText => Process.OutsourceLeadDays > 0
             ? $"{Process.OutsourceLeadDays}日"
             : "-";

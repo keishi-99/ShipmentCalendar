@@ -201,6 +201,14 @@
                     Width="90"
                     Binding="{Binding WorkerName}"
                     Header="担当者" />
+                <DataGridTextColumn
+                    Width="80"
+                    Binding="{Binding RequiredHoursText}"
+                    Header="必要時間" />
+                <DataGridTextColumn
+                    Width="80"
+                    Binding="{Binding ActualWorkHoursText}"
+                    Header="実工数" />
                 <DataGridTemplateColumn Width="70" Header="ステータス">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
@@ -218,19 +226,15 @@
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
                 <DataGridTextColumn
-                    Width="80"
-                    Binding="{Binding RequiredHoursText}"
-                    Header="必要時間" />
-                <DataGridTextColumn
-                    Width="80"
+                    Width="60"
                     Binding="{Binding OutsourceLeadDaysText}"
                     Header="外注待ち" />
                 <DataGridTextColumn
-                    Width="90"
+                    Width="70"
                     Binding="{Binding DwellTimeText}"
                     Header="滞留時間" />
                 <DataGridTextColumn
-                    Width="90"
+                    Width="70"
                     Binding="{Binding WarningDaysText}"
                     Header="警告日数" />
             </DataGrid.Columns>

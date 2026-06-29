@@ -27,11 +27,18 @@ public class OrderProcess
     public double DwellTimeMinutes { get; set; } = 0;
     /// <summary>完了必須日の何日前から警告状態にするか。0=警告なし</summary>
     public int WarningDaysBeforeDeadline { get; set; } = 0;
+    /// <summary>VP_受入実績情報_YDの作業時間（分）の合計。同一工程に複数の受入実績がある場合は合計する</summary>
+    public double ActualWorkMinutes { get; set; } = 0;
 
     /// <summary>必要時間の表示用テキストを返す（showInMinutes=trueなら分表記、falseなら時間表記）</summary>
     public string GetRequiredTimeDescription(bool showInMinutes) => showInMinutes
-        ? $"{RequiredMinutes:F0}分"
-        : $"{RequiredMinutes / 60.0:F1}h";
+        ? (RequiredMinutes <= 0 ? "0分" : $"{RequiredMinutes:F1}分")
+        : (RequiredMinutes <= 0 ? "0.0h" : $"{RequiredMinutes / 60.0:F1}h");
+
+    /// <summary>実工数の表示用テキストを返す（showInMinutes=trueなら分表記、falseなら時間表記）</summary>
+    public string GetActualWorkTimeDescription(bool showInMinutes) => showInMinutes
+        ? (ActualWorkMinutes <= 0 ? "0分" : $"{ActualWorkMinutes:F1}分")
+        : (ActualWorkMinutes <= 0 ? "0.0h" : $"{ActualWorkMinutes / 60.0:F1}h");
 }
 
 public enum ProcessStatus

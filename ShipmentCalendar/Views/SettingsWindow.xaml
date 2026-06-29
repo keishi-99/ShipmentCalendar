@@ -59,16 +59,16 @@
                 <TextBlock Text="　※ 0 で自動更新なし" VerticalAlignment="Center" Foreground="#888" Margin="8,0,0,0"/>
             </StackPanel>
 
-            <TextBlock Grid.Row="5" Grid.Column="0" Text="過去の表示範囲（日）：" VerticalAlignment="Center" Margin="0,0,0,12"/>
+            <TextBlock Grid.Row="5" Grid.Column="0" Text="納期日の表示範囲：&#x0a;（過去側）" VerticalAlignment="Center" Margin="0,0,0,12"/>
             <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,12">
                 <TextBox Name="TxtPastDays" Width="60" VerticalContentAlignment="Center" Padding="4"/>
-                <TextBlock Text="　※ 今日から何日前まで表示するか" VerticalAlignment="Center" Foreground="#888" Margin="8,0,0,0"/>
+                <TextBlock Text="　※ 今日から何日前までの納期日を表示するか" VerticalAlignment="Center" Foreground="#888" Margin="8,0,0,0"/>
             </StackPanel>
 
-            <TextBlock Grid.Row="6" Grid.Column="0" Text="未来の表示範囲（日）：" VerticalAlignment="Center" Margin="0,0,0,12"/>
+            <TextBlock Grid.Row="6" Grid.Column="0" Text="納期日の表示範囲：&#x0a;（未来側）" VerticalAlignment="Center" Margin="0,0,0,12"/>
             <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,12">
                 <TextBox Name="TxtRangeDays" Width="60" VerticalContentAlignment="Center" Padding="4"/>
-                <TextBlock Text="　※ 今日から何日先まで表示するか" VerticalAlignment="Center" Foreground="#888" Margin="8,0,0,0"/>
+                <TextBlock Text="　※ 今日から何日先までの納期日を表示するか" VerticalAlignment="Center" Foreground="#888" Margin="8,0,0,0"/>
             </StackPanel>
 
             <TextBlock Grid.Row="7" Grid.Column="0" Text="完了日までの営業日数：" VerticalAlignment="Center"/>
