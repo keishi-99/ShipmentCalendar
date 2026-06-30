@@ -29,10 +29,21 @@
         <DockPanel>
             <!--  ツールバー  -->
             <ToolBar Background="#1976D2" DockPanel.Dock="Top">
+                <ToolBar.Resources>
+                    <!--  ボタンと他要素の見分けがつくよう、枠と背景を付ける  -->
+                    <Style TargetType="Button">
+                        <Setter Property="Background" Value="#2E7BC4" />
+                        <Setter Property="BorderBrush" Value="#0D47A1" />
+                        <Setter Property="BorderThickness" Value="1" />
+                        <Style.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#1565C0" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </ToolBar.Resources>
                 <Button
                     Padding="8,4"
-                    Background="Transparent"
-                    BorderThickness="0"
                     Command="{Binding LoadOrdersCommand}"
                     FontSize="14"
                     Foreground="White">
@@ -69,8 +80,6 @@
                 <Button
                     Name="BtnToggleSortMode"
                     Padding="8,4"
-                    Background="Transparent"
-                    BorderThickness="0"
                     Click="BtnToggleSortMode_Click"
                     FontSize="14"
                     Foreground="White" />
@@ -78,8 +87,6 @@
                 <Button
                     Name="BtnToggleDueDateDisplay"
                     Padding="8,4"
-                    Background="Transparent"
-                    BorderThickness="0"
                     Click="BtnToggleDueDateDisplay_Click"
                     FontSize="14"
                     Foreground="White" />
@@ -87,8 +94,6 @@
                 <Button
                     Name="BtnToggleProcessMode"
                     Padding="8,4"
-                    Background="Transparent"
-                    BorderThickness="0"
                     Click="BtnToggleProcessMode_Click"
                     FontSize="14"
                     Foreground="White" />
@@ -223,8 +228,6 @@
                 <Button
                     Name="BtnToggleFullScreen"
                     Padding="8,4"
-                    Background="Transparent"
-                    BorderThickness="0"
                     Click="BtnToggleFullScreen_Click"
                     FontSize="14"
                     Foreground="White">
