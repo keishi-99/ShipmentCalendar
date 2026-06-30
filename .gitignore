@@ -4,4 +4,3 @@ obj/
 *.user
 *.csv
 /.claude/CLAUDE.md
-/.gitignore
