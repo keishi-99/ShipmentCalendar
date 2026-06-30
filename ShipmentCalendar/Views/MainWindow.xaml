@@ -31,13 +31,32 @@
             <ToolBar Background="#1976D2" DockPanel.Dock="Top">
                 <ToolBar.Resources>
                     <!--  ボタンと他要素の見分けがつくよう、枠と背景を付ける  -->
+                    <!--  既定のButtonテンプレートはホバー時の背景をトリガーで上書きするため、Style.Triggersだけでは反映されない。Templateを再定義して対応  -->
                     <Style TargetType="Button">
                         <Setter Property="Background" Value="#2E7BC4" />
                         <Setter Property="BorderBrush" Value="#0D47A1" />
                         <Setter Property="BorderThickness" Value="1" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="Button">
+                                    <Border
+                                        x:Name="border"
+                                        Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                        Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
                         <Style.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter Property="Background" Value="#1565C0" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Background" Value="#AEAEAE" />
+                                <Setter Property="BorderBrush" Value="#8E8E8E" />
                             </Trigger>
                         </Style.Triggers>
                     </Style>
