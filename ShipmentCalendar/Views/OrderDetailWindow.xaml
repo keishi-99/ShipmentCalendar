@@ -188,11 +188,11 @@
                 <DataGridTextColumn
                     Width="90"
                     Binding="{Binding StartDate, StringFormat=yyyy/MM/dd}"
-                    Header="着手予定日" />
+                    Header="着手期限日" />
                 <DataGridTextColumn
                     Width="90"
                     Binding="{Binding DueDate, StringFormat=yyyy/MM/dd}"
-                    Header="完了必須日" />
+                    Header="完了期限日" />
                 <DataGridTextColumn
                     Width="90"
                     Binding="{Binding ActualDate, StringFormat=yyyy/MM/dd}"
@@ -208,7 +208,7 @@
                 <DataGridTextColumn
                     Width="80"
                     Binding="{Binding ActualWorkHoursText}"
-                    Header="実工数" />
+                    Header="実績工数" />
                 <DataGridTemplateColumn Width="70" Header="ステータス">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
