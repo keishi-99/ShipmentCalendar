@@ -30,7 +30,8 @@
             <!--  ツールバー  -->
             <ToolBar Background="#1976D2" DockPanel.Dock="Top">
                 <ToolBar.Resources>
-                    <Style TargetType="Button">
+                    <!--  ToolBarはButtonStyleKeyで子ボタンを上書きするため、暗黙スタイルではなく専用キーで指定する  -->
+                    <Style x:Key="{x:Static ToolBar.ButtonStyleKey}" TargetType="Button">
                         <Setter Property="Padding" Value="8,4" />
                         <Setter Property="Background" Value="Transparent" />
                         <Setter Property="BorderThickness" Value="0" />
