@@ -31,12 +31,39 @@
             <ToolBar Background="#1976D2" DockPanel.Dock="Top">
                 <ToolBar.Resources>
                     <!--  ToolBarはButtonStyleKeyで子ボタンを上書きするため、暗黙スタイルではなく専用キーで指定する  -->
+                    <!--  非ホバー時はツールバー背景と同化させ、ホバー時のみ背景色を付けてクリック可能を示す  -->
+                    <!--  既定のButtonテンプレートはホバー時の背景をトリガーで上書きするため、Style.Triggersだけでは反映されない。Templateを再定義して対応  -->
                     <Style x:Key="{x:Static ToolBar.ButtonStyleKey}" TargetType="Button">
                         <Setter Property="Padding" Value="8,4" />
                         <Setter Property="Background" Value="Transparent" />
                         <Setter Property="BorderThickness" Value="0" />
                         <Setter Property="FontSize" Value="14" />
                         <Setter Property="Foreground" Value="White" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="Button">
+                                    <Border
+                                        x:Name="border"
+                                        Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                        Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                        <Style.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#0D47A1" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#08306B" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#8CA6C4" />
+                            </Trigger>
+                        </Style.Triggers>
                     </Style>
                 </ToolBar.Resources>
                 <Button Command="{Binding LoadOrdersCommand}">
@@ -48,8 +75,51 @@
                     <MenuItem
                         Padding="8,4"
                         Background="Transparent"
+                        BorderThickness="0"
                         FontSize="14"
                         Foreground="White">
+                        <!--  既定のMenuItemテンプレートはハイライト時の背景をトリガーで上書きするため、Style.Triggersだけでは反映されない。Templateを再定義して対応  -->
+                        <MenuItem.Template>
+                            <ControlTemplate TargetType="MenuItem">
+                                <Border
+                                    x:Name="border"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    Padding="{TemplateBinding Padding}">
+                                    <Grid>
+                                        <ContentPresenter
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            ContentSource="Header"
+                                            RecognizesAccessKey="True" />
+                                        <Popup
+                                            Name="PART_Popup"
+                                            AllowsTransparency="True"
+                                            Focusable="False"
+                                            IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                                            Placement="Bottom"
+                                            PopupAnimation="Fade">
+                                            <Border
+                                                Background="White"
+                                                BorderBrush="#ADADAD"
+                                                BorderThickness="1"
+                                                Padding="2">
+                                                <StackPanel
+                                                    IsItemsHost="True"
+                                                    KeyboardNavigation.DirectionalNavigation="Cycle"
+                                                    Orientation="Vertical" />
+                                            </Border>
+                                        </Popup>
+                                    </Grid>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsHighlighted" Value="True">
+                                        <Setter TargetName="border" Property="Background" Value="#0D47A1" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </MenuItem.Template>
                         <MenuItem.Header>設定 ▾</MenuItem.Header>
                         <MenuItem Click="BtnSettings_Click" Header="データソース設定" />
                         <MenuItem Click="BtnProcess_Click" Header="工程設定" />
@@ -58,13 +128,55 @@
                         <MenuItem Click="BtnDisplaySettings_Click" Header="表示設定" />
                         <Separator />
                         <MenuItem Header="列の表示設定">
-                            <MenuItem Name="MnuColDeliveryDate" IsCheckable="True" StaysOpenOnClick="True" Header="出荷日" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
-                            <MenuItem Name="MnuColCompletionDate" IsCheckable="True" StaysOpenOnClick="True" Header="完了日" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
-                            <MenuItem Name="MnuColItemNumber" IsCheckable="True" StaysOpenOnClick="True" Header="品目番号" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
-                            <MenuItem Name="MnuColModelCode" IsCheckable="True" StaysOpenOnClick="True" Header="機種コード" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
-                            <MenuItem Name="MnuColProductName" IsCheckable="True" StaysOpenOnClick="True" Header="品目名" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
-                            <MenuItem Name="MnuColManufactureNumber" IsCheckable="True" StaysOpenOnClick="True" Header="製番" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
-                            <MenuItem Name="MnuColPlannedQuantity" IsCheckable="True" StaysOpenOnClick="True" Header="計画数" Checked="ColumnVisibilityCheckBox_Changed" Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem
+                                Name="MnuColDeliveryDate"
+                                Checked="ColumnVisibilityCheckBox_Changed"
+                                Header="出荷日"
+                                IsCheckable="True"
+                                StaysOpenOnClick="True"
+                                Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem
+                                Name="MnuColCompletionDate"
+                                Checked="ColumnVisibilityCheckBox_Changed"
+                                Header="完了日"
+                                IsCheckable="True"
+                                StaysOpenOnClick="True"
+                                Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem
+                                Name="MnuColItemNumber"
+                                Checked="ColumnVisibilityCheckBox_Changed"
+                                Header="品目番号"
+                                IsCheckable="True"
+                                StaysOpenOnClick="True"
+                                Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem
+                                Name="MnuColModelCode"
+                                Checked="ColumnVisibilityCheckBox_Changed"
+                                Header="機種コード"
+                                IsCheckable="True"
+                                StaysOpenOnClick="True"
+                                Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem
+                                Name="MnuColProductName"
+                                Checked="ColumnVisibilityCheckBox_Changed"
+                                Header="品目名"
+                                IsCheckable="True"
+                                StaysOpenOnClick="True"
+                                Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem
+                                Name="MnuColManufactureNumber"
+                                Checked="ColumnVisibilityCheckBox_Changed"
+                                Header="製番"
+                                IsCheckable="True"
+                                StaysOpenOnClick="True"
+                                Unchecked="ColumnVisibilityCheckBox_Changed" />
+                            <MenuItem
+                                Name="MnuColPlannedQuantity"
+                                Checked="ColumnVisibilityCheckBox_Changed"
+                                Header="計画数"
+                                IsCheckable="True"
+                                StaysOpenOnClick="True"
+                                Unchecked="ColumnVisibilityCheckBox_Changed" />
                         </MenuItem>
                     </MenuItem>
                 </Menu>
@@ -146,13 +258,14 @@
                             <Setter Property="Foreground" Value="White" />
                             <Setter Property="BorderThickness" Value="0" />
                             <Style.Triggers>
+                                <!--  凡例の進行中色（StatusInProgress = #FFE066）と同系統の黄色を、超過・警告と同様に濃くして選択色にする  -->
                                 <Trigger Property="IsChecked" Value="True">
-                                    <Setter Property="Background" Value="#0D47A1" />
+                                    <Setter Property="Background" Value="#B8860B" />
                                     <Setter Property="BorderThickness" Value="0,0,0,3" />
                                     <Setter Property="BorderBrush" Value="White" />
                                 </Trigger>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Background" Value="#1565C0" />
+                                    <Setter Property="Background" Value="#B8860B" />
                                 </Trigger>
                             </Style.Triggers>
                         </Style>
@@ -187,12 +300,8 @@
                                         <Setter Property="BorderThickness" Value="0" />
                                         <Style.Triggers>
                                             <Trigger Property="IsChecked" Value="True">
-                                                <Setter Property="Background" Value="#0D47A1" />
                                                 <Setter Property="BorderThickness" Value="0,0,0,3" />
                                                 <Setter Property="BorderBrush" Value="White" />
-                                            </Trigger>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter Property="Background" Value="#1565C0" />
                                             </Trigger>
                                         </Style.Triggers>
                                     </Style>
@@ -402,7 +511,7 @@
                 HeadersVisibility="Column"
                 IsReadOnly="True"
                 ItemsSource="{Binding Orders}"
-SelectionMode="Single"
+                SelectionMode="Single"
                 SelectionUnit="Cell">
                 <DataGrid.Columns>
                     <DataGridTextColumn
