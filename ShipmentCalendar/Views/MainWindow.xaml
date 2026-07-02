@@ -30,42 +30,13 @@
             <!--  ツールバー  -->
             <ToolBar Background="#1976D2" DockPanel.Dock="Top">
                 <ToolBar.Resources>
-                    <!--  ボタンと他要素の見分けがつくよう、枠と背景を付ける  -->
-                    <!--  既定のButtonテンプレートはホバー時の背景をトリガーで上書きするため、Style.Triggersだけでは反映されない。Templateを再定義して対応  -->
-                    <Style TargetType="Button">
-                        <Setter Property="Background" Value="#2E7BC4" />
-                        <Setter Property="BorderBrush" Value="#0D47A1" />
-                        <Setter Property="BorderThickness" Value="1" />
-                        <Setter Property="Foreground" Value="White" />
-                        <Setter Property="FontSize" Value="14" />
+                    <!--  ToolBarはButtonStyleKeyで子ボタンを上書きするため、暗黙スタイルではなく専用キーで指定する  -->
+                    <Style x:Key="{x:Static ToolBar.ButtonStyleKey}" TargetType="Button">
                         <Setter Property="Padding" Value="8,4" />
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="Button">
-                                    <Border
-                                        x:Name="border"
-                                        Background="{TemplateBinding Background}"
-                                        BorderBrush="{TemplateBinding BorderBrush}"
-                                        BorderThickness="{TemplateBinding BorderThickness}"
-                                        Padding="{TemplateBinding Padding}">
-                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    </Border>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                        <Style.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#1565C0" />
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#0D47A1" />
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Background" Value="#AEAEAE" />
-                                <Setter Property="BorderBrush" Value="#8E8E8E" />
-                                <Setter Property="Foreground" Value="#D3D3D3" />
-                            </Trigger>
-                        </Style.Triggers>
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="BorderThickness" Value="0" />
+                        <Setter Property="FontSize" Value="14" />
+                        <Setter Property="Foreground" Value="White" />
                     </Style>
                 </ToolBar.Resources>
                 <Button Command="{Binding LoadOrdersCommand}">
@@ -99,17 +70,11 @@
                 </Menu>
                 <Separator />
                 <!--  注文一覧の並び順切り替え（出荷日順/工程期限順）  -->
-                <Button
-                    Name="BtnToggleSortMode"
-                    Click="BtnToggleSortMode_Click" />
+                <Button Name="BtnToggleSortMode" Click="BtnToggleSortMode_Click" />
                 <!--  未完了工程の表示日切り替え（クリックで着手必須日/完了必須日を切り替え）  -->
-                <Button
-                    Name="BtnToggleDueDateDisplay"
-                    Click="BtnToggleDueDateDisplay_Click" />
+                <Button Name="BtnToggleDueDateDisplay" Click="BtnToggleDueDateDisplay_Click" />
                 <!--  工程表示モード切り替え（バー/リスト）  -->
-                <Button
-                    Name="BtnToggleProcessMode"
-                    Click="BtnToggleProcessMode_Click" />
+                <Button Name="BtnToggleProcessMode" Click="BtnToggleProcessMode_Click" />
                 <Separator />
                 <!--  クイックフィルター（超過・警告・今日対応）  -->
                 <ToggleButton
