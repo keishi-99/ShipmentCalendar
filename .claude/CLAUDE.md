@@ -7,5 +7,5 @@
 ## Editing Conventions section
 - Never use PowerShell to edit source files containing Japanese text; use the Edit tool instead to avoid encoding corruption.
 
-## Debugging UI section
-- Before reporting a UI fix as complete, verify it against the actual running app (screenshot or manual check) rather than asserting the layout/logic is correct from code inspection alone.
+<!-- ## Debugging UI section
+- Before reporting a UI fix as complete, verify it against the actual running app (screenshot or manual check) rather than asserting the layout/logic is correct from code inspection alone. -->
