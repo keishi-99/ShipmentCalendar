@@ -63,7 +63,12 @@ public partial class MainViewModel : ObservableObject {
     }
     partial void OnFilterDeliveryFromChanged(DateTime? value) => ApplyFilter();
     partial void OnFilterDeliveryToChanged(DateTime? value) => ApplyFilter();
-    partial void OnFilterHideCompletedChanged(bool value) => ApplyFilter();
+    partial void OnFilterHideCompletedChanged(bool value) {
+        // 「完了のみ表示」と同時にONだと常に0件になるため、矛盾を避けて解除する
+        if (value)
+            FilterCompletedOnly = false;
+        ApplyFilter();
+    }
 
     /// <summary>超過工程がある注文のみ表示</summary>
     [ObservableProperty] private bool _filterOverdueOnly = false;
@@ -79,7 +84,12 @@ public partial class MainViewModel : ObservableObject {
 
     /// <summary>全工程が完了済みの注文のみ表示</summary>
     [ObservableProperty] private bool _filterCompletedOnly = false;
-    partial void OnFilterCompletedOnlyChanged(bool value) => ApplyFilter();
+    partial void OnFilterCompletedOnlyChanged(bool value) {
+        // 「完了済みを非表示」と同時にONだと常に0件になるため、矛盾を避けて解除する
+        if (value)
+            FilterHideCompleted = false;
+        ApplyFilter();
+    }
 
     /// <summary>「本日のみ」トグル：ONなら出荷日範囲を今日に固定し、OFFなら範囲をクリアする</summary>
     partial void OnFilterTodayOnlyChanged(bool value) {
@@ -158,7 +168,7 @@ public partial class MainViewModel : ObservableObject {
                         .FirstOrDefault();
                     isToday = next != null && today >= next.StartDate && today <= next.DueDate;
                 }
-                var isCompleted = FilterCompletedOnly && o.Processes.Count > 0 && o.Processes.All(p => p.Status == ProcessStatus.Completed);
+                var isCompleted = FilterCompletedOnly && o.IsAllCompleted;
                 return isOverdue || isWarning || isToday || isCompleted;
             });
         }
