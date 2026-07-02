@@ -77,6 +77,10 @@ public partial class MainViewModel : ObservableObject {
     [ObservableProperty] private bool _filterTodayTask = false;
     partial void OnFilterTodayTaskChanged(bool value) => ApplyFilter();
 
+    /// <summary>全工程が完了済みの注文のみ表示</summary>
+    [ObservableProperty] private bool _filterCompletedOnly = false;
+    partial void OnFilterCompletedOnlyChanged(bool value) => ApplyFilter();
+
     /// <summary>「本日のみ」トグル：ONなら出荷日範囲を今日に固定し、OFFなら範囲をクリアする</summary>
     partial void OnFilterTodayOnlyChanged(bool value) {
         if (value) {
@@ -141,7 +145,7 @@ public partial class MainViewModel : ObservableObject {
         if (FilterHideCompleted)
             result = result.Where(o => o.Processes.Count == 0 || o.Processes.Any(p => p.Status != ProcessStatus.Completed));
 
-        if (FilterOverdueOnly || FilterWarningOnly || FilterTodayTask) {
+        if (FilterOverdueOnly || FilterWarningOnly || FilterTodayTask || FilterCompletedOnly) {
             var today = DateOnly.FromDateTime(DateTime.Today);
             result = result.Where(o => {
                 var isOverdue = FilterOverdueOnly && o.HasOverdue;
@@ -154,7 +158,8 @@ public partial class MainViewModel : ObservableObject {
                         .FirstOrDefault();
                     isToday = next != null && today >= next.StartDate && today <= next.DueDate;
                 }
-                return isOverdue || isWarning || isToday;
+                var isCompleted = FilterCompletedOnly && o.Processes.Count > 0 && o.Processes.All(p => p.Status == ProcessStatus.Completed);
+                return isOverdue || isWarning || isToday || isCompleted;
             });
         }
 
