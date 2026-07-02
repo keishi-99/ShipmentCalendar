@@ -78,54 +78,48 @@
                         BorderThickness="0"
                         FontSize="14"
                         Foreground="White">
-                        <MenuItem.Style>
-                            <!--  既定のMenuItemテンプレートはハイライト時の背景をトリガーで上書きするため、Style.Triggersだけでは反映されない。Templateを再定義して対応  -->
-                            <Style TargetType="MenuItem">
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="MenuItem">
+                        <!--  既定のMenuItemテンプレートはハイライト時の背景をトリガーで上書きするため、Style.Triggersだけでは反映されない。Templateを再定義して対応  -->
+                        <MenuItem.Template>
+                            <ControlTemplate TargetType="MenuItem">
+                                <Border
+                                    x:Name="border"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    Padding="{TemplateBinding Padding}">
+                                    <Grid>
+                                        <ContentPresenter
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            ContentSource="Header"
+                                            RecognizesAccessKey="True" />
+                                        <Popup
+                                            Name="PART_Popup"
+                                            AllowsTransparency="True"
+                                            Focusable="False"
+                                            IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                                            Placement="Bottom"
+                                            PopupAnimation="Fade">
                                             <Border
-                                                x:Name="border"
-                                                Background="{TemplateBinding Background}"
-                                                BorderBrush="{TemplateBinding BorderBrush}"
-                                                BorderThickness="{TemplateBinding BorderThickness}"
-                                                Padding="{TemplateBinding Padding}">
-                                                <Grid>
-                                                    <ContentPresenter
-                                                        HorizontalAlignment="Center"
-                                                        VerticalAlignment="Center"
-                                                        ContentSource="Header"
-                                                        RecognizesAccessKey="True" />
-                                                    <Popup
-                                                        Name="PART_Popup"
-                                                        AllowsTransparency="True"
-                                                        Focusable="False"
-                                                        IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
-                                                        Placement="Bottom"
-                                                        PopupAnimation="Fade">
-                                                        <Border
-                                                            Background="White"
-                                                            BorderBrush="#ADADAD"
-                                                            BorderThickness="1"
-                                                            Padding="2">
-                                                            <StackPanel
-                                                                IsItemsHost="True"
-                                                                KeyboardNavigation.DirectionalNavigation="Cycle"
-                                                                Orientation="Vertical" />
-                                                        </Border>
-                                                    </Popup>
-                                                </Grid>
+                                                Background="White"
+                                                BorderBrush="#ADADAD"
+                                                BorderThickness="1"
+                                                Padding="2">
+                                                <StackPanel
+                                                    IsItemsHost="True"
+                                                    KeyboardNavigation.DirectionalNavigation="Cycle"
+                                                    Orientation="Vertical" />
                                             </Border>
-                                            <ControlTemplate.Triggers>
-                                                <Trigger Property="IsHighlighted" Value="True">
-                                                    <Setter TargetName="border" Property="Background" Value="#0D47A1" />
-                                                </Trigger>
-                                            </ControlTemplate.Triggers>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                            </Style>
-                        </MenuItem.Style>
+                                        </Popup>
+                                    </Grid>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsHighlighted" Value="True">
+                                        <Setter TargetName="border" Property="Background" Value="#0D47A1" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </MenuItem.Template>
                         <MenuItem.Header>設定 ▾</MenuItem.Header>
                         <MenuItem Click="BtnSettings_Click" Header="データソース設定" />
                         <MenuItem Click="BtnProcess_Click" Header="工程設定" />
@@ -270,7 +264,7 @@
                                     <Setter Property="BorderBrush" Value="White" />
                                 </Trigger>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Background" Value="#1565C0" />
+                                    <Setter Property="Background" Value="#0D47A1" />
                                 </Trigger>
                             </Style.Triggers>
                         </Style>
@@ -310,7 +304,7 @@
                                                 <Setter Property="BorderBrush" Value="White" />
                                             </Trigger>
                                             <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter Property="Background" Value="#1565C0" />
+                                                <Setter Property="Background" Value="#0D47A1" />
                                             </Trigger>
                                         </Style.Triggers>
                                     </Style>
