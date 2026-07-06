@@ -26,22 +26,7 @@ public class OdbcProcessDefinitionRepository(AppSettings settings) {
             var destNumber = reader["指示先番号"]?.ToString()?.Trim() ?? string.Empty;
             if (string.IsNullOrEmpty(itemNumber) || string.IsNullOrEmpty(destNumber)) continue;
 
-            _ = int.TryParse(reader["順序"]?.ToString(), out int sortOrder);
-            _ = double.TryParse(reader["段取時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double setup);
-            _ = double.TryParse(reader["作業時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double work);
-            var supplierName = reader["取引先名称"]?.ToString()?.Trim();
-            var processName = string.IsNullOrEmpty(supplierName) ? destNumber : supplierName;
-
-            definitions.Add(new ProcessDefinition {
-                ItemNumber = itemNumber,
-                ProcessName = processName,
-                DestinationCode = destNumber,
-                SetupTimeMinutes = setup,
-                WorkTimeMinutes = work,
-                SortOrder = sortOrder,
-                IsVisible = true,
-                WarningDaysBeforeDeadline = 0
-            });
+            definitions.Add(MapRow(reader, itemNumber, destNumber));
         }
 
         return definitions;
@@ -68,22 +53,7 @@ public class OdbcProcessDefinitionRepository(AppSettings settings) {
             var destNumber = reader["指示先番号"]?.ToString()?.Trim() ?? string.Empty;
             if (string.IsNullOrEmpty(destNumber)) continue;
 
-            _ = int.TryParse(reader["順序"]?.ToString(), out int sortOrder);
-            _ = double.TryParse(reader["段取時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double setup);
-            _ = double.TryParse(reader["作業時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double work);
-            var supplierName = reader["取引先名称"]?.ToString()?.Trim();
-            var processName = string.IsNullOrEmpty(supplierName) ? destNumber : supplierName;
-
-            definitions.Add(new ProcessDefinition {
-                ItemNumber = itemNumber,
-                ProcessName = processName,
-                DestinationCode = destNumber,
-                SetupTimeMinutes = setup,
-                WorkTimeMinutes = work,
-                SortOrder = sortOrder,
-                IsVisible = true,
-                WarningDaysBeforeDeadline = 0
-            });
+            definitions.Add(MapRow(reader, itemNumber, destNumber));
         }
 
         return definitions;
@@ -120,26 +90,31 @@ public class OdbcProcessDefinitionRepository(AppSettings settings) {
                 var destNumber = reader["指示先番号"]?.ToString()?.Trim() ?? string.Empty;
                 if (!result.ContainsKey(itemNumber) || string.IsNullOrEmpty(destNumber)) continue;
 
-                _ = int.TryParse(reader["順序"]?.ToString(), out int sortOrder);
-                _ = double.TryParse(reader["段取時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double setup);
-                _ = double.TryParse(reader["作業時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double work);
-                var supplierName = reader["取引先名称"]?.ToString()?.Trim();
-                var processName = string.IsNullOrEmpty(supplierName) ? destNumber : supplierName;
-
-                result[itemNumber].Add(new ProcessDefinition {
-                    ItemNumber = itemNumber,
-                    ProcessName = processName,
-                    DestinationCode = destNumber,
-                    SetupTimeMinutes = setup,
-                    WorkTimeMinutes = work,
-                    SortOrder = sortOrder,
-                    IsVisible = true,
-                    WarningDaysBeforeDeadline = 0
-                });
+                result[itemNumber].Add(MapRow(reader, itemNumber, destNumber));
             }
         }
 
         return result;
+    }
+
+    /// <summary>ODBCの1行分から工程定義を組み立てる（品目番号・指示先番号は呼び出し元で検証済みのものを渡す）</summary>
+    private static ProcessDefinition MapRow(System.Data.Odbc.OdbcDataReader reader, string itemNumber, string destNumber) {
+        _ = int.TryParse(reader["順序"]?.ToString(), out int sortOrder);
+        _ = double.TryParse(reader["段取時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double setup);
+        _ = double.TryParse(reader["作業時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double work);
+        var supplierName = reader["取引先名称"]?.ToString()?.Trim();
+        var processName = string.IsNullOrEmpty(supplierName) ? destNumber : supplierName;
+
+        return new ProcessDefinition {
+            ItemNumber = itemNumber,
+            ProcessName = processName,
+            DestinationCode = destNumber,
+            SetupTimeMinutes = setup,
+            WorkTimeMinutes = work,
+            SortOrder = sortOrder,
+            IsVisible = true,
+            WarningDaysBeforeDeadline = 0
+        };
     }
 
     public IEnumerable<string> GetItemNumbers() {
