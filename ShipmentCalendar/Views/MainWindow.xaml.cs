@@ -201,132 +201,139 @@ public partial class MainWindow : Window {
 
         if (maxProcessCount == 0) return;
 
-        // 工程バー列（全工程を1本のバーで表示）
-        if (settings.ShowProcessBar) {
-            var barColumn = new DataGridTemplateColumn {
-                Header = "工程バー",
-                Width = new DataGridLength(1, DataGridLengthUnitType.Star),
-            };
-            var barTemplate = new DataTemplate();
-            var barFactory = new FrameworkElementFactory(typeof(ProcessBarControl));
-            barFactory.SetBinding(ProcessBarControl.ProcessesProperty, new Binding("Processes"));
-            barFactory.SetValue(ProcessBarControl.BarFontSizeProperty, settings.ProcessBarFontSize);
-            barFactory.SetValue(ProcessBarControl.ShowRequiredTimeInMinutesProperty, settings.ShowRequiredTimeInMinutes);
-            barTemplate.VisualTree = barFactory;
-            barColumn.CellTemplate = barTemplate;
-            // 工程バー列はフォーカス枠を出さず、選択状態になっても背景の青いハイライトを表示しない
-            var barCellStyle = new Style(typeof(DataGridCell));
-            barCellStyle.Setters.Add(new Setter(UIElement.FocusableProperty, false));
-            barCellStyle.Triggers.Add(new Trigger {
-                Property = DataGridCell.IsSelectedProperty,
-                Value = true,
-                Setters = {
-                    new Setter(Control.BackgroundProperty, Brushes.Transparent),
-                    new Setter(Control.BorderBrushProperty, Brushes.Transparent),
-                },
-            });
-            barColumn.CellStyle = barCellStyle;
-            OrderGrid.Columns.Add(barColumn);
-        }
+        if (settings.ShowProcessBar)
+            OrderGrid.Columns.Add(BuildProcessBarColumn());
 
         if (!settings.ShowProcessColumns) return;
 
-        for (int i = 0; i < maxProcessCount; i++) {
-            var index = i;
-            var column = new DataGridTemplateColumn {
-                Header = (index + 1).ToString(),
-                Width = 110
+        for (int i = 0; i < maxProcessCount; i++)
+            OrderGrid.Columns.Add(BuildProcessCellColumn(i));
+    }
+
+    /// <summary>工程バー列（全工程を1本のバーで表示）を生成する</summary>
+    private DataGridTemplateColumn BuildProcessBarColumn() {
+        var settings = _viewModel.Settings;
+        var barColumn = new DataGridTemplateColumn {
+            Header = "工程バー",
+            Width = new DataGridLength(1, DataGridLengthUnitType.Star),
+        };
+        var barTemplate = new DataTemplate();
+        var barFactory = new FrameworkElementFactory(typeof(ProcessBarControl));
+        barFactory.SetBinding(ProcessBarControl.ProcessesProperty, new Binding("Processes"));
+        barFactory.SetValue(ProcessBarControl.BarFontSizeProperty, settings.ProcessBarFontSize);
+        barFactory.SetValue(ProcessBarControl.ShowRequiredTimeInMinutesProperty, settings.ShowRequiredTimeInMinutes);
+        barTemplate.VisualTree = barFactory;
+        barColumn.CellTemplate = barTemplate;
+        // 工程バー列はフォーカス枠を出さず、選択状態になっても背景の青いハイライトを表示しない
+        var barCellStyle = new Style(typeof(DataGridCell));
+        barCellStyle.Setters.Add(new Setter(UIElement.FocusableProperty, false));
+        barCellStyle.Triggers.Add(new Trigger {
+            Property = DataGridCell.IsSelectedProperty,
+            Value = true,
+            Setters = {
+                new Setter(Control.BackgroundProperty, Brushes.Transparent),
+                new Setter(Control.BorderBrushProperty, Brushes.Transparent),
+            },
+        });
+        barColumn.CellStyle = barCellStyle;
+        return barColumn;
+    }
+
+    /// <summary>指定インデックスの工程セル列（工程名・期限日・外注待ち日数を表示）を生成する</summary>
+    private DataGridTemplateColumn BuildProcessCellColumn(int index) {
+        var column = new DataGridTemplateColumn {
+            Header = (index + 1).ToString(),
+            Width = 110
+        };
+
+        var template = new DataTemplate();
+        var factory = new FrameworkElementFactory(typeof(Border));
+        factory.SetValue(Border.MarginProperty, new Thickness(1));
+
+        // インデックスで工程を検索して背景色を設定
+        var colorBinding = new MultiBinding { Converter = new ProcessIndexToStatusColorConverter() };
+        colorBinding.Bindings.Add(new Binding("Processes"));
+        colorBinding.Bindings.Add(new Binding() { Source = index });
+        factory.SetBinding(Border.BackgroundProperty, colorBinding);
+
+        // Grid（左: 工程名+期限日、右: 外注待ちギャップ表示）
+        var gridFactory = new FrameworkElementFactory(typeof(Grid));
+        var mainColumn = new FrameworkElementFactory(typeof(ColumnDefinition));
+        mainColumn.SetValue(ColumnDefinition.WidthProperty, new GridLength(1, GridUnitType.Star));
+        var gapColumn = new FrameworkElementFactory(typeof(ColumnDefinition));
+        gapColumn.SetValue(ColumnDefinition.WidthProperty, GridLength.Auto);
+        gridFactory.AppendChild(mainColumn);
+        gridFactory.AppendChild(gapColumn);
+
+        // StackPanel（工程名 + 期限日を縦に並べる）
+        var stackFactory = new FrameworkElementFactory(typeof(StackPanel));
+        stackFactory.SetValue(StackPanel.OrientationProperty, Orientation.Vertical);
+        stackFactory.SetValue(StackPanel.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        stackFactory.SetValue(StackPanel.VerticalAlignmentProperty, VerticalAlignment.Center);
+        stackFactory.SetValue(Grid.ColumnProperty, 0);
+
+        // 工程名テキスト
+        var nameFactory = new FrameworkElementFactory(typeof(TextBlock));
+        var nameBinding = new MultiBinding { Converter = new ProcessIndexToNameConverter() };
+        nameBinding.Bindings.Add(new Binding("Processes"));
+        nameBinding.Bindings.Add(new Binding() { Source = index });
+        nameFactory.SetBinding(TextBlock.TextProperty, nameBinding);
+        nameFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        nameFactory.SetValue(TextBlock.FontSizeProperty, _viewModel.Settings.ProcessColumnFontSize);
+        nameFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.SemiBold);
+        nameFactory.SetValue(TextBlock.ForegroundProperty, Brushes.Black);
+
+        stackFactory.AppendChild(nameFactory);
+
+        // 期限日・標準時間テキスト（両方OFFの場合は生成しない、1行にまとめて表示）
+        if (_viewModel.Settings.ShowProcessDate || _viewModel.Settings.ShowProcessRequiredHours) {
+            var dateHoursFactory = new FrameworkElementFactory(typeof(TextBlock));
+            var dateHoursBinding = new MultiBinding {
+                Converter = new ProcessIndexToDateAndHoursConverter(
+                    _viewModel.Settings.ShowDueDateForNotStarted,
+                    _viewModel.Settings.ShowProcessDate,
+                    _viewModel.Settings.ShowProcessRequiredHours,
+                    _viewModel.Settings.ShowRequiredTimeInMinutes)
             };
-
-            var template = new DataTemplate();
-            var factory = new FrameworkElementFactory(typeof(Border));
-            factory.SetValue(Border.MarginProperty, new Thickness(1));
-
-            // インデックスで工程を検索して背景色を設定
-            var colorBinding = new MultiBinding { Converter = new ProcessIndexToStatusColorConverter() };
-            colorBinding.Bindings.Add(new Binding("Processes"));
-            colorBinding.Bindings.Add(new Binding() { Source = index });
-            factory.SetBinding(Border.BackgroundProperty, colorBinding);
-
-            // Grid（左: 工程名+期限日、右: 外注待ちギャップ表示）
-            var gridFactory = new FrameworkElementFactory(typeof(Grid));
-            var mainColumn = new FrameworkElementFactory(typeof(ColumnDefinition));
-            mainColumn.SetValue(ColumnDefinition.WidthProperty, new GridLength(1, GridUnitType.Star));
-            var gapColumn = new FrameworkElementFactory(typeof(ColumnDefinition));
-            gapColumn.SetValue(ColumnDefinition.WidthProperty, GridLength.Auto);
-            gridFactory.AppendChild(mainColumn);
-            gridFactory.AppendChild(gapColumn);
-
-            // StackPanel（工程名 + 期限日を縦に並べる）
-            var stackFactory = new FrameworkElementFactory(typeof(StackPanel));
-            stackFactory.SetValue(StackPanel.OrientationProperty, Orientation.Vertical);
-            stackFactory.SetValue(StackPanel.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-            stackFactory.SetValue(StackPanel.VerticalAlignmentProperty, VerticalAlignment.Center);
-            stackFactory.SetValue(Grid.ColumnProperty, 0);
-
-            // 工程名テキスト
-            var nameFactory = new FrameworkElementFactory(typeof(TextBlock));
-            var nameBinding = new MultiBinding { Converter = new ProcessIndexToNameConverter() };
-            nameBinding.Bindings.Add(new Binding("Processes"));
-            nameBinding.Bindings.Add(new Binding() { Source = index });
-            nameFactory.SetBinding(TextBlock.TextProperty, nameBinding);
-            nameFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-            nameFactory.SetValue(TextBlock.FontSizeProperty, _viewModel.Settings.ProcessColumnFontSize);
-            nameFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.SemiBold);
-            nameFactory.SetValue(TextBlock.ForegroundProperty, Brushes.Black);
-
-            stackFactory.AppendChild(nameFactory);
-
-            // 期限日・標準時間テキスト（両方OFFの場合は生成しない、1行にまとめて表示）
-            if (_viewModel.Settings.ShowProcessDate || _viewModel.Settings.ShowProcessRequiredHours) {
-                var dateHoursFactory = new FrameworkElementFactory(typeof(TextBlock));
-                var dateHoursBinding = new MultiBinding {
-                    Converter = new ProcessIndexToDateAndHoursConverter(
-                        _viewModel.Settings.ShowDueDateForNotStarted,
-                        _viewModel.Settings.ShowProcessDate,
-                        _viewModel.Settings.ShowProcessRequiredHours,
-                        _viewModel.Settings.ShowRequiredTimeInMinutes)
-                };
-                dateHoursBinding.Bindings.Add(new Binding("Processes"));
-                dateHoursBinding.Bindings.Add(new Binding() { Source = index });
-                dateHoursFactory.SetBinding(TextBlock.TextProperty, dateHoursBinding);
-                dateHoursFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-                dateHoursFactory.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
-                dateHoursFactory.SetValue(TextBlock.FontSizeProperty, _viewModel.Settings.ProcessColumnFontSize);
-                dateHoursFactory.SetValue(TextBlock.ForegroundProperty, Brushes.Black);
-                stackFactory.AppendChild(dateHoursFactory);
-            }
-
-            // 外注待ち日数表示（OutsourceLeadDaysが設定されている工程のみ、区切り線付きの別セル風に表示）
-            var gapBorderFactory = new FrameworkElementFactory(typeof(Border));
-            gapBorderFactory.SetValue(Border.BackgroundProperty, OutsourceLeadBrush);
-            gapBorderFactory.SetValue(Border.BorderBrushProperty, Brushes.LightGray);
-            gapBorderFactory.SetValue(Border.BorderThicknessProperty, new Thickness(1, 0, 0, 0));
-            gapBorderFactory.SetValue(Border.PaddingProperty, new Thickness(2, 0, 0, 0));
-            gapBorderFactory.SetValue(Grid.ColumnProperty, 1);
-            var gapVisibilityBinding = new MultiBinding { Converter = new ProcessIndexToOutsourceLeadDaysVisibilityConverter() };
-            gapVisibilityBinding.Bindings.Add(new Binding("Processes"));
-            gapVisibilityBinding.Bindings.Add(new Binding() { Source = index });
-            gapBorderFactory.SetBinding(Border.VisibilityProperty, gapVisibilityBinding);
-
-            var gapFactory = new FrameworkElementFactory(typeof(TextBlock));
-            var gapTextBinding = new MultiBinding { Converter = new ProcessIndexToOutsourceLeadDaysConverter() };
-            gapTextBinding.Bindings.Add(new Binding("Processes"));
-            gapTextBinding.Bindings.Add(new Binding() { Source = index });
-            gapFactory.SetBinding(TextBlock.TextProperty, gapTextBinding);
-            gapFactory.SetValue(TextBlock.FontSizeProperty, 9.0);
-            gapFactory.SetValue(TextBlock.ForegroundProperty, Brushes.Gray);
-            gapFactory.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
-            gapFactory.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
-            gapBorderFactory.AppendChild(gapFactory);
-
-            gridFactory.AppendChild(stackFactory);
-            gridFactory.AppendChild(gapBorderFactory);
-            factory.AppendChild(gridFactory);
-            template.VisualTree = factory;
-            column.CellTemplate = template;
-            OrderGrid.Columns.Add(column);
+            dateHoursBinding.Bindings.Add(new Binding("Processes"));
+            dateHoursBinding.Bindings.Add(new Binding() { Source = index });
+            dateHoursFactory.SetBinding(TextBlock.TextProperty, dateHoursBinding);
+            dateHoursFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+            dateHoursFactory.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
+            dateHoursFactory.SetValue(TextBlock.FontSizeProperty, _viewModel.Settings.ProcessColumnFontSize);
+            dateHoursFactory.SetValue(TextBlock.ForegroundProperty, Brushes.Black);
+            stackFactory.AppendChild(dateHoursFactory);
         }
+
+        // 外注待ち日数表示（OutsourceLeadDaysが設定されている工程のみ、区切り線付きの別セル風に表示）
+        var gapBorderFactory = new FrameworkElementFactory(typeof(Border));
+        gapBorderFactory.SetValue(Border.BackgroundProperty, OutsourceLeadBrush);
+        gapBorderFactory.SetValue(Border.BorderBrushProperty, Brushes.LightGray);
+        gapBorderFactory.SetValue(Border.BorderThicknessProperty, new Thickness(1, 0, 0, 0));
+        gapBorderFactory.SetValue(Border.PaddingProperty, new Thickness(2, 0, 0, 0));
+        gapBorderFactory.SetValue(Grid.ColumnProperty, 1);
+        var gapVisibilityBinding = new MultiBinding { Converter = new ProcessIndexToOutsourceLeadDaysVisibilityConverter() };
+        gapVisibilityBinding.Bindings.Add(new Binding("Processes"));
+        gapVisibilityBinding.Bindings.Add(new Binding() { Source = index });
+        gapBorderFactory.SetBinding(Border.VisibilityProperty, gapVisibilityBinding);
+
+        var gapFactory = new FrameworkElementFactory(typeof(TextBlock));
+        var gapTextBinding = new MultiBinding { Converter = new ProcessIndexToOutsourceLeadDaysConverter() };
+        gapTextBinding.Bindings.Add(new Binding("Processes"));
+        gapTextBinding.Bindings.Add(new Binding() { Source = index });
+        gapFactory.SetBinding(TextBlock.TextProperty, gapTextBinding);
+        gapFactory.SetValue(TextBlock.FontSizeProperty, 9.0);
+        gapFactory.SetValue(TextBlock.ForegroundProperty, Brushes.Gray);
+        gapFactory.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
+        gapFactory.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
+        gapBorderFactory.AppendChild(gapFactory);
+
+        gridFactory.AppendChild(stackFactory);
+        gridFactory.AppendChild(gapBorderFactory);
+        factory.AppendChild(gridFactory);
+        template.VisualTree = factory;
+        column.CellTemplate = template;
+        return column;
     }
 
     private void BtnSettings_Click(object sender, RoutedEventArgs e) {
