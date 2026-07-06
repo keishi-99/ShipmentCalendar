@@ -102,7 +102,7 @@ public class OdbcProcessDefinitionRepository(AppSettings settings) {
         _ = int.TryParse(reader["順序"]?.ToString(), out int sortOrder);
         _ = double.TryParse(reader["段取時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double setup);
         _ = double.TryParse(reader["作業時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double work);
-        var supplierName = reader["取引先名称"]?.ToString()?.Trim();
+        var supplierName = reader["取引先名称"]?.ToString()?.Trim() ?? string.Empty;
         var processName = string.IsNullOrEmpty(supplierName) ? destNumber : supplierName;
 
         return new ProcessDefinition {
