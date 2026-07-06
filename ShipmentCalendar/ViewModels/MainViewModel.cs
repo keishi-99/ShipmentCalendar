@@ -10,6 +10,8 @@ namespace ShipmentCalendar.ViewModels;
 
 public partial class MainViewModel : ObservableObject {
     private readonly IHolidayRepository _holidayRepository;
+    private readonly IProcessDefinitionRepository _processDefinitionRepository;
+    private readonly IModelCodeRepository _modelCodeRepository;
     private readonly DispatcherTimer _refreshTimer;
     private readonly DispatcherTimer _filterDebounceTimer;
 
@@ -228,8 +230,10 @@ public partial class MainViewModel : ObservableObject {
     [ObservableProperty]
     private AppSettings _settings;
 
-    public MainViewModel(IHolidayRepository holidayRepository) {
+    public MainViewModel(IHolidayRepository holidayRepository, IProcessDefinitionRepository processDefinitionRepository, IModelCodeRepository modelCodeRepository) {
         _holidayRepository = holidayRepository;
+        _processDefinitionRepository = processDefinitionRepository;
+        _modelCodeRepository = modelCodeRepository;
         _settings = AppSettingsService.Load();
 
         _refreshTimer = new DispatcherTimer();
@@ -310,7 +314,7 @@ public partial class MainViewModel : ObservableObject {
 
             // DB のユーザー設定（工程名カスタマイズ・LT・表示・警告）をマージ
             // キー: "ItemNumber|DestinationCode(=指示先番号)"
-            var dbDefs = await new SqliteProcessDefinitionRepository().GetAllAsync();
+            var dbDefs = await _processDefinitionRepository.GetAllAsync();
             var dbDict = dbDefs
                 .Where(d => !string.IsNullOrEmpty(d.DestinationCode))
                 .GroupBy(d => $"{d.ItemNumber}|{d.DestinationCode}", StringComparer.OrdinalIgnoreCase)
@@ -386,13 +390,13 @@ public partial class MainViewModel : ObservableObject {
 
             _allOrders = orders.OrderBy(o => o.DeliveryDate).ToList();
 
-            var modelCodes = await new SqliteModelCodeRepository().GetAllAsync();
+            var modelCodes = await _modelCodeRepository.GetAllAsync();
             _productModelCodes = new HashSet<string>(
                 modelCodes.Where(m => m.Category == "製品").Select(m => m.ModelCode), StringComparer.OrdinalIgnoreCase);
             _semiProductModelCodes = new HashSet<string>(
                 modelCodes.Where(m => m.Category == "半製品").Select(m => m.ModelCode), StringComparer.OrdinalIgnoreCase);
 
-            var registeredNumbers = await new SqliteProcessDefinitionRepository().GetItemNumbersAsync();
+            var registeredNumbers = await _processDefinitionRepository.GetItemNumbersAsync();
             _registeredItemNumbers = new HashSet<string>(registeredNumbers, StringComparer.OrdinalIgnoreCase);
 
             // 部署フィルターボタンリストを更新

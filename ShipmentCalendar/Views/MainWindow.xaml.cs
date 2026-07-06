@@ -20,7 +20,7 @@ public partial class MainWindow : Window {
 
     public MainWindow() {
         InitializeComponent();
-        _viewModel = new MainViewModel(new SqliteHolidayRepository());
+        _viewModel = new MainViewModel(new SqliteHolidayRepository(), new SqliteProcessDefinitionRepository(), new SqliteModelCodeRepository());
         DataContext = _viewModel;
         Loaded += async (_, _) => await _viewModel.LoadOrdersAsync();
         _viewModel.PropertyChanged += (_, e) => {
