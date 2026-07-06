@@ -12,7 +12,7 @@ public class OdbcOrderRepository(AppSettings settings) {
     /// excludeItemNumberEqualsSeiban が true の場合、品目番号+'-00'=製番 の行が1件でもある品目番号は除外する。
     /// excludeItemNumberStartsWithM が true の場合、品目番号が'M'で始まる品目番号は除外する。</summary>
     public IEnumerable<(string ItemNumber, string ItemName)> GetSemiFinishedItemNumbersWithNames(IEnumerable<string> modelCodes, bool excludeItemNumberEqualsSeiban, bool excludeItemNumberStartsWithM) {
-        var codes = modelCodes.Distinct().ToList();
+        var codes = modelCodes.Where(c => !string.IsNullOrEmpty(c)).Distinct().ToList();
         if (codes.Count == 0) return [];
 
         using var conn = OdbcConnectionFactory.Create(settings);
