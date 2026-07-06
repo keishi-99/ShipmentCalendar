@@ -241,6 +241,7 @@ public partial class MainWindow : Window {
 
     /// <summary>指定インデックスの工程セル列（工程名・期限日・外注待ち日数を表示）を生成する</summary>
     private DataGridTemplateColumn BuildProcessCellColumn(int index) {
+        var settings = _viewModel.Settings;
         var column = new DataGridTemplateColumn {
             Header = (index + 1).ToString(),
             Width = 110
@@ -279,28 +280,28 @@ public partial class MainWindow : Window {
         nameBinding.Bindings.Add(new Binding() { Source = index });
         nameFactory.SetBinding(TextBlock.TextProperty, nameBinding);
         nameFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-        nameFactory.SetValue(TextBlock.FontSizeProperty, _viewModel.Settings.ProcessColumnFontSize);
+        nameFactory.SetValue(TextBlock.FontSizeProperty, settings.ProcessColumnFontSize);
         nameFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.SemiBold);
         nameFactory.SetValue(TextBlock.ForegroundProperty, Brushes.Black);
 
         stackFactory.AppendChild(nameFactory);
 
         // 期限日・標準時間テキスト（両方OFFの場合は生成しない、1行にまとめて表示）
-        if (_viewModel.Settings.ShowProcessDate || _viewModel.Settings.ShowProcessRequiredHours) {
+        if (settings.ShowProcessDate || settings.ShowProcessRequiredHours) {
             var dateHoursFactory = new FrameworkElementFactory(typeof(TextBlock));
             var dateHoursBinding = new MultiBinding {
                 Converter = new ProcessIndexToDateAndHoursConverter(
-                    _viewModel.Settings.ShowDueDateForNotStarted,
-                    _viewModel.Settings.ShowProcessDate,
-                    _viewModel.Settings.ShowProcessRequiredHours,
-                    _viewModel.Settings.ShowRequiredTimeInMinutes)
+                    settings.ShowDueDateForNotStarted,
+                    settings.ShowProcessDate,
+                    settings.ShowProcessRequiredHours,
+                    settings.ShowRequiredTimeInMinutes)
             };
             dateHoursBinding.Bindings.Add(new Binding("Processes"));
             dateHoursBinding.Bindings.Add(new Binding() { Source = index });
             dateHoursFactory.SetBinding(TextBlock.TextProperty, dateHoursBinding);
             dateHoursFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
             dateHoursFactory.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
-            dateHoursFactory.SetValue(TextBlock.FontSizeProperty, _viewModel.Settings.ProcessColumnFontSize);
+            dateHoursFactory.SetValue(TextBlock.FontSizeProperty, settings.ProcessColumnFontSize);
             dateHoursFactory.SetValue(TextBlock.ForegroundProperty, Brushes.Black);
             stackFactory.AppendChild(dateHoursFactory);
         }
