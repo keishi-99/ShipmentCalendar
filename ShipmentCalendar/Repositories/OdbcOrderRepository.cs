@@ -59,14 +59,14 @@ public class OdbcOrderRepository(AppSettings settings) {
 
     /// <summary>VP_受入実績情報_YD と VP_生産計画情報_YD を製番でJOINし、指定した品目番号・受入日範囲の完了工程実績を製番横断で取得する。
     /// 日付範囲はLoadSeisanKeikakuと同様、ドライバーの型差異を避けるため文字列形式でSQL側に埋め込む（DateOnly由来の固定書式のみで注入経路はない）</summary>
-    public IEnumerable<(string Seiban, int PlannedQuantity, string DestinationCode, DateOnly? ActualDate, string WorkerName, double ActualWorkMinutes)>
+    public IEnumerable<(string Seiban, int PlannedQuantity, string DestinationCode, DateOnly ActualDate, string WorkerName, double ActualWorkMinutes)>
         GetCompletedProcessesByItemNumberAndDateRange(string itemNumber, DateOnly from, DateOnly to) {
         if (string.IsNullOrEmpty(itemNumber)) return [];
 
         using var conn = OdbcConnectionFactory.Create(settings);
         conn.Open();
 
-        var results = new List<(string, int, string, DateOnly?, string, double)>();
+        var results = new List<(string, int, string, DateOnly, string, double)>();
         using var cmd = conn.CreateCommand();
         cmd.CommandText = $@"SELECT t1.製番 AS 製番, t2.計画数 AS 計画数, t1.指示先番号 AS 指示先番号, t1.受入日 AS 受入日, t1.作業時間 AS 作業時間, t3.担当者名 AS 担当者名
             FROM VP_受入実績情報_YD t1
@@ -86,10 +86,12 @@ public class OdbcOrderRepository(AppSettings settings) {
 
             _ = int.TryParse(reader["計画数"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out int plannedQuantity);
             _ = double.TryParse(reader["作業時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double workMinutes);
+            // 受入日が取得できない行は完了実績として不完全なため、後続のガントチャート描画に影響しないよう除外する
             var actualDate = ToDateOnly(reader["受入日"]);
+            if (actualDate == null) continue;
             var workerName = reader["担当者名"]?.ToString()?.Trim() ?? string.Empty;
 
-            results.Add((seiban, plannedQuantity, destinationCode, actualDate, workerName, workMinutes));
+            results.Add((seiban, plannedQuantity, destinationCode, actualDate.Value, workerName, workMinutes));
         }
 
         return results;

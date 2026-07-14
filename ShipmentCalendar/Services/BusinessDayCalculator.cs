@@ -115,13 +115,22 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
     /// RequiredMinutesに実績作業時間を入れることで、ProcessBarControlをそのまま実績バーとして再利用する。</summary>
     public static Dictionary<string, List<OrderProcess>> BuildActualProcesses(
         IEnumerable<ProcessDefinition> definitions,
-        IEnumerable<(string Seiban, string DestinationCode, DateOnly? ActualDate, string WorkerName, double ActualWorkMinutes)> completedRows) {
+        IEnumerable<(string Seiban, string DestinationCode, DateOnly ActualDate, string WorkerName, double ActualWorkMinutes)> completedRows) {
 
         var defByDest = definitions.ToDictionary(d => d.DestinationCode, StringComparer.OrdinalIgnoreCase);
         var result = new Dictionary<string, List<OrderProcess>>();
 
         foreach (var group in completedRows.GroupBy(r => r.Seiban, StringComparer.OrdinalIgnoreCase)) {
-            var matched = group
+            // 同一工程（指示先番号）に複数の受入実績がある場合は作業時間を合計し、より新しい受入日の担当者・日付を採用する
+            // （事前に集約しないと、後続でDestinationCodeが重複したOrderProcessが複数生成されてしまう）
+            var aggregated = group
+                .GroupBy(r => r.DestinationCode, StringComparer.OrdinalIgnoreCase)
+                .Select(g => {
+                    var latest = g.OrderByDescending(r => r.ActualDate).First();
+                    return (DestinationCode: g.Key, ActualDate: latest.ActualDate, WorkerName: latest.WorkerName, ActualWorkMinutes: g.Sum(r => r.ActualWorkMinutes));
+                });
+
+            var matched = aggregated
                 .Select(r => (Row: r, Def: defByDest.GetValueOrDefault(r.DestinationCode)))
                 .Where(x => x.Def != null)
                 .Select(x => (x.Row, Def: x.Def!))
@@ -131,7 +140,7 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
             var processes = new List<OrderProcess>();
             DateOnly? previousActualDate = null;
             foreach (var (row, def) in matched) {
-                var dueDate = row.ActualDate ?? default;
+                var dueDate = row.ActualDate;
                 var startDate = previousActualDate ?? dueDate;
 
                 processes.Add(new OrderProcess {
