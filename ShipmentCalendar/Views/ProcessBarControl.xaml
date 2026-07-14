@@ -2,7 +2,7 @@
     x:Class="ShipmentCalendar.Views.ProcessBarControl"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid>
+    <Grid x:Name="RootGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="16" />
             <RowDefinition Height="*" />

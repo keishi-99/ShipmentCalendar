@@ -360,6 +360,10 @@ public partial class MainWindow : Window {
         await _viewModel.RefreshDepartmentFiltersAsync();
     }
 
+    private void BtnProductPerformance_Click(object sender, RoutedEventArgs e) {
+        new ProductPerformanceWindow(_viewModel.Settings) { Owner = this }.ShowDialog();
+    }
+
     /// <summary>表示設定ダイアログからのリアルタイムプレビュー用（設定には保存しない）</summary>
     public void PreviewRowHeight(double height) {
         _previewManualRowHeight = height;

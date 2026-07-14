@@ -111,6 +111,53 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
         return results;
     }
 
+    /// <summary>完了実績データ（製番横断）から、製番ごとの実績工程バー用OrderProcessリストを組み立てる。
+    /// RequiredMinutesに実績作業時間を入れることで、ProcessBarControlをそのまま実績バーとして再利用する。</summary>
+    public static Dictionary<string, List<OrderProcess>> BuildActualProcesses(
+        IEnumerable<ProcessDefinition> definitions,
+        IEnumerable<(string Seiban, string DestinationCode, DateOnly? ActualDate, string WorkerName, double ActualWorkMinutes)> completedRows) {
+
+        var defByDest = definitions.ToDictionary(d => d.DestinationCode, StringComparer.OrdinalIgnoreCase);
+        var result = new Dictionary<string, List<OrderProcess>>();
+
+        foreach (var group in completedRows.GroupBy(r => r.Seiban, StringComparer.OrdinalIgnoreCase)) {
+            var matched = group
+                .Select(r => (Row: r, Def: defByDest.GetValueOrDefault(r.DestinationCode)))
+                .Where(x => x.Def != null)
+                .Select(x => (x.Row, Def: x.Def!))
+                .OrderBy(x => x.Def.SortOrder)
+                .ToList();
+
+            var processes = new List<OrderProcess>();
+            DateOnly? previousActualDate = null;
+            foreach (var (row, def) in matched) {
+                var dueDate = row.ActualDate ?? default;
+                var startDate = previousActualDate ?? dueDate;
+
+                processes.Add(new OrderProcess {
+                    ProcessName = def.ProcessName,
+                    DestinationCode = def.DestinationCode,
+                    SortOrder = def.SortOrder,
+                    StartDate = startDate,
+                    DueDate = dueDate,
+                    ActualDate = row.ActualDate,
+                    WorkerName = row.WorkerName,
+                    Status = ProcessStatus.Completed,
+                    RequiredMinutes = row.ActualWorkMinutes,
+                    ActualWorkMinutes = row.ActualWorkMinutes,
+                    OutsourceLeadDays = def.OutsourceLeadDays,
+                    DwellTimeMinutes = def.DwellTimeMinutes,
+                    DepartmentId = def.DepartmentId
+                });
+
+                previousActualDate = row.ActualDate;
+            }
+            result[group.Key] = processes;
+        }
+
+        return result;
+    }
+
     /// <summary>今日の日付を基準に工程ステータスを自動判定する</summary>
     public static ProcessStatus DetermineStatus(OrderProcess process, DateOnly today, int warningDays = 0) {
         if (process.Status == ProcessStatus.Completed)

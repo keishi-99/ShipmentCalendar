@@ -57,6 +57,44 @@ public class OdbcOrderRepository(AppSettings settings) {
         return items;
     }
 
+    /// <summary>VP_受入実績情報_YD と VP_生産計画情報_YD を製番でJOINし、指定した品目番号・受入日範囲の完了工程実績を製番横断で取得する。
+    /// 日付範囲はLoadSeisanKeikakuと同様、ドライバーの型差異を避けるため文字列形式でSQL側に埋め込む（DateOnly由来の固定書式のみで注入経路はない）</summary>
+    public IEnumerable<(string Seiban, int PlannedQuantity, string DestinationCode, DateOnly? ActualDate, string WorkerName, double ActualWorkMinutes)>
+        GetCompletedProcessesByItemNumberAndDateRange(string itemNumber, DateOnly from, DateOnly to) {
+        if (string.IsNullOrEmpty(itemNumber)) return [];
+
+        using var conn = OdbcConnectionFactory.Create(settings);
+        conn.Open();
+
+        var results = new List<(string, int, string, DateOnly?, string, double)>();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = $@"SELECT t1.製番 AS 製番, t2.計画数 AS 計画数, t1.指示先番号 AS 指示先番号, t1.受入日 AS 受入日, t1.作業時間 AS 作業時間, t3.担当者名 AS 担当者名
+            FROM VP_受入実績情報_YD t1
+            JOIN VP_生産計画情報_YD t2 ON t1.製番 = t2.製番
+            LEFT JOIN VP_ユーザ情報_YD t3 ON t1.手配担当者 = t3.ユーザID
+            WHERE t2.品目番号 = ?
+              AND t1.受入日 >= '{from:yyyy-MM-dd}' AND t1.受入日 <= '{to:yyyy-MM-dd}'
+              AND t1.指示先番号 IS NOT NULL
+              AND t1.指示先番号 <> '< NULL >'";
+        cmd.Parameters.Add("@ItemNumber", OdbcType.VarChar).Value = itemNumber;
+
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read()) {
+            var seiban = reader["製番"]?.ToString()?.Trim() ?? string.Empty;
+            var destinationCode = reader["指示先番号"]?.ToString()?.Trim() ?? string.Empty;
+            if (string.IsNullOrEmpty(seiban) || string.IsNullOrEmpty(destinationCode)) continue;
+
+            _ = int.TryParse(reader["計画数"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out int plannedQuantity);
+            _ = double.TryParse(reader["作業時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double workMinutes);
+            var actualDate = ToDateOnly(reader["受入日"]);
+            var workerName = reader["担当者名"]?.ToString()?.Trim() ?? string.Empty;
+
+            results.Add((seiban, plannedQuantity, destinationCode, actualDate, workerName, workMinutes));
+        }
+
+        return results;
+    }
+
     public IEnumerable<Order> GetAll() {
         var today = DateOnly.FromDateTime(DateTime.Today);
         var rangeStart = today.AddDays(-settings.DeliveryDatePastDays);
