@@ -40,7 +40,14 @@ public partial class ProductPerformanceWindow : Window {
     }
 
     private async void BtnSelectItem_Click(object sender, RoutedEventArgs e) {
-        if (_refreshTask != null) await _refreshTask;
+        if (_refreshTask != null) {
+            try {
+                await _refreshTask;
+            } catch (Exception ex) {
+                MessageBox.Show($"品目リストの読み込みに失敗しました: {ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+        }
 
         var picker = new ItemNumberPickerWindow(_registeredItems) { Owner = this };
         if (picker.ShowDialog() != true || picker.SelectedItemNumber is not string itemNumber) return;
@@ -129,8 +136,13 @@ public partial class ProductPerformanceWindow : Window {
     private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();
 
     // 標準工数の合計に1営業日分の余白を足した値（丸め前）
-    private static double ComputeRawScaleMinutes(ResultGroup group) =>
-        group.StandardProcesses.Sum(p => p.RequiredMinutes + p.DwellTimeMinutes + p.OutsourceLeadDays * 480.0) + 480.0;
+    // 実績が標準を大幅に超過している場合、標準工数だけを基準にするとスケールが崩れて実績バーが
+    // 正しく比較できなくなるため、標準・実績のうち大きい方の合計を基準にする
+    private static double ComputeRawScaleMinutes(ResultGroup group) {
+        var standardMinutes = group.StandardProcesses.Sum(p => p.RequiredMinutes + p.DwellTimeMinutes + p.OutsourceLeadDays * 480.0);
+        var actualMinutes = group.ActualProcesses.Sum(p => p.RequiredMinutes + p.DwellTimeMinutes + p.OutsourceLeadDays * 480.0);
+        return Math.Max(standardMinutes, actualMinutes) + 480.0;
+    }
 
     // 480分単位に丸める。単純に切り上げるだけだと端数が小さいときに「4日目がほんの少しだけ」のような
     // 見づらい端切れが出るため、480で割った余りが半日（240分）を超える場合のみ次の日に切り上げ、
@@ -154,9 +166,11 @@ public partial class ProductPerformanceWindow : Window {
                 var withinStandardSize = std.RequiredMinutes > 0
                     ? Math.Min(actualMinutes, std.RequiredMinutes) / std.RequiredMinutes * LaneBarMaxSize
                     : 0.0;
+                // 標準工数が0分（未設定の工程等）で実績だけがある場合、比率計算では常に0になり実績バーが
+                // 見えなくなってしまうため、超過（警告色）として最大幅で表示し実績の存在を示す
                 var overflowSize = std.RequiredMinutes > 0
                     ? Math.Max(0, actualMinutes - std.RequiredMinutes) / std.RequiredMinutes * LaneBarMaxSize
-                    : 0.0;
+                    : actualMinutes > 0 ? LaneBarMaxSize : 0.0;
                 return new ProcessLane(
                     std.ProcessName,
                     std.RequiredMinutes,

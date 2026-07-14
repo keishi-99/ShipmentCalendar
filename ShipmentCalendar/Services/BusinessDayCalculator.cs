@@ -117,7 +117,10 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
         IEnumerable<ProcessDefinition> definitions,
         IEnumerable<(string Seiban, string DestinationCode, DateOnly ActualDate, string WorkerName, double ActualWorkMinutes)> completedRows) {
 
-        var defByDest = definitions.ToDictionary(d => d.DestinationCode, StringComparer.OrdinalIgnoreCase);
+        // マスタ側にDestinationCodeの重複がある場合でもクラッシュしないよう、先勝ちで一意化してから辞書化する
+        var defByDest = definitions
+            .DistinctBy(d => d.DestinationCode, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(d => d.DestinationCode, StringComparer.OrdinalIgnoreCase);
         var result = new Dictionary<string, List<OrderProcess>>();
 
         foreach (var group in completedRows.GroupBy(r => r.Seiban, StringComparer.OrdinalIgnoreCase)) {
@@ -141,7 +144,10 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
             DateOnly? previousActualDate = null;
             foreach (var (row, def) in matched) {
                 var dueDate = row.ActualDate;
-                var startDate = previousActualDate ?? dueDate;
+                // 実績データの登録順序が前後している場合（入力ミスや並行作業等）、前工程の受入日がこの工程の受入日より
+                // 未来になることがある。StartDate > DueDateはProcessBarControl側で描画スキップの原因になるため、
+                // その場合はdueDate自身をStartDateとして使う
+                var startDate = previousActualDate is { } prev && prev < dueDate ? prev : dueDate;
 
                 processes.Add(new OrderProcess {
                     ProcessName = def.ProcessName,
@@ -161,7 +167,9 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
 
                 previousActualDate = row.ActualDate;
             }
-            result[group.Key] = processes;
+            // 実績行が工程定義に1件もマッチしなかった場合、空のResultGroupを表示させないため追加しない
+            if (processes.Count > 0)
+                result[group.Key] = processes;
         }
 
         return result;
