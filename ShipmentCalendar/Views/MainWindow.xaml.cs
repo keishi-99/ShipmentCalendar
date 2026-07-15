@@ -70,7 +70,7 @@ public partial class MainWindow : Window {
             WindowState = _previousWindowState;
         }
         _isFullScreen = !_isFullScreen;
-        BtnToggleFullScreen.Content = _isFullScreen ? "ウィンドウ表示" : "フルスクリーン";
+        BtnToggleFullScreen.Content = _isFullScreen ? "ウィンドウ表示 [F11]" : "フルスクリーン [F11]";
     }
 
     // 列表示設定MenuItemと対応するDataGridColumn・設定プロパティの組み合わせ（初回アクセス時に生成してキャッシュする）
@@ -358,6 +358,10 @@ public partial class MainWindow : Window {
         window.ShowDialog();
         // 部署マスタが変更された可能性があるため、フィルターボタンリストを更新
         await _viewModel.RefreshDepartmentFiltersAsync();
+    }
+
+    private void BtnProductPerformance_Click(object sender, RoutedEventArgs e) {
+        new ProductPerformanceWindow(_viewModel.Settings) { Owner = this }.ShowDialog();
     }
 
     /// <summary>表示設定ダイアログからのリアルタイムプレビュー用（設定には保存しない）</summary>

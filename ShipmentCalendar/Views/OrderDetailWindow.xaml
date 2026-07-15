@@ -139,17 +139,89 @@
         </Border>
 
         <!--  工程バー  -->
-        <TextBlock
-            Margin="0,0,0,4"
-            DockPanel.Dock="Top"
-            FontSize="13"
-            FontWeight="SemiBold"
-            Text="工程バー" />
+        <DockPanel Margin="0,0,0,4" DockPanel.Dock="Top" LastChildFill="False">
+            <TextBlock
+                DockPanel.Dock="Left"
+                VerticalAlignment="Center"
+                FontSize="13"
+                FontWeight="SemiBold"
+                Text="工程バー" />
+            <ToggleButton
+                Name="ToggleLaneView"
+                DockPanel.Dock="Right"
+                Padding="8,2"
+                Checked="ToggleLaneView_Checked"
+                Content="工程別レーン表示"
+                Unchecked="ToggleLaneView_Unchecked" />
+        </DockPanel>
         <views:ProcessBarControl
             x:Name="DetailProcessBar"
             Height="48"
             Margin="0,0,0,12"
             DockPanel.Dock="Top" />
+
+        <!--  工程別レーン表示: 工程ごとに標準を背景バー、実績を重ねたバーとして表示する（製品別実績分析と同じデザイン）  -->
+        <ItemsControl
+            Name="LaneList"
+            Margin="0,0,0,12"
+            DockPanel.Dock="Top"
+            Visibility="Collapsed">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="160" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock
+                            Grid.Column="0"
+                            VerticalAlignment="Center"
+                            FontSize="11"
+                            Text="{Binding ProcessName}"
+                            TextTrimming="CharacterEllipsis"
+                            ToolTip="{Binding ProcessName}" />
+                        <!--  標準を固定長の背景バーとして表現し、実績をその上に重ねる（標準以内は通常色、超過分は警告色）。
+                              ラベルはバーと同じセルに重ね、固定オフセットで配置することで、実績が標準を超えて
+                              バーが伸びてもラベルの位置がズレないようにする  -->
+                        <Grid Grid.Column="1">
+                            <Border
+                                Width="200"
+                                Height="16"
+                                HorizontalAlignment="Left"
+                                Background="#DCE3EC"
+                                ToolTip="{Binding StandardMinutes, StringFormat='標準 {0:F1}分'}" />
+                            <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
+                                <Border
+                                    Width="{Binding ActualWithinStandardSize}"
+                                    Height="16"
+                                    Background="#6699CC"
+                                    ToolTip="{Binding ActualTooltip}" />
+                                <Border
+                                    Width="{Binding ActualOverflowSize}"
+                                    Height="16"
+                                    Background="#B3D9534F"
+                                    ToolTip="{Binding ActualTooltip}" />
+                            </StackPanel>
+                            <StackPanel
+                                Margin="210,0,0,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center"
+                                Orientation="Horizontal">
+                                <TextBlock
+                                    FontSize="10"
+                                    FontWeight="SemiBold"
+                                    Foreground="{Binding ActualTextBrush}"
+                                    Text="{Binding ActualMinutesText}" />
+                                <TextBlock
+                                    FontSize="10"
+                                    Foreground="#666666"
+                                    Text="{Binding StandardComparisonText}" />
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
 
         <!--  工程一覧  -->
         <TextBlock

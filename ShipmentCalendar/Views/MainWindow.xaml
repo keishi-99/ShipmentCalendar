@@ -126,6 +126,7 @@
                         <MenuItem Click="BtnHoliday_Click" Header="休日設定" />
                         <MenuItem Click="BtnDeptSetting_Click" Header="部署設定" />
                         <MenuItem Click="BtnDisplaySettings_Click" Header="表示設定" />
+                        <MenuItem Click="BtnProductPerformance_Click" Header="製品別実績分析" />
                         <Separator />
                         <MenuItem Header="列の表示設定">
                             <MenuItem
@@ -340,7 +341,7 @@
                 <Separator />
                 <!--  フルスクリーン表示の切り替え（F11キーと同じ動作）  -->
                 <Button Name="BtnToggleFullScreen" Click="BtnToggleFullScreen_Click">
-                    フルスクリーン
+                    フルスクリーン [F11]
                 </Button>
             </ToolBar>
 

@@ -111,6 +111,70 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
         return results;
     }
 
+    /// <summary>完了実績データ（製番横断）から、製番ごとの実績工程バー用OrderProcessリストを組み立てる。
+    /// RequiredMinutesに実績作業時間を入れることで、ProcessBarControlをそのまま実績バーとして再利用する。</summary>
+    public static Dictionary<string, List<OrderProcess>> BuildActualProcesses(
+        IEnumerable<ProcessDefinition> definitions,
+        IEnumerable<(string Seiban, string DestinationCode, DateOnly ActualDate, string WorkerName, double ActualWorkMinutes)> completedRows) {
+
+        // マスタ側にDestinationCodeの重複がある場合でもクラッシュしないよう、先勝ちで一意化してから辞書化する
+        var defByDest = definitions
+            .DistinctBy(d => d.DestinationCode, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(d => d.DestinationCode, StringComparer.OrdinalIgnoreCase);
+        var result = new Dictionary<string, List<OrderProcess>>();
+
+        foreach (var group in completedRows.GroupBy(r => r.Seiban, StringComparer.OrdinalIgnoreCase)) {
+            // 同一工程（指示先番号）に複数の受入実績がある場合は作業時間を合計し、より新しい受入日の担当者・日付を採用する
+            // （事前に集約しないと、後続でDestinationCodeが重複したOrderProcessが複数生成されてしまう）
+            var aggregated = group
+                .GroupBy(r => r.DestinationCode, StringComparer.OrdinalIgnoreCase)
+                .Select(g => {
+                    var latest = g.OrderByDescending(r => r.ActualDate).First();
+                    return (DestinationCode: g.Key, ActualDate: latest.ActualDate, WorkerName: latest.WorkerName, ActualWorkMinutes: g.Sum(r => r.ActualWorkMinutes));
+                });
+
+            var matched = aggregated
+                .Select(r => (Row: r, Def: defByDest.GetValueOrDefault(r.DestinationCode)))
+                .Where(x => x.Def != null)
+                .Select(x => (x.Row, Def: x.Def!))
+                .OrderBy(x => x.Def.SortOrder)
+                .ToList();
+
+            var processes = new List<OrderProcess>();
+            DateOnly? previousActualDate = null;
+            foreach (var (row, def) in matched) {
+                var dueDate = row.ActualDate;
+                // 実績データの登録順序が前後している場合（入力ミスや並行作業等）、前工程の受入日がこの工程の受入日より
+                // 未来になることがある。StartDate > DueDateはProcessBarControl側で描画スキップの原因になるため、
+                // その場合はdueDate自身をStartDateとして使う
+                var startDate = previousActualDate is { } prev && prev < dueDate ? prev : dueDate;
+
+                processes.Add(new OrderProcess {
+                    ProcessName = def.ProcessName,
+                    DestinationCode = def.DestinationCode,
+                    SortOrder = def.SortOrder,
+                    StartDate = startDate,
+                    DueDate = dueDate,
+                    ActualDate = row.ActualDate,
+                    WorkerName = row.WorkerName,
+                    Status = ProcessStatus.Completed,
+                    RequiredMinutes = row.ActualWorkMinutes,
+                    ActualWorkMinutes = row.ActualWorkMinutes,
+                    OutsourceLeadDays = def.OutsourceLeadDays,
+                    DwellTimeMinutes = def.DwellTimeMinutes,
+                    DepartmentId = def.DepartmentId
+                });
+
+                previousActualDate = row.ActualDate;
+            }
+            // 実績行が工程定義に1件もマッチしなかった場合、空のResultGroupを表示させないため追加しない
+            if (processes.Count > 0)
+                result[group.Key] = processes;
+        }
+
+        return result;
+    }
+
     /// <summary>今日の日付を基準に工程ステータスを自動判定する</summary>
     public static ProcessStatus DetermineStatus(OrderProcess process, DateOnly today, int warningDays = 0) {
         if (process.Status == ProcessStatus.Completed)
