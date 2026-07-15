@@ -73,10 +73,12 @@ public class OdbcOrderRepository(AppSettings settings) {
             JOIN VP_生産計画情報_YD t2 ON t1.製番 = t2.製番
             LEFT JOIN VP_ユーザ情報_YD t3 ON t1.手配担当者 = t3.ユーザID
             WHERE t2.品目番号 = ?
+              AND t2.工場番号 = ?
               AND t1.受入日 >= '{from:yyyy-MM-dd}' AND t1.受入日 <= '{to:yyyy-MM-dd}'
               AND t1.指示先番号 IS NOT NULL
               AND t1.指示先番号 <> '< NULL >'";
         cmd.Parameters.Add("@ItemNumber", OdbcType.VarChar).Value = itemNumber;
+        cmd.Parameters.Add("@FactoryNumber", OdbcType.VarChar).Value = settings.OdbcFactoryNumber;
 
         using var reader = cmd.ExecuteReader();
         while (reader.Read()) {

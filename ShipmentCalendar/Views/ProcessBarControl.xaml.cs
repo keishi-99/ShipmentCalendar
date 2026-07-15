@@ -164,11 +164,11 @@ public partial class ProcessBarControl : UserControl {
         }
         segments.Reverse();
 
+        // SuppressHeaderRowはヘッダー行（日付/相対日数ルーラー）の描画有無だけを制御し、
+        // totalDayMinutesのスケール計算はShowDateBarの値に基づいて常に独立して行う
+        // （SuppressHeaderRow=trueでも計算をバイパスしないことで、ヘッダーを非表示にした側のバーの伸縮スケールが崩れないようにする）
         double totalDayMinutes;
-        if (SuppressHeaderRow) {
-            // ヘッダー行自体を非表示にする場合も、全幅の基準はTotalMinutesOverride（未指定ならpos）に揃える
-            totalDayMinutes = TotalMinutesOverride ?? pos;
-        } else if (ShowDateBar) {
+        if (ShowDateBar) {
             var minDate = Processes.Min(p => p.StartDate);
             var maxDate = Processes.Max(p => p.DueDate);
 
@@ -185,23 +185,25 @@ public partial class ProcessBarControl : UserControl {
             // 全期間が週末のみ（例: 土〜日）の場合は描画不可
             if (businessDays.Count == 0) return;
 
-            // 日付バー: 1列=480*（1営業日=480分相当）で統一することで工程バーと分単位で位置が合う
-            foreach (var (date, col) in businessDays.Select((d, i) => (d, i))) {
-                DateBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(480, GridUnitType.Star) });
-                var dateBorder = new Border {
-                    Background = col % 2 == 0 ? DateBarBackgroundBrushA : DateBarBackgroundBrushB,
-                    BorderBrush = _defaultBorderBrush,
-                    BorderThickness = new Thickness(1),
-                    Child = new TextBlock {
-                        Text = date.ToString("M/d"),
-                        FontSize = Math.Max(6, BarFontSize - 2),
-                        HorizontalAlignment = HorizontalAlignment.Center,
-                        VerticalAlignment = VerticalAlignment.Center,
-                        Foreground = Brushes.DimGray,
-                    }
-                };
-                Grid.SetColumn(dateBorder, col);
-                DateBarGrid.Children.Add(dateBorder);
+            if (!SuppressHeaderRow) {
+                // 日付バー: 1列=480*（1営業日=480分相当）で統一することで工程バーと分単位で位置が合う
+                foreach (var (date, col) in businessDays.Select((d, i) => (d, i))) {
+                    DateBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(480, GridUnitType.Star) });
+                    var dateBorder = new Border {
+                        Background = col % 2 == 0 ? DateBarBackgroundBrushA : DateBarBackgroundBrushB,
+                        BorderBrush = _defaultBorderBrush,
+                        BorderThickness = new Thickness(1),
+                        Child = new TextBlock {
+                            Text = date.ToString("M/d"),
+                            FontSize = Math.Max(6, BarFontSize - 2),
+                            HorizontalAlignment = HorizontalAlignment.Center,
+                            VerticalAlignment = VerticalAlignment.Center,
+                            Foreground = Brushes.DimGray,
+                        }
+                    };
+                    Grid.SetColumn(dateBorder, col);
+                    DateBarGrid.Children.Add(dateBorder);
+                }
             }
 
             // 工程バー: 日付バーと同じ総スター幅（営業日数×480）を使うため、日付との整合が保たれる
@@ -211,26 +213,28 @@ public partial class ProcessBarControl : UserControl {
             // 未指定なら実績時間の合計(pos)を全幅とし、480分（1営業日相当）ごとに区切った「n日目」ラベルを表示する。
             // 実日付ではなく相対的な日数の目安として使う
             totalDayMinutes = TotalMinutesOverride ?? pos;
-            var dayCount = Math.Max(1, (int)Math.Ceiling(totalDayMinutes / 480.0));
-            var remaining = totalDayMinutes;
-            for (int day = 0; day < dayCount && remaining >= 1; day++) {
-                var width = Math.Min(480.0, remaining);
-                DateBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(width, GridUnitType.Star) });
-                var dateBorder = new Border {
-                    Background = day % 2 == 0 ? DateBarBackgroundBrushA : DateBarBackgroundBrushB,
-                    BorderBrush = _rulerEmphasisBorderBrush,
-                    BorderThickness = new Thickness(1, 3, 1, 3),
-                    Child = new TextBlock {
-                        Text = $"{day + 1}日目",
-                        FontSize = Math.Max(6, BarFontSize - 2),
-                        HorizontalAlignment = HorizontalAlignment.Center,
-                        VerticalAlignment = VerticalAlignment.Center,
-                        Foreground = Brushes.DimGray,
-                    }
-                };
-                Grid.SetColumn(dateBorder, day);
-                DateBarGrid.Children.Add(dateBorder);
-                remaining -= width;
+            if (!SuppressHeaderRow) {
+                var dayCount = Math.Max(1, (int)Math.Ceiling(totalDayMinutes / 480.0));
+                var remaining = totalDayMinutes;
+                for (int day = 0; day < dayCount && remaining >= 1; day++) {
+                    var width = Math.Min(480.0, remaining);
+                    DateBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(width, GridUnitType.Star) });
+                    var dateBorder = new Border {
+                        Background = day % 2 == 0 ? DateBarBackgroundBrushA : DateBarBackgroundBrushB,
+                        BorderBrush = _rulerEmphasisBorderBrush,
+                        BorderThickness = new Thickness(1, 3, 1, 3),
+                        Child = new TextBlock {
+                            Text = $"{day + 1}日目",
+                            FontSize = Math.Max(6, BarFontSize - 2),
+                            HorizontalAlignment = HorizontalAlignment.Center,
+                            VerticalAlignment = VerticalAlignment.Center,
+                            Foreground = Brushes.DimGray,
+                        }
+                    };
+                    Grid.SetColumn(dateBorder, day);
+                    DateBarGrid.Children.Add(dateBorder);
+                    remaining -= width;
+                }
             }
         }
         var initialOffset = Math.Max(0, totalDayMinutes - pos);
