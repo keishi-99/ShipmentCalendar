@@ -182,13 +182,15 @@ public partial class ProductPerformanceWindow : Window {
 
         var calculator = new BusinessDayCalculator(holidays);
         var deliveryDate = group.DeliveryDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var itemLeadDays = await SqliteProductDisplayNameRepository.GetCompletionDateLeadDaysAsync(_selectedItemNumber ?? "")
+            ?? _settings.CompletionDateLeadDays;
         var order = new Order {
             ProductName = group.ProductName,
             ItemNumber = _selectedItemNumber ?? "",
             ModelCode = group.ModelCode,
             ManufactureNumber = group.Seiban,
             DeliveryDate = deliveryDate,
-            CompletionDate = calculator.SubtractBusinessDays(deliveryDate, _settings.CompletionDateLeadDays),
+            CompletionDate = calculator.SubtractBusinessDays(deliveryDate, itemLeadDays),
             PlannedQuantity = group.PlannedQuantity
         };
 

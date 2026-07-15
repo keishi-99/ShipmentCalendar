@@ -23,7 +23,8 @@ public static class DatabaseInitializer {
             CREATE TABLE IF NOT EXISTS Products (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 ItemNumber TEXT NOT NULL UNIQUE,
-                DisplayName TEXT NOT NULL DEFAULT ''
+                DisplayName TEXT NOT NULL DEFAULT '',
+                CompletionDateLeadDays INTEGER NULL
             );
 
             CREATE TABLE IF NOT EXISTS ProcessDefinitions (

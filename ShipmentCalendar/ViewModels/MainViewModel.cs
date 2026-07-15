@@ -312,6 +312,9 @@ public partial class MainViewModel : ObservableObject {
                     order.ProductName = displayName;
             }
 
+            // 品目番号ごとの完了日リードタイム（未設定の品目は含まれないため、参照時に共通設定へフォールバックする）
+            var leadDaysOverrides = await Repositories.SqliteProductDisplayNameRepository.GetAllCompletionDateLeadDaysAsync();
+
             // DB のユーザー設定（工程名カスタマイズ・LT・表示・警告）をマージ
             // キー: "ItemNumber|DestinationCode(=指示先番号)"
             var dbDefs = await _processDefinitionRepository.GetAllAsync();
@@ -347,7 +350,10 @@ public partial class MainViewModel : ObservableObject {
                 defDict.TryGetValue(order.ItemNumber, out var productDefs);
                 productDefs ??= [];
 
-                order.CompletionDate = calculator.SubtractBusinessDays(order.DeliveryDate, Settings.CompletionDateLeadDays);
+                var leadDays = leadDaysOverrides.TryGetValue(order.ItemNumber, out var itemLeadDays)
+                    ? itemLeadDays
+                    : Settings.CompletionDateLeadDays;
+                order.CompletionDate = calculator.SubtractBusinessDays(order.DeliveryDate, leadDays);
 
                 if (productDefs.Count == 0)
                     continue;

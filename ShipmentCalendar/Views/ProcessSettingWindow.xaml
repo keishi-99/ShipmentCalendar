@@ -150,6 +150,22 @@
                 Padding="4,2"
                 VerticalContentAlignment="Center"
                 ToolTip="アプリ上で表示する品目名（初期値はCSVの品目名）" />
+            <TextBlock
+                Width="110"
+                Margin="16,0,0,0"
+                VerticalAlignment="Center"
+                Text="完了日リードタイム：" />
+            <TextBox
+                Name="TxtCompletionLeadDays"
+                Width="50"
+                Padding="4,2"
+                VerticalContentAlignment="Center"
+                ToolTip="出荷日の何営業日前を完了日とするか（空欄の場合は設定画面の共通値を使用）" />
+            <TextBlock
+                Margin="4,0,0,0"
+                VerticalAlignment="Center"
+                Foreground="#888888"
+                Text="日（空欄=共通設定を使用）" />
         </StackPanel>
 
         <!--  工程リスト（順序・指示先番号は読み取り専用、工程名・LT・設定は編集可）  -->
