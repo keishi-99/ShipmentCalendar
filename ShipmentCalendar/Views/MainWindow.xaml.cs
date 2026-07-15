@@ -70,7 +70,7 @@ public partial class MainWindow : Window {
             WindowState = _previousWindowState;
         }
         _isFullScreen = !_isFullScreen;
-        BtnToggleFullScreen.Content = _isFullScreen ? "ウィンドウ表示" : "フルスクリーン";
+        BtnToggleFullScreen.Content = _isFullScreen ? "ウィンドウ表示 [F11]" : "フルスクリーン [F11]";
     }
 
     // 列表示設定MenuItemと対応するDataGridColumn・設定プロパティの組み合わせ（初回アクセス時に生成してキャッシュする）

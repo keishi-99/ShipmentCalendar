@@ -341,7 +341,7 @@
                 <Separator />
                 <!--  フルスクリーン表示の切り替え（F11キーと同じ動作）  -->
                 <Button Name="BtnToggleFullScreen" Click="BtnToggleFullScreen_Click">
-                    フルスクリーン
+                    フルスクリーン [F11]
                 </Button>
             </ToolBar>
 

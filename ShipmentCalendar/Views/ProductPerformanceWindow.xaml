@@ -9,24 +9,46 @@
     WindowStartupLocation="CenterOwner">
 
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+
         <!--  タイムライン表示: 製番ごとに標準/実績バーのペアを並べる  -->
         <DataTemplate x:Key="GanttPairTemplate">
             <Border
                 Margin="0,0,0,12"
                 Padding="8"
+                Background="Transparent"
                 BorderBrush="#DDDDDD"
                 BorderThickness="1"
-                CornerRadius="4">
+                Cursor="Hand"
+                CornerRadius="4"
+                MouseLeftButtonDown="OrderCard_MouseLeftButtonDown"
+                ToolTip="ダブルクリックで注文詳細を表示">
                 <StackPanel>
-                    <TextBlock Margin="0,0,0,6" FontWeight="SemiBold">
-                        <TextBlock.Text>
-                            <MultiBinding StringFormat="製番: {0}　計画数: {1}　最新受入日: {2:yyyy/MM/dd}">
-                                <Binding Path="Seiban" />
-                                <Binding Path="PlannedQuantity" />
-                                <Binding Path="LatestActualDate" />
-                            </MultiBinding>
-                        </TextBlock.Text>
-                    </TextBlock>
+                    <StackPanel Margin="0,0,0,6" Orientation="Horizontal">
+                        <TextBlock FontWeight="SemiBold">
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="製番: {0}　計画数: {1}　最新受入日: {2:yyyy/MM/dd}">
+                                    <Binding Path="Seiban" />
+                                    <Binding Path="PlannedQuantity" />
+                                    <Binding Path="LatestActualDate" />
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
+                        <!--  順序999（最終受入）の実績がまだ無い場合は作業途中として明示する  -->
+                        <Border
+                            Margin="8,0,0,0"
+                            Padding="6,1"
+                            VerticalAlignment="Center"
+                            Background="#F0AD4E"
+                            CornerRadius="3"
+                            Visibility="{Binding IsInProgress, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock
+                                FontSize="10"
+                                FontWeight="SemiBold"
+                                Foreground="White"
+                                Text="未完了" />
+                        </Border>
+                    </StackPanel>
                     <!--  標準工数バー（1行目）/ 実績工数バー（2行目）。日数ルーラーは一覧上部の共通ヘッダーで1回だけ表示する  -->
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -89,9 +111,13 @@
             <Border
                 Margin="0,0,0,12"
                 Padding="8"
+                Background="Transparent"
                 BorderBrush="#DDDDDD"
                 BorderThickness="1"
-                CornerRadius="4">
+                Cursor="Hand"
+                CornerRadius="4"
+                MouseLeftButtonDown="OrderCard_MouseLeftButtonDown"
+                ToolTip="ダブルクリックで注文詳細を表示">
                 <StackPanel>
                     <TextBlock Margin="0,0,0,6" FontWeight="SemiBold">
                         <TextBlock.Text>
@@ -136,7 +162,7 @@
                                             <Border
                                                 Width="{Binding ActualOverflowSize}"
                                                 Height="16"
-                                                Background="#D9534F"
+                                                Background="#B3D9534F"
                                                 ToolTip="{Binding ActualTooltip}" />
                                         </StackPanel>
                                         <StackPanel
@@ -183,71 +209,112 @@
             CornerRadius="4"
             DockPanel.Dock="Top">
             <StackPanel Orientation="Horizontal">
-                <TextBlock
-                    Margin="0,0,8,0"
-                    VerticalAlignment="Center"
-                    Text="品目番号:" />
-                <TextBox
-                    Name="TxtSelectedItem"
-                    Width="180"
-                    Margin="0,0,4,0"
-                    VerticalContentAlignment="Center"
-                    IsReadOnly="True" />
-                <Button
-                    Margin="0,0,16,0"
-                    Padding="8,4"
-                    Click="BtnSelectItem_Click"
-                    Content="選択" />
+                <!--  1列目: 上段=品目番号、下段=品目名  -->
+                <StackPanel Margin="0,0,16,0">
+                    <StackPanel Margin="0,0,0,4" Orientation="Horizontal">
+                        <TextBlock
+                            Width="64"
+                            VerticalAlignment="Center"
+                            Text="品目番号:" />
+                        <!--  品目名ボックス（幅220）と右端を揃えるため、テキストボックスを可変幅にしてボタン分を差し引く  -->
+                        <Grid Width="220">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox
+                                Name="TxtSelectedItem"
+                                Grid.Column="0"
+                                Height="24"
+                                Margin="0,0,4,0"
+                                Background="#F0F0F0"
+                                VerticalContentAlignment="Center"
+                                IsReadOnly="True" />
+                            <Button
+                                Grid.Column="1"
+                                Height="24"
+                                Padding="8,2"
+                                Click="BtnSelectItem_Click"
+                                Content="選択" />
+                        </Grid>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock
+                            Width="64"
+                            VerticalAlignment="Center"
+                            Text="品目名:" />
+                        <TextBox
+                            Name="TxtSelectedItemName"
+                            Width="220"
+                            Height="24"
+                            Background="#F0F0F0"
+                            VerticalContentAlignment="Center"
+                            IsReadOnly="True" />
+                    </StackPanel>
+                </StackPanel>
 
-                <TextBlock
-                    Margin="0,0,8,0"
-                    VerticalAlignment="Center"
-                    Text="開始日:" />
-                <DatePicker Name="StartDatePicker" Margin="0,0,16,0" />
+                <!--  2列目: 上段=開始日、下段=終了日  -->
+                <StackPanel Margin="0,0,16,0">
+                    <StackPanel Margin="0,0,0,4" Orientation="Horizontal">
+                        <TextBlock
+                            Width="50"
+                            VerticalAlignment="Center"
+                            Text="開始日:" />
+                        <DatePicker Name="StartDatePicker" Height="24" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock
+                            Width="50"
+                            VerticalAlignment="Center"
+                            Text="終了日:" />
+                        <DatePicker Name="EndDatePicker" Height="24" />
+                    </StackPanel>
+                </StackPanel>
 
-                <TextBlock
-                    Margin="0,0,8,0"
-                    VerticalAlignment="Center"
-                    Text="終了日:" />
-                <DatePicker Name="EndDatePicker" Margin="0,0,16,0" />
+                <!--  検索ボタン: 日付フィルターの右、2段ぶんの高さの中央に配置  -->
+                <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                    <Button
+                        Name="BtnSearch"
+                        Height="24"
+                        Padding="16,4"
+                        Click="BtnSearch_Click"
+                        Content="検索" />
+                </StackPanel>
 
-                <TextBlock
-                    Margin="0,0,8,0"
-                    VerticalAlignment="Center"
-                    Text="表示件数:" />
-                <ComboBox
-                    Name="CountCombo"
-                    Width="80"
-                    Margin="0,0,16,0"
-                    SelectedIndex="2">
-                    <ComboBoxItem Content="10" Tag="10" />
-                    <ComboBoxItem Content="50" Tag="50" />
-                    <ComboBoxItem Content="100" Tag="100" />
-                    <ComboBoxItem Content="すべて" Tag="" />
-                </ComboBox>
-
-                <Button
-                    Name="BtnSearch"
-                    Margin="0,0,16,0"
-                    Padding="16,4"
-                    Click="BtnSearch_Click"
-                    Content="検索" />
-
-                <ToggleButton
-                    Name="ToggleLaneView"
-                    Padding="8,4"
-                    VerticalAlignment="Center"
-                    Checked="ToggleLaneView_Checked"
-                    Content="工程別レーン表示"
-                    Unchecked="ToggleLaneView_Unchecked" />
+                <!--  表示形式  -->
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Margin="0,0,0,2" Text="表示形式:" />
+                    <ComboBox
+                        Name="ViewModeCombo"
+                        Width="140"
+                        Height="24"
+                        SelectionChanged="ViewModeCombo_SelectionChanged">
+                        <ComboBoxItem Content="タイムライン表示" />
+                        <ComboBoxItem Content="工程別レーン表示" />
+                        <ComboBoxItem Content="工程比較表" />
+                    </ComboBox>
+                </StackPanel>
             </StackPanel>
         </Border>
 
-        <TextBlock
-            Name="TxtStatus"
+        <StackPanel
             Margin="0,0,0,8"
             DockPanel.Dock="Top"
-            Foreground="#666666" />
+            HorizontalAlignment="Center"
+            Orientation="Horizontal">
+            <ProgressBar
+                Name="SearchProgressBar"
+                Width="160"
+                Height="10"
+                Margin="0,0,8,0"
+                VerticalAlignment="Center"
+                IsIndeterminate="True"
+                Visibility="Collapsed" />
+            <TextBlock
+                Name="TxtStatus"
+                VerticalAlignment="Center"
+                Foreground="#666666" />
+        </StackPanel>
 
         <!--  タイムライン表示専用の共通日数ルーラー。全注文が同じScaleMinutesを共有しているため、1回だけ表示すれば足りる  -->
         <Border
@@ -265,9 +332,24 @@
             </Grid>
         </Border>
 
-        <!--  製番ごとの結果一覧（タイムライン表示 / 工程別レーン表示をトグルで切替）  -->
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <ItemsControl Name="ResultsControl" ItemTemplate="{StaticResource GanttPairTemplate}" />
-        </ScrollViewer>
+        <!--  製番ごとの結果一覧（タイムライン表示 / 工程別レーン表示 / 工程比較表をコンボボックスで切替）  -->
+        <Grid>
+            <ScrollViewer Name="ResultsScrollViewer" VerticalScrollBarVisibility="Auto">
+                <ItemsControl Name="ResultsControl" ItemTemplate="{StaticResource GanttPairTemplate}" />
+            </ScrollViewer>
+            <!--  工程比較表: 列=工程、行=注文。各セルは標準/実績の重ね描きバーを50%スケールで表示する  -->
+            <DataGrid
+                Name="MatrixGrid"
+                AutoGenerateColumns="False"
+                CanUserAddRows="False"
+                GridLinesVisibility="Horizontal"
+                HeadersVisibility="Column"
+                IsReadOnly="True"
+                MouseDoubleClick="MatrixGrid_MouseDoubleClick"
+                RowHeight="24"
+                SelectionMode="Single"
+                ToolTip="ダブルクリックで注文詳細を表示"
+                Visibility="Collapsed" />
+        </Grid>
     </DockPanel>
 </Window>

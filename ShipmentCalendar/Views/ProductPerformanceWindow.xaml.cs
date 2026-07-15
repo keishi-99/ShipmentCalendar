@@ -3,6 +3,8 @@ using ShipmentCalendar.Repositories;
 using ShipmentCalendar.Services;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace ShipmentCalendar.Views;
@@ -15,13 +17,15 @@ public partial class ProductPerformanceWindow : Window {
     private Task? _refreshTask;
     private string? _selectedItemNumber;
     private double _lastScaleMinutes;
-    private bool _isLaneView;
+    private List<ProcessDefinition> _lastDefs = [];
+    private List<ResultGroup> _lastGroups = [];
 
     public ProductPerformanceWindow(AppSettings settings) {
         InitializeComponent();
         _settings = settings;
         StartDatePicker.SelectedDate = DateTime.Today.AddDays(-90);
         EndDatePicker.SelectedDate = DateTime.Today;
+        ViewModeCombo.SelectedIndex = 0;
         Loaded += (_, _) => _refreshTask = RefreshRegisteredItemsAsync();
     }
 
@@ -54,9 +58,9 @@ public partial class ProductPerformanceWindow : Window {
 
         _selectedItemNumber = itemNumber;
         var entry = _registeredItems.FirstOrDefault(i => i.ItemNumber == itemNumber);
-        TxtSelectedItem.Text = !string.IsNullOrEmpty(entry?.DisplayName)
-            ? $"{itemNumber}（{entry.DisplayName}）"
-            : itemNumber;
+        TxtSelectedItem.Text = itemNumber;
+        TxtSelectedItemName.Text = entry?.DisplayName ?? "";
+        TxtSelectedItemName.ToolTip = entry?.DisplayName;
     }
 
     private async void BtnSearch_Click(object sender, RoutedEventArgs e) {
@@ -72,11 +76,9 @@ public partial class ProductPerformanceWindow : Window {
         var itemNumber = _selectedItemNumber;
         var from = DateOnly.FromDateTime(start);
         var to = DateOnly.FromDateTime(end);
-        var limit = CountCombo.SelectedItem is ComboBoxItem { Tag: string { Length: > 0 } tag } && int.TryParse(tag, out var n)
-            ? n
-            : (int?)null;
 
         BtnSearch.IsEnabled = false;
+        SearchProgressBar.Visibility = Visibility.Visible;
         TxtStatus.Text = "検索中...";
         ResultsControl.ItemsSource = null;
 
@@ -95,33 +97,45 @@ public partial class ProductPerformanceWindow : Window {
                 .GroupBy(r => r.Seiban, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => g.First().PlannedQuantity, StringComparer.OrdinalIgnoreCase);
 
+            // 注文詳細ウィンドウを開くために必要な、製番ごとの品目名・納期・機種コード
+            var orderInfoBySeiban = rows
+                .GroupBy(r => r.Seiban, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => (g.First().ProductName, g.First().DeliveryDate, g.First().ModelCode), StringComparer.OrdinalIgnoreCase);
+
             var groups = actualByGroup
                 .Select(kv => new ResultGroup(
                     kv.Key,
                     kv.Value.Max(p => p.ActualDate),
                     plannedQuantityBySeiban.GetValueOrDefault(kv.Key, 1),
                     BuildStandardProcesses(defs, plannedQuantityBySeiban.GetValueOrDefault(kv.Key, 1)),
-                    kv.Value.OrderBy(p => p.SortOrder).ToList()))
+                    kv.Value.OrderBy(p => p.SortOrder).ToList(),
+                    orderInfoBySeiban.GetValueOrDefault(kv.Key).ProductName ?? "",
+                    orderInfoBySeiban.GetValueOrDefault(kv.Key).DeliveryDate,
+                    orderInfoBySeiban.GetValueOrDefault(kv.Key).ModelCode ?? ""))
                 .OrderByDescending(g => g.LatestActualDate)
                 .ToList();
 
-            if (limit.HasValue)
-                groups = groups.Take(limit.Value).ToList();
+            _lastDefs = defs;
 
             // 標準・実績バー共通の全幅は、検索結果全体を通した最大値を使うことで「1日」の幅を注文間で揃える
             var maxScaleMinutes = groups.Count == 0 ? 0.0 : RoundToDayBoundary(groups.Max(ComputeRawScaleMinutes));
             groups = groups.Select(g => g with { ScaleMinutes = maxScaleMinutes, Lanes = BuildLanes(g) }).ToList();
 
             _lastScaleMinutes = maxScaleMinutes;
+            _lastGroups = groups;
             RebuildDayRulerHeader(maxScaleMinutes);
             UpdateRulerHeaderVisibility();
 
             ResultsControl.ItemsSource = groups;
+            if (ViewModeCombo.SelectedIndex == 2)
+                RebuildMatrixColumns();
+
             TxtStatus.Text = groups.Count == 0 ? "該当する実績がありません" : $"{groups.Count} 件表示";
         } catch (Exception ex) {
             TxtStatus.Text = $"検索に失敗しました: {ex.Message}";
         } finally {
             BtnSearch.IsEnabled = true;
+            SearchProgressBar.Visibility = Visibility.Collapsed;
         }
     }
 
@@ -134,6 +148,64 @@ public partial class ProductPerformanceWindow : Window {
     }
 
     private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();
+
+    // 注文カード（タイムライン表示・レーン表示どちらも）をダブルクリックしたら、その製番のOrderDetailWindowを開く
+    private async void OrderCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) {
+        if (e.ClickCount != 2) return;
+        if (sender is not FrameworkElement { DataContext: ResultGroup group }) return;
+        await OpenOrderDetailAsync(group);
+    }
+
+    // 工程比較表の行をダブルクリックしたら、クリック位置から行のDataGridRowを辿ってその製番のOrderDetailWindowを開く
+    private async void MatrixGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e) {
+        if (FindAncestor<DataGridRow>(e.OriginalSource as DependencyObject) is not { Item: ResultGroup group }) return;
+        await OpenOrderDetailAsync(group);
+    }
+
+    private static T? FindAncestor<T>(DependencyObject? current) where T : DependencyObject {
+        while (current != null) {
+            if (current is T match) return match;
+            current = VisualTreeHelper.GetParent(current);
+        }
+        return null;
+    }
+
+    // 検索時にキャッシュしたdefs・受入実績から、MainViewModelと同様の手順でOrderProcessを組み立てる（休日も考慮する）
+    private async Task OpenOrderDetailAsync(ResultGroup group) {
+        List<Holiday> holidays;
+        try {
+            holidays = (await new SqliteHolidayRepository().GetAllAsync()).ToList();
+        } catch (Exception ex) {
+            MessageBox.Show($"休日情報の取得に失敗しました: {ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        var calculator = new BusinessDayCalculator(holidays);
+        var deliveryDate = group.DeliveryDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var order = new Order {
+            ProductName = group.ProductName,
+            ItemNumber = _selectedItemNumber ?? "",
+            ModelCode = group.ModelCode,
+            ManufactureNumber = group.Seiban,
+            DeliveryDate = deliveryDate,
+            CompletionDate = calculator.SubtractBusinessDays(deliveryDate, _settings.CompletionDateLeadDays),
+            PlannedQuantity = group.PlannedQuantity
+        };
+
+        var completedByDestNumber = group.ActualProcesses
+            .ToDictionary(p => p.DestinationCode, p => (p.ActualDate, p.WorkerName, p.ActualWorkMinutes), StringComparer.OrdinalIgnoreCase);
+
+        order.Processes = calculator.BuildProcesses(order, _lastDefs.Where(d => d.IsVisible), completedByDestNumber);
+
+        // 順序999（最終受入）が完了している場合、前工程すべてを完了扱いにする（MainViewModelと同じ規則）
+        var def999 = _lastDefs.FirstOrDefault(d => d.SortOrder == 999);
+        if (def999 != null && completedByDestNumber.ContainsKey(def999.DestinationCode)) {
+            foreach (var process in order.Processes)
+                process.Status = ProcessStatus.Completed;
+        }
+
+        new OrderDetailWindow(order, _settings.ShowRequiredTimeInMinutes) { Owner = this }.ShowDialog();
+    }
 
     // 標準工数の合計に1営業日分の余白を足した値（丸め前）
     // 実績が標準を大幅に超過している場合、標準工数だけを基準にするとスケールが崩れて実績バーが
@@ -167,9 +239,11 @@ public partial class ProductPerformanceWindow : Window {
                     ? Math.Min(actualMinutes, std.RequiredMinutes) / std.RequiredMinutes * LaneBarMaxSize
                     : 0.0;
                 // 標準工数が0分（未設定の工程等）で実績だけがある場合、比率計算では常に0になり実績バーが
-                // 見えなくなってしまうため、超過（警告色）として最大幅で表示し実績の存在を示す
+                // 見えなくなってしまうため、超過（警告色）として最大幅で表示し実績の存在を示す。
+                // 超過分自体は標準の200%（LaneBarMaxSize分）を上限にする。実際の数値は常時表示のラベル側で
+                // 正確に伝わるため、視覚上の長さだけ頭打ちにしても情報は失われない
                 var overflowSize = std.RequiredMinutes > 0
-                    ? Math.Max(0, actualMinutes - std.RequiredMinutes) / std.RequiredMinutes * LaneBarMaxSize
+                    ? Math.Min(LaneBarMaxSize, Math.Max(0, actualMinutes - std.RequiredMinutes) / std.RequiredMinutes * LaneBarMaxSize)
                     : actualMinutes > 0 ? LaneBarMaxSize : 0.0;
                 return new ProcessLane(
                     std.ProcessName,
@@ -218,21 +292,131 @@ public partial class ProductPerformanceWindow : Window {
 
     // 共通ルーラーはタイムライン表示のときだけ、かつ検索結果がある場合だけ表示する
     private void UpdateRulerHeaderVisibility() =>
-        RulerHeaderBorder.Visibility = !_isLaneView && _lastScaleMinutes > 0 ? Visibility.Visible : Visibility.Collapsed;
+        RulerHeaderBorder.Visibility = ViewModeCombo.SelectedIndex == 0 && _lastScaleMinutes > 0 ? Visibility.Visible : Visibility.Collapsed;
 
-    private void ToggleLaneView_Checked(object sender, RoutedEventArgs e) {
-        _isLaneView = true;
-        ResultsControl.ItemTemplate = (DataTemplate)Resources["LaneTemplate"];
+    // 表示形式: 0=タイムライン表示, 1=工程別レーン表示, 2=工程比較表
+    private void ViewModeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) {
+        var index = ViewModeCombo.SelectedIndex;
+
+        MatrixGrid.Visibility = index == 2 ? Visibility.Visible : Visibility.Collapsed;
+        ResultsScrollViewer.Visibility = index == 2 ? Visibility.Collapsed : Visibility.Visible;
+
+        if (index != 2)
+            ResultsControl.ItemTemplate = (DataTemplate)Resources[index == 1 ? "LaneTemplate" : "GanttPairTemplate"];
+        else
+            RebuildMatrixColumns();
+
         UpdateRulerHeaderVisibility();
     }
 
-    private void ToggleLaneView_Unchecked(object sender, RoutedEventArgs e) {
-        _isLaneView = false;
-        ResultsControl.ItemTemplate = (DataTemplate)Resources["GanttPairTemplate"];
-        UpdateRulerHeaderVisibility();
+    // 工程比較表の列（製番等の固定列＋工程ごとの動的列）を組み立てる
+    private void RebuildMatrixColumns() {
+        MatrixGrid.Columns.Clear();
+        MatrixGrid.Columns.Add(new DataGridTextColumn { Header = "製番", Binding = new Binding(nameof(ResultGroup.Seiban)), Width = 90 });
+        MatrixGrid.Columns.Add(new DataGridTextColumn { Header = "計画数", Binding = new Binding(nameof(ResultGroup.PlannedQuantity)), Width = 60 });
+
+        // group.LanesはStandardProcesses（=defs全件）をSortOrder順に並べたものなので、
+        // 列のインデックスと合わせるためdefsも同じ順序で並べる
+        var orderedDefs = _lastDefs.OrderBy(d => d.SortOrder).ToList();
+        for (int i = 0; i < orderedDefs.Count; i++)
+            MatrixGrid.Columns.Add(BuildMatrixProcessColumn(orderedDefs[i].ProcessName, i));
+
+        MatrixGrid.ItemsSource = _lastGroups;
     }
 
-    private record ResultGroup(string Seiban, DateOnly? LatestActualDate, int PlannedQuantity, IReadOnlyList<OrderProcess> StandardProcesses, IReadOnlyList<OrderProcess> ActualProcesses) {
+    // 工程1つ分の比較セル列を作る。標準を固定長の背景バー、実績をその上に重ねたバーとして表示する。
+    // レーン表示とProcessLaneを共有しているため、ScaleTransformではなくバーの幅だけをHalfSizeConverterで半分にすることで
+    // 表側に収める（文字はレーン表示と同じフォントサイズのまま、スケールによるにじみもない）
+    // 実績が標準の200%まで超過した場合、オーバーレイバーは(LaneBarMaxSize×2)×0.5=200pxまで伸びうるため、
+    // それが列内に収まるよう列幅を確保する（収まらないとDataGridは既定でクリップしないため隣列に重なって見えてしまう）
+    private DataGridTemplateColumn BuildMatrixProcessColumn(string header, int laneIndex) {
+        var column = new DataGridTemplateColumn { Header = header, Width = LaneBarMaxSize + 10 };
+        var template = new DataTemplate();
+
+        var containerFactory = new FrameworkElementFactory(typeof(Grid));
+        containerFactory.SetBinding(FrameworkElement.DataContextProperty, new Binding(nameof(ResultGroup.Lanes)) {
+            Converter = new LaneByIndexConverter(),
+            ConverterParameter = laneIndex
+        });
+
+        var backgroundFactory = new FrameworkElementFactory(typeof(Border));
+        backgroundFactory.SetValue(FrameworkElement.WidthProperty, LaneBarMaxSize / 2);
+        backgroundFactory.SetValue(FrameworkElement.HeightProperty, 8.0);
+        backgroundFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Left);
+        backgroundFactory.SetValue(Border.BackgroundProperty, new SolidColorBrush(Color.FromRgb(0xDC, 0xE3, 0xEC)));
+        backgroundFactory.SetBinding(FrameworkElement.ToolTipProperty, new Binding(nameof(ProcessLane.StandardMinutes)) { StringFormat = "標準 {0:F1}分" });
+
+        var overlayFactory = new FrameworkElementFactory(typeof(StackPanel));
+        overlayFactory.SetValue(StackPanel.OrientationProperty, Orientation.Horizontal);
+        overlayFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Left);
+
+        var withinFactory = new FrameworkElementFactory(typeof(Border));
+        withinFactory.SetBinding(FrameworkElement.WidthProperty, new Binding(nameof(ProcessLane.ActualWithinStandardSize)) { Converter = new HalfSizeConverter() });
+        withinFactory.SetValue(FrameworkElement.HeightProperty, 8.0);
+        withinFactory.SetValue(Border.BackgroundProperty, new SolidColorBrush(Color.FromRgb(0x66, 0x99, 0xCC)));
+        withinFactory.SetBinding(FrameworkElement.ToolTipProperty, new Binding(nameof(ProcessLane.ActualTooltip)));
+
+        var overflowFactory = new FrameworkElementFactory(typeof(Border));
+        overflowFactory.SetBinding(FrameworkElement.WidthProperty, new Binding(nameof(ProcessLane.ActualOverflowSize)) { Converter = new HalfSizeConverter() });
+        overflowFactory.SetValue(FrameworkElement.HeightProperty, 8.0);
+        overflowFactory.SetValue(Border.BackgroundProperty, new SolidColorBrush(Color.FromArgb(0xB3, 0xD9, 0x53, 0x4F)));
+        overflowFactory.SetBinding(FrameworkElement.ToolTipProperty, new Binding(nameof(ProcessLane.ActualTooltip)));
+
+        overlayFactory.AppendChild(withinFactory);
+        overlayFactory.AppendChild(overflowFactory);
+
+        // ラベルはバーと同じ位置に固定オフセットで重ね、実績が超過してバーが伸びても位置がズレないようにする（レーン表示と同じ考え方）。
+        // オフセットもバーの半分幅（LaneBarMaxSize/2）に合わせて半分にしてある
+        var labelFactory = new FrameworkElementFactory(typeof(StackPanel));
+        labelFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(LaneBarMaxSize / 2 + 5, 0, 0, 0));
+        labelFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Left);
+        labelFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        labelFactory.SetValue(StackPanel.OrientationProperty, Orientation.Horizontal);
+
+        var actualTextFactory = new FrameworkElementFactory(typeof(TextBlock));
+        actualTextFactory.SetValue(TextBlock.FontSizeProperty, 10.0);
+        actualTextFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.SemiBold);
+        actualTextFactory.SetBinding(TextBlock.ForegroundProperty, new Binding(nameof(ProcessLane.ActualTextBrush)));
+        actualTextFactory.SetBinding(TextBlock.TextProperty, new Binding(nameof(ProcessLane.ActualMinutesText)));
+
+        var standardTextFactory = new FrameworkElementFactory(typeof(TextBlock));
+        standardTextFactory.SetValue(TextBlock.FontSizeProperty, 10.0);
+        standardTextFactory.SetValue(TextBlock.ForegroundProperty, new SolidColorBrush(Color.FromRgb(0x66, 0x66, 0x66)));
+        standardTextFactory.SetBinding(TextBlock.TextProperty, new Binding(nameof(ProcessLane.StandardComparisonText)));
+
+        labelFactory.AppendChild(actualTextFactory);
+        labelFactory.AppendChild(standardTextFactory);
+
+        containerFactory.AppendChild(backgroundFactory);
+        containerFactory.AppendChild(overlayFactory);
+        containerFactory.AppendChild(labelFactory);
+
+        template.VisualTree = containerFactory;
+        column.CellTemplate = template;
+        return column;
+    }
+
+    // ResultGroup.Lanes（IReadOnlyList<ProcessLane>）から、列ごとに固定されたインデックスの要素を取り出す
+    private class LaneByIndexConverter : IValueConverter {
+        public object? Convert(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture) {
+            if (value is not IReadOnlyList<ProcessLane> lanes || parameter is not int index) return null;
+            return index >= 0 && index < lanes.Count ? lanes[index] : null;
+        }
+
+        public object ConvertBack(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture) =>
+            throw new NotSupportedException();
+    }
+
+    // 工程比較表のバー幅を、レーン表示と共有しているProcessLaneの値を変えずに半分にする
+    private class HalfSizeConverter : IValueConverter {
+        public object Convert(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture) =>
+            value is double d ? d / 2 : 0.0;
+
+        public object ConvertBack(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture) =>
+            throw new NotSupportedException();
+    }
+
+    private record ResultGroup(string Seiban, DateOnly? LatestActualDate, int PlannedQuantity, IReadOnlyList<OrderProcess> StandardProcesses, IReadOnlyList<OrderProcess> ActualProcesses, string ProductName, DateOnly? DeliveryDate, string ModelCode) {
         // 標準・実績バー共通の全幅（分）。検索結果全体を通した最大値（BtnSearch_Clickで計算）を全行で共有することで、
         // 注文をまたいでも「1時間」「1日」の幅が揃う
         public double ScaleMinutes { get; init; }
@@ -240,6 +424,9 @@ public partial class ProductPerformanceWindow : Window {
 
         public string StandardTotalText => $"{StandardProcesses.Sum(p => p.RequiredMinutes) / 60.0:F1}h";
         public string ActualTotalText => $"{ActualProcesses.Sum(p => p.ActualWorkMinutes) / 60.0:F1}h";
+
+        // 順序999（最終受入）が品目に定義されているのに、まだ実績が無い場合は作業途中とみなす
+        public bool IsInProgress => StandardProcesses.Any(p => p.SortOrder == 999) && !ActualProcesses.Any(p => p.SortOrder == 999);
     }
 
     private record ProcessLane(string ProcessName, double StandardMinutes, double ActualMinutes, double ActualWithinStandardSize, double ActualOverflowSize, string WorkerName) {
@@ -248,8 +435,9 @@ public partial class ProductPerformanceWindow : Window {
             : $"実績 {ActualMinutes:F1}分 / 標準 {StandardMinutes:F1}分\n担当: {WorkerName}";
 
         public string ActualMinutesText => $"{ActualMinutes:F1}分";
-        public string StandardComparisonText => $" / 標準{StandardMinutes:F1}分";
-        // 標準を超過している場合、実績分数の文字色もバーの超過色（赤系）に合わせる
-        public Brush ActualTextBrush => ActualOverflowSize > 0 ? Brushes.Firebrick : Brushes.Black;
+        public string StandardComparisonText => $" / {StandardMinutes:F1}分";
+        // 標準を超過している場合、実績分数の文字色もバーの超過色（赤系）に合わせる。
+        // バー自体は半透明の赤（#B3D9534F）にしているため、文字はそれより濃い暗めの赤にしてコントラストを確保する
+        public Brush ActualTextBrush => ActualOverflowSize > 0 ? new SolidColorBrush(Color.FromRgb(0x7A, 0x1A, 0x1A)) : Brushes.Black;
     }
 }
