@@ -10,7 +10,7 @@ public class ProcessDefinition
     public double SetupTimeMinutes { get; set; } = 0;
     /// <summary>作業時間（分単位・小数あり）。数量1個あたりの時間</summary>
     public double WorkTimeMinutes { get; set; } = 0;
-    /// <summary>この工程の所要時間（分単位・小数あり）＝段取時間+作業時間。1日480分換算で営業日を算出。0=当日中に完了</summary>
+    /// <summary>この工程の所要時間（分単位・小数あり）＝段取時間+作業時間。1営業日あたりの稼働時間（設定値）換算で営業日を算出。0=当日中に完了</summary>
     public double LeadTimeMinutes => SetupTimeMinutes + WorkTimeMinutes;
     public int SortOrder { get; set; }
     /// <summary>一覧に表示するか</summary>

@@ -127,7 +127,7 @@
                 <Menu VerticalAlignment="Center" Background="Transparent">
                     <MenuItem Style="{StaticResource ToolbarMenuButtonStyle}">
                         <MenuItem.Header>設定 ▾</MenuItem.Header>
-                        <MenuItem Click="BtnSettings_Click" Header="データソース設定" />
+                        <MenuItem Click="BtnSettings_Click" Header="基本設定" />
                         <MenuItem Click="BtnProcess_Click" Header="工程設定" />
                         <MenuItem Click="BtnHoliday_Click" Header="休日設定" />
                         <MenuItem Click="BtnDeptSetting_Click" Header="部署設定" />

@@ -11,13 +11,14 @@ public partial class OrderDetailWindow : Window {
     private readonly Order _order;
     private readonly bool _showRequiredTimeInMinutes;
 
-    public OrderDetailWindow(Order order, bool showRequiredTimeInMinutes = false) {
+    public OrderDetailWindow(Order order, bool showRequiredTimeInMinutes = false, int dayMinutes = 420) {
         InitializeComponent();
         _order = order;
         _showRequiredTimeInMinutes = showRequiredTimeInMinutes;
         DataContext = order;
         DetailProcessBar.Processes = order.Processes;
         DetailProcessBar.ShowRequiredTimeInMinutes = showRequiredTimeInMinutes;
+        DetailProcessBar.DayMinutes = dayMinutes;
         LaneList.ItemsSource = BuildLanes(order.Processes);
         Loaded += async (_, _) => await LoadProcessRowsAsync();
     }

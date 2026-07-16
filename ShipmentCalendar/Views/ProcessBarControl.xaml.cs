@@ -64,6 +64,25 @@ public partial class ProcessBarControl : UserControl {
         set => SetValue(ShowRequiredTimeInMinutesProperty, value);
     }
 
+    public static readonly DependencyProperty DayMinutesProperty =
+        DependencyProperty.Register(
+            nameof(DayMinutes),
+            typeof(double),
+            typeof(ProcessBarControl),
+            new FrameworkPropertyMetadata(
+                420.0,
+                FrameworkPropertyMetadataOptions.Inherits,
+                (d, _) => ((ProcessBarControl)d).RebuildBars(),
+                // 0以下は後続の除算でNaN・無限大の原因になるため既定値(420)に補正する
+                (_, baseValue) => baseValue is double v && v > 0 ? v : 420.0));
+
+    /// <summary>1営業日あたりの稼働時間（分）。設定していない祖先要素配下、または0以下の値を
+    /// 設定しようとした場合は既定の420分として扱われる</summary>
+    public double DayMinutes {
+        get => (double)GetValue(DayMinutesProperty);
+        set => SetValue(DayMinutesProperty, value);
+    }
+
     public static readonly DependencyProperty ShowDateBarProperty =
         DependencyProperty.Register(
             nameof(ShowDateBar),
@@ -72,7 +91,7 @@ public partial class ProcessBarControl : UserControl {
             new PropertyMetadata(true, (d, _) => ((ProcessBarControl)d).RebuildBars()));
 
     /// <summary>ヘッダー行に実際の暦日付を表示するか。falseの場合、日付とは無関係な実績バー等のために、
-    /// 480分（1営業日相当）ごとに区切った相対的な「n日目」ラベルを代わりに表示する</summary>
+    /// DayMinutes（1営業日相当）ごとに区切った相対的な「n日目」ラベルを代わりに表示する</summary>
     public bool ShowDateBar {
         get => (bool)GetValue(ShowDateBarProperty);
         set => SetValue(ShowDateBarProperty, value);
@@ -130,17 +149,17 @@ public partial class ProcessBarControl : UserControl {
             if (process.OutsourceLeadDays > 0) {
                 // daysSoFarはpos（後続工程が実際に消費した位置）を基準にする。外注待ちが
                 // 複数回連続する場合、前回の待機による丸め分（繰り越し）も含める必要がある。
-                // posがちょうど480の倍数の場合、floor+1だと1日多く繰り上がってしまうため
-                // Ceilingで判定する。pos=0（末尾工程自体が外注待ち）の場合はCeiling(0/480)=0
+                // posがちょうどDayMinutesの倍数の場合、floor+1だと1日多く繰り上がってしまうため
+                // Ceilingで判定する。pos=0（末尾工程自体が外注待ち）の場合はCeiling(0/DayMinutes)=0
                 // となってしまうため、1日目として扱うために1に補正する
-                var daysSoFar = pos > 0 ? (int)Math.Ceiling(pos / 480.0) : 1;
-                var gate = (daysSoFar + process.OutsourceLeadDays) * 480.0;
+                var daysSoFar = pos > 0 ? (int)Math.Ceiling(pos / DayMinutes) : 1;
+                var gate = (daysSoFar + process.OutsourceLeadDays) * DayMinutes;
 
                 // 外注待ちが連続する等でposの丸め誤差が累積している場合、totalGapが
                 // OutsourceLeadDays分の幅を下回ることがあるため、外注待ち分を優先的に
                 // 確保し、余りをpreGapに割り当てる
                 var totalGap = gate - pos;
-                var outsourceMinutes = Math.Min(totalGap, process.OutsourceLeadDays * 480.0);
+                var outsourceMinutes = Math.Min(totalGap, process.OutsourceLeadDays * DayMinutes);
                 var preGap = totalGap - outsourceMinutes;
 
                 if (preGap >= 1) {
@@ -186,9 +205,9 @@ public partial class ProcessBarControl : UserControl {
             if (businessDays.Count == 0) return;
 
             if (!SuppressHeaderRow) {
-                // 日付バー: 1列=480*（1営業日=480分相当）で統一することで工程バーと分単位で位置が合う
+                // 日付バー: 1列=DayMinutes（1営業日の稼働時間相当）で統一することで工程バーと分単位で位置が合う
                 foreach (var (date, col) in businessDays.Select((d, i) => (d, i))) {
-                    DateBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(480, GridUnitType.Star) });
+                    DateBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(DayMinutes, GridUnitType.Star) });
                     var dateBorder = new Border {
                         Background = col % 2 == 0 ? DateBarBackgroundBrushA : DateBarBackgroundBrushB,
                         BorderBrush = _defaultBorderBrush,
@@ -206,18 +225,18 @@ public partial class ProcessBarControl : UserControl {
                 }
             }
 
-            // 工程バー: 日付バーと同じ総スター幅（営業日数×480）を使うため、日付との整合が保たれる
-            totalDayMinutes = businessDays.Count * 480.0;
+            // 工程バー: 日付バーと同じ総スター幅（営業日数×DayMinutes）を使うため、日付との整合が保たれる
+            totalDayMinutes = businessDays.Count * DayMinutes;
         } else {
             // 実カレンダーの日付とは無関係な実績バー等のための表示。TotalMinutesOverride指定時はそちらを、
-            // 未指定なら実績時間の合計(pos)を全幅とし、480分（1営業日相当）ごとに区切った「n日目」ラベルを表示する。
+            // 未指定なら実績時間の合計(pos)を全幅とし、DayMinutes（1営業日相当）ごとに区切った「n日目」ラベルを表示する。
             // 実日付ではなく相対的な日数の目安として使う
             totalDayMinutes = TotalMinutesOverride ?? pos;
             if (!SuppressHeaderRow) {
-                var dayCount = Math.Max(1, (int)Math.Ceiling(totalDayMinutes / 480.0));
+                var dayCount = Math.Max(1, (int)Math.Ceiling(totalDayMinutes / DayMinutes));
                 var remaining = totalDayMinutes;
                 for (int day = 0; day < dayCount && remaining >= 1; day++) {
-                    var width = Math.Min(480.0, remaining);
+                    var width = Math.Min(DayMinutes, remaining);
                     DateBarGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(width, GridUnitType.Star) });
                     var dateBorder = new Border {
                         Background = day % 2 == 0 ? DateBarBackgroundBrushA : DateBarBackgroundBrushB,

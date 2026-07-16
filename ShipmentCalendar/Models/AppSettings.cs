@@ -5,10 +5,6 @@ public class AppSettings
 {
     /// <summary>ODBC DSN名（例: DrSum_WORKDB_YD）</summary>
     public string OdbcDsn { get; set; } = string.Empty;
-    /// <summary>ODBCユーザーID</summary>
-    public string OdbcUserId { get; set; } = string.Empty;
-    /// <summary>ODBCパスワード（保存時はDPAPIで暗号化される）</summary>
-    public string OdbcPassword { get; set; } = string.Empty;
     /// <summary>休日取得（VP_カレンダ情報_YD）の絞り込みに使う工場番号</summary>
     public string OdbcFactoryNumber { get; set; } = string.Empty;
     /// <summary>自動更新間隔（分）。0=自動更新なし</summary>
@@ -19,6 +15,14 @@ public class AppSettings
     public int DeliveryDatePastDays { get; set; } = 0;
     /// <summary>完了日の算出に使う、出荷日からの営業日数（出荷日からこの日数だけ前の営業日を完了日とする）</summary>
     public int CompletionDateLeadDays { get; set; } = 1;
+    private int _dayMinutes = 420;
+    /// <summary>1営業日あたりの稼働時間（分）。工程期限日・工程バーの日割り計算に使う。
+    /// 0以下・1440(24時間)超は後続のゼロ除算や無意味な設定値を防ぐため既定値(420)に補正する
+    /// （設定ファイルの直接編集等を想定）</summary>
+    public int DayMinutes {
+        get => _dayMinutes;
+        set => _dayMinutes = value > 0 && value <= 1440 ? value : 420;
+    }
     /// <summary>未完了工程の表示日付を完了必須日にするか（false=着手必須日を表示）</summary>
     public bool ShowDueDateForNotStarted { get; set; } = false;
     /// <summary>注文一覧の並び順</summary>

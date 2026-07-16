@@ -265,7 +265,7 @@ public partial class MainViewModel : ObservableObject {
     [RelayCommand]
     public async Task LoadOrdersAsync() {
         if (!Settings.IsOdbcConfigured) {
-            StatusMessage = "ODBC接続が設定されていません。設定 > データソース設定 から接続情報を入力してください。";
+            StatusMessage = "ODBC接続が設定されていません。設定 > 基本設定 から接続情報を入力してください。";
             return;
         }
 
@@ -310,7 +310,7 @@ public partial class MainViewModel : ObservableObject {
             }
 
             var holidays = await _holidayRepository.GetAllAsync();
-            var calculator = new BusinessDayCalculator(holidays);
+            var calculator = new BusinessDayCalculator(holidays, Settings.DayMinutes);
             var today = DateOnly.FromDateTime(DateTime.Today);
 
             // DB登録済みの品目名があればODBC品目名を上書きする

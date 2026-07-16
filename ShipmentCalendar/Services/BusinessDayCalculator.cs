@@ -3,8 +3,9 @@ using ShipmentCalendar.Models;
 namespace ShipmentCalendar.Services;
 
 /// <summary>営業日計算サービス（休日・土日を除く）</summary>
-public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
+public class BusinessDayCalculator(IEnumerable<Holiday> holidays, double dayMinutes) {
     private readonly HashSet<DateOnly> _holidays = holidays.Select(h => h.Date).ToHashSet();
+    private readonly double _dayMinutes = dayMinutes;
 
     /// <summary>基準日からN営業日前の日付を返す</summary>
     public DateOnly SubtractBusinessDays(DateOnly baseDate, int businessDays) {
@@ -28,7 +29,7 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
 
     /// <summary>
     /// 工程定義から期限日を計算する。
-    /// 末尾工程（完了日に近い工程）から逆向きに残り所要時間を累積し、480分（8時間）単位の
+    /// 末尾工程（完了日に近い工程）から逆向きに残り所要時間を累積し、dayMinutes（1日の稼働時間・分）単位の
     /// 日チャンクに割り当てることで、各工程の「着手必須日（startBucket）」と
     /// 「完了必須日（finishBucket）」を別々に算出する。
     /// 工程自身の所要時間が日をまたぐ場合（例: 当日の残り枠に収まらず前営業日から
@@ -59,28 +60,28 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays) {
             // 外注待ちが複数回連続する場合、前回の待機による丸め分（繰り越し）も
             // ここに含まれている必要があるため、素の合計時間ではなくrunningInを使う
             if (def.OutsourceLeadDays > 0) {
-                // adjustedがちょうど480の倍数（例: 1440）の場合、floor+1だと1日多く繰り上がってしまう
-                // （1440分=3日ぴったり消費なのに4日と判定される）ため、Ceilingで判定する。
+                // adjustedがちょうど_dayMinutesの倍数（例: _dayMinutes*3）の場合、floor+1だと1日多く繰り上がってしまう
+                // （3日ぴったり消費なのに4日と判定される）ため、Ceilingで判定する。
                 // adjusted=0（末尾工程自体が外注待ちで、後続が何も消費していない）の場合は
-                // Ceiling(0/480)=0となってしまうため、1日目として扱うために1に補正する
-                var daysSoFar = adjusted > 0 ? (int)Math.Ceiling(adjusted / 480.0) : 1;
-                adjusted = (daysSoFar + def.OutsourceLeadDays) * 480.0;
+                // Ceiling(0/_dayMinutes)=0となってしまうため、1日目として扱うために1に補正する
+                var daysSoFar = adjusted > 0 ? (int)Math.Ceiling(adjusted / _dayMinutes) : 1;
+                adjusted = (daysSoFar + def.OutsourceLeadDays) * _dayMinutes;
             }
 
             // 滞留時間（数量に依存しない固定の待機時間）。外注リードタイムや末尾工程など
             // どのケースでも、adjustedの基準値に上乗せする。
-            // 480分を超える分は、後段の計算により自動的に前営業日以前へ繰り越される
+            // _dayMinutesを超える分は、後段の計算により自動的に前営業日以前へ繰り越される
             if (def.DwellTimeMinutes > 0) {
                 adjusted += def.DwellTimeMinutes;
             }
 
             // ゲート（待機日数分の空白）自体は共有させないが、工程自身の所要時間は
-            // 分単位で正確に積む。所要時間が480分未満で余りがある場合、その余りは
+            // 分単位で正確に積む。所要時間が_dayMinutes未満で余りがある場合、その余りは
             // 前工程（より着手が早い工程）が同じ日の枠として使えるようにする
-            finishBucket[i] = (int)(adjusted / 480.0) + 1;
+            finishBucket[i] = (int)(adjusted / _dayMinutes) + 1;
             runningIn = adjusted + minutes;
-            // (runningIn - 1) / 480.0 は小数の場合に丸め誤差で1日不足することがあるため、Ceilingで判定する
-            startBucket[i] = runningIn > 0 ? (int)Math.Ceiling(runningIn / 480.0) : 1;
+            // (runningIn - 1) / _dayMinutes は小数の場合に丸め誤差で1日不足することがあるため、Ceilingで判定する
+            startBucket[i] = runningIn > 0 ? (int)Math.Ceiling(runningIn / _dayMinutes) : 1;
         }
 
         // 各工程の必須日 = 完了日 - (バケット番号 - 1) 営業日（バケット1=完了日当日）
