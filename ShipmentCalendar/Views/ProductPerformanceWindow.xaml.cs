@@ -16,6 +16,7 @@ public partial class ProductPerformanceWindow : Window {
     private List<ItemPickerEntry> _registeredItems = [];
     private Task? _refreshTask;
     private string? _selectedItemNumber;
+    private string? _searchedItemNumber;
     private double _lastScaleMinutes;
     private List<ProcessDefinition> _lastDefs = [];
     private List<ResultGroup> _lastGroups = [];
@@ -123,6 +124,7 @@ public partial class ProductPerformanceWindow : Window {
 
             _lastScaleMinutes = maxScaleMinutes;
             _lastGroups = groups;
+            _searchedItemNumber = itemNumber;
             RebuildDayRulerHeader(maxScaleMinutes);
             UpdateRulerHeaderVisibility();
 
@@ -182,13 +184,15 @@ public partial class ProductPerformanceWindow : Window {
 
         var calculator = new BusinessDayCalculator(holidays);
         var deliveryDate = group.DeliveryDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var itemLeadDays = await SqliteProductDisplayNameRepository.GetCompletionDateLeadDaysAsync(_searchedItemNumber ?? "")
+            ?? _settings.CompletionDateLeadDays;
         var order = new Order {
             ProductName = group.ProductName,
-            ItemNumber = _selectedItemNumber ?? "",
+            ItemNumber = _searchedItemNumber ?? "",
             ModelCode = group.ModelCode,
             ManufactureNumber = group.Seiban,
             DeliveryDate = deliveryDate,
-            CompletionDate = calculator.SubtractBusinessDays(deliveryDate, _settings.CompletionDateLeadDays),
+            CompletionDate = calculator.SubtractBusinessDays(deliveryDate, itemLeadDays),
             PlannedQuantity = group.PlannedQuantity
         };
 

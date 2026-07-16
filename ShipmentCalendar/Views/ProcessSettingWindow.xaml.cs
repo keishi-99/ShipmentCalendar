@@ -274,6 +274,10 @@ public partial class ProcessSettingWindow : Window
         // DB登録済みの品目名を表示
         TxtItemName.Text = await SqliteProductDisplayNameRepository.GetDisplayNameAsync(itemNumber) ?? string.Empty;
 
+        // DB登録済みの完了日リードタイムを表示（未設定なら空欄＝共通設定を使用）
+        var leadDays = await SqliteProductDisplayNameRepository.GetCompletionDateLeadDaysAsync(itemNumber);
+        TxtCompletionLeadDays.Text = leadDays?.ToString() ?? string.Empty;
+
         // DB設定をそのままグリッドに表示（CSVとのマージは行わず登録内容を確認）
         var dbDefs = (await _dbRepository.GetByItemNumberAsync(itemNumber))
             .OrderBy(d => d.SortOrder)
@@ -457,8 +461,22 @@ public partial class ProcessSettingWindow : Window
             return;
         }
 
+        // 完了日リードタイムを検証（空欄=共通設定を使用、0〜365の整数のみ許可）
+        int? leadDays = null;
+        var leadDaysText = TxtCompletionLeadDays.Text.Trim();
+        if (!string.IsNullOrEmpty(leadDaysText))
+        {
+            if (!int.TryParse(leadDaysText, out var parsed) || parsed < 0 || parsed > 365)
+            {
+                TxtStatus.Text = "完了日リードタイムは0〜365の整数、または空欄で入力してください";
+                return;
+            }
+            leadDays = parsed;
+        }
+
         // 品目名を保存（工程の有無に関わらず保存する）
         await SqliteProductDisplayNameRepository.SaveDisplayNameAsync(itemNumber, TxtItemName.Text.Trim());
+        await SqliteProductDisplayNameRepository.SaveCompletionDateLeadDaysAsync(itemNumber, leadDays);
 
         // グリッドに工程がある場合のみ工程定義を更新する
         if (_currentDefinitions.Count > 0)
@@ -528,6 +546,7 @@ public partial class ProcessSettingWindow : Window
 
         _currentDefinitions.Clear();
         TxtItemName.Text = string.Empty;
+        TxtCompletionLeadDays.Text = string.Empty;
         TxtStatus.Text = $"品目番号 '{itemNumber}' を削除しました";
 
         await RefreshRegisteredListAsync();

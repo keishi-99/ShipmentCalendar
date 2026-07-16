@@ -1,7 +1,9 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using ShipmentCalendar.Models;
 using ShipmentCalendar.Repositories;
 using ShipmentCalendar.Services;
 using ShipmentCalendar.ViewModels;
+using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -9,6 +11,22 @@ using System.Windows.Input;
 using System.Windows.Media;
 
 namespace ShipmentCalendar.Views;
+
+/// <summary>ツールバーのポップアップメニュー項目1件を表す（ItemsSource経由で動的生成しないと標準のIsCheckableチェックマークが正しく描画されないため使用）</summary>
+public partial class MenuOption<T>(string label, T value) : ObservableObject {
+    public string Label { get; } = label;
+    public T Value { get; } = value;
+    [ObservableProperty] private bool _isChecked;
+}
+
+/// <summary>列の表示/非表示メニュー項目1件を表す（複数選択可能な独立したON/OFFチェックボックス）</summary>
+public partial class ColumnVisibilityOption(string label, DataGridColumn column, Func<AppSettings, bool> getter, Action<AppSettings, bool> setter) : ObservableObject {
+    public string Label { get; } = label;
+    public DataGridColumn Column { get; } = column;
+    public Func<AppSettings, bool> Getter { get; } = getter;
+    public Action<AppSettings, bool> Setter { get; } = setter;
+    [ObservableProperty] private bool _isChecked;
+}
 
 public partial class MainWindow : Window {
     // 外注待ち表示の背景色（App.xamlのリソースで一元管理、ProcessBarControlの外注待ちバーと同じ色）
@@ -27,8 +45,8 @@ public partial class MainWindow : Window {
             if (e.PropertyName == nameof(_viewModel.Orders))
                 BuildProcessColumns();
         };
-        UpdateDueDateDisplayButtonText();
-        UpdateSortModeButtonText();
+        UpdateDueDateDisplayMenuState();
+        UpdateSortModeMenuState();
         InitializeColumnVisibility();
         ApplyFixedColumnFontSize();
         PreviewKeyDown += MainWindow_PreviewKeyDown;
@@ -73,97 +91,121 @@ public partial class MainWindow : Window {
         BtnToggleFullScreen.Content = _isFullScreen ? "ウィンドウ表示 [F11]" : "フルスクリーン [F11]";
     }
 
-    // 列表示設定MenuItemと対応するDataGridColumn・設定プロパティの組み合わせ（初回アクセス時に生成してキャッシュする）
-    private (System.Windows.Controls.MenuItem MenuItem, DataGridColumn Column, Func<AppSettings, bool> Getter, Action<AppSettings, bool> Setter)[]? _columnVisibilityMappings;
-    private (System.Windows.Controls.MenuItem MenuItem, DataGridColumn Column, Func<AppSettings, bool> Getter, Action<AppSettings, bool> Setter)[] ColumnVisibilityMappings => _columnVisibilityMappings ??= [
-        (MnuColDeliveryDate,      ColDeliveryDate,      s => s.ShowColumnDeliveryDate,      (s, v) => s.ShowColumnDeliveryDate = v),
-        (MnuColCompletionDate,    ColCompletionDate,    s => s.ShowColumnCompletionDate,    (s, v) => s.ShowColumnCompletionDate = v),
-        (MnuColItemNumber,        ColItemNumber,        s => s.ShowColumnItemNumber,        (s, v) => s.ShowColumnItemNumber = v),
-        (MnuColModelCode,         ColModelCode,         s => s.ShowColumnModelCode,         (s, v) => s.ShowColumnModelCode = v),
-        (MnuColProductName,       ColProductName,       s => s.ShowColumnProductName,       (s, v) => s.ShowColumnProductName = v),
-        (MnuColManufactureNumber, ColManufactureNumber, s => s.ShowColumnManufactureNumber, (s, v) => s.ShowColumnManufactureNumber = v),
-        (MnuColPlannedQuantity,   ColPlannedQuantity,   s => s.ShowColumnPlannedQuantity,   (s, v) => s.ShowColumnPlannedQuantity = v),
-    ];
+    /// <summary>列の表示/非表示メニューの選択肢（ItemsSource用）。DataGridColumnの参照が必要なためコンストラクタ内で追加する</summary>
+    public ObservableCollection<ColumnVisibilityOption> ColumnVisibilityItems { get; } = [];
 
-    // MenuItemのChecked/Uncheckedイベントを設定値の反映として処理するか（初期化中はfalseにして保存を抑制する）
-    private bool _columnVisibilityEventsEnabled;
-
-    /// <summary>保存済みの設定値をMenuItemとDataGridColumnの表示状態に反映する（保存はしない）</summary>
+    /// <summary>保存済みの設定値をColumnVisibilityItemsとDataGridColumnの表示状態に反映する（保存はしない）</summary>
     private void InitializeColumnVisibility() {
-        _columnVisibilityEventsEnabled = false;
-        foreach (var (menuItem, column, getter, _) in ColumnVisibilityMappings) {
-            var isVisible = getter(_viewModel.Settings);
-            menuItem.IsChecked = isVisible;
-            column.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+        ColumnVisibilityItems.Add(new("出荷日",     ColDeliveryDate,      s => s.ShowColumnDeliveryDate,      (s, v) => s.ShowColumnDeliveryDate = v));
+        ColumnVisibilityItems.Add(new("完了日",     ColCompletionDate,    s => s.ShowColumnCompletionDate,    (s, v) => s.ShowColumnCompletionDate = v));
+        ColumnVisibilityItems.Add(new("品目番号",   ColItemNumber,        s => s.ShowColumnItemNumber,        (s, v) => s.ShowColumnItemNumber = v));
+        ColumnVisibilityItems.Add(new("機種コード", ColModelCode,         s => s.ShowColumnModelCode,         (s, v) => s.ShowColumnModelCode = v));
+        ColumnVisibilityItems.Add(new("品目名",     ColProductName,       s => s.ShowColumnProductName,       (s, v) => s.ShowColumnProductName = v));
+        ColumnVisibilityItems.Add(new("製番",       ColManufactureNumber, s => s.ShowColumnManufactureNumber, (s, v) => s.ShowColumnManufactureNumber = v));
+        ColumnVisibilityItems.Add(new("計画数",     ColPlannedQuantity,   s => s.ShowColumnPlannedQuantity,   (s, v) => s.ShowColumnPlannedQuantity = v));
+
+        foreach (var option in ColumnVisibilityItems) {
+            var isVisible = option.Getter(_viewModel.Settings);
+            option.IsChecked = isVisible;
+            option.Column.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
         }
-        UpdateProcessModeButtonText();
-        _columnVisibilityEventsEnabled = true;
+        UpdateProcessModeMenuState();
     }
 
-    private void BtnToggleProcessMode_Click(object sender, RoutedEventArgs e) {
-        var settings = _viewModel.Settings;
-        // バー→セル→バー の順でトグル
-        if (settings.ShowProcessBar && !settings.ShowProcessColumns) {
-            settings.ShowProcessBar = false;
-            settings.ShowProcessColumns = true;
-        } else {
-            settings.ShowProcessBar = true;
-            settings.ShowProcessColumns = false;
-        }
+    /// <summary>工程表示モードメニューの選択肢（ItemsSource用）</summary>
+    public ObservableCollection<MenuOption<(bool ShowProcessBar, bool ShowProcessColumns)>> ProcessModeItems { get; } = [
+        new("バー",   (true, false)),
+        new("リスト", (false, true)),
+    ];
+
+    private void ProcessModeMenuItem_Click(object sender, RoutedEventArgs e) {
+        if (sender is not MenuItem { DataContext: MenuOption<(bool ShowProcessBar, bool ShowProcessColumns)> option }) return;
+
+        // チェック状態の反映（軽い処理）を先に行い、その後で保存・列再構築（重い処理）を行うことで
+        // クリック直後に他の項目のチェックが一瞬残って見えるちらつきを防ぐ
+        _viewModel.Settings.ShowProcessBar = option.Value.ShowProcessBar;
+        _viewModel.Settings.ShowProcessColumns = option.Value.ShowProcessColumns;
+        UpdateProcessModeMenuState();
         _viewModel.SaveSettings();
-        UpdateProcessModeButtonText();
         _lastColumnSignature = null;
         BuildProcessColumns();
     }
 
-    /// <summary>工程表示モードボタンの文言を現在の設定に合わせて更新する</summary>
-    private void UpdateProcessModeButtonText() {
+    /// <summary>工程表示モードメニューのチェック状態と見出し文言を現在の設定に合わせて更新する</summary>
+    private void UpdateProcessModeMenuState() {
         var settings = _viewModel.Settings;
-        BtnToggleProcessMode.Content = (settings.ShowProcessBar, settings.ShowProcessColumns) switch {
-            (true, false) => "工程: バー",
-            (false, true) => "工程: リスト",
-            (true, true)  => "工程: バー＋リスト",
-            _             => "工程: なし",
+        foreach (var option in ProcessModeItems)
+            option.IsChecked = option.Value.ShowProcessBar == settings.ShowProcessBar && option.Value.ShowProcessColumns == settings.ShowProcessColumns;
+        TxtProcessModeValue.Text = (settings.ShowProcessBar, settings.ShowProcessColumns) switch {
+            (true, false) => "バー",
+            (false, true) => "リスト",
+            (true, true)  => "バー＋リスト",
+            _             => "なし",
         };
     }
 
-    private void ColumnVisibilityCheckBox_Changed(object sender, RoutedEventArgs e) {
-        if (!_columnVisibilityEventsEnabled) return;
+    private void ColumnVisibilityMenuItem_Click(object sender, RoutedEventArgs e) {
+        if (sender is not MenuItem { DataContext: ColumnVisibilityOption option } menuItem) return;
 
-        var menuItem = (MenuItem)sender;
-        var mapping = ColumnVisibilityMappings.FirstOrDefault(m => m.MenuItem == menuItem);
-        if (mapping.MenuItem == null) return;
-
+        // クリックによりMenuItem.IsCheckedは既にトグル済みの値になっている
         var isChecked = menuItem.IsChecked;
-        mapping.Column.Visibility = isChecked ? Visibility.Visible : Visibility.Collapsed;
-        mapping.Setter(_viewModel.Settings, isChecked);
+        option.IsChecked = isChecked;
+        option.Column.Visibility = isChecked ? Visibility.Visible : Visibility.Collapsed;
+        option.Setter(_viewModel.Settings, isChecked);
         _viewModel.SaveSettings();
     }
 
-    /// <summary>表示日切り替えボタンの文言を現在の設定に合わせて更新する</summary>
-    private void UpdateDueDateDisplayButtonText() {
-        BtnToggleDueDateDisplay.Content = _viewModel.Settings.ShowDueDateForNotStarted
-            ? "表示中：完了期限"
-            : "表示中：着手期限";
+    /// <summary>表示日切り替えメニューの選択肢（ItemsSource用）</summary>
+    public ObservableCollection<MenuOption<bool>> DueDateDisplayItems { get; } = [
+        new("着手期限", false),
+        new("完了期限", true),
+    ];
+
+    /// <summary>表示日切り替えメニューのチェック状態と見出し文言を現在の設定に合わせて更新する</summary>
+    private void UpdateDueDateDisplayMenuState() {
+        var value = _viewModel.Settings.ShowDueDateForNotStarted;
+        foreach (var option in DueDateDisplayItems)
+            option.IsChecked = option.Value == value;
+        TxtDueDateDisplayValue.Text = value ? "完了期限" : "着手期限";
     }
 
-    /// <summary>並び順切り替えボタンの文言を現在の設定に合わせて更新する</summary>
-    private void UpdateSortModeButtonText() {
-        BtnToggleSortMode.Content = _viewModel.Settings.SortByProcessDeadline
-            ? "並び順：工程期限"
-            : "並び順：出荷日";
+    /// <summary>並び順メニューの選択肢（ItemsSource用）</summary>
+    public ObservableCollection<MenuOption<SortMode>> SortModeItems { get; } = [
+        new("出荷日",   SortMode.DeliveryDate),
+        new("完了日",   SortMode.CompletionDate),
+        new("工程期限", SortMode.ProcessDeadline),
+    ];
+
+    /// <summary>並び順メニューのチェック状態と見出し文言を現在の設定に合わせて更新する</summary>
+    private void UpdateSortModeMenuState() {
+        var mode = _viewModel.Settings.SortMode;
+        foreach (var option in SortModeItems)
+            option.IsChecked = option.Value == mode;
+        TxtSortModeValue.Text = mode switch {
+            SortMode.CompletionDate  => "完了日",
+            SortMode.ProcessDeadline => "工程期限",
+            _                        => "出荷日",
+        };
     }
 
-    private void BtnToggleDueDateDisplay_Click(object sender, RoutedEventArgs e) {
-        _viewModel.Settings.ShowDueDateForNotStarted = !_viewModel.Settings.ShowDueDateForNotStarted;
-        UpdateDueDateDisplayButtonText();
+    private void DueDateDisplayMenuItem_Click(object sender, RoutedEventArgs e) {
+        if (sender is not MenuItem { DataContext: MenuOption<bool> option }) return;
+
+        _viewModel.Settings.ShowDueDateForNotStarted = option.Value;
+        UpdateDueDateDisplayMenuState();
         _viewModel.SaveSettings();
         _viewModel.ApplyFilter();
     }
 
-    private void BtnToggleSortMode_Click(object sender, RoutedEventArgs e) {
-        _viewModel.ToggleSortMode();
-        UpdateSortModeButtonText();
+    private void SortModeMenuItem_Click(object sender, RoutedEventArgs e) {
+        if (sender is not MenuItem { DataContext: MenuOption<SortMode> option }) return;
+
+        // チェック状態の反映（軽い処理）を先に行い、その後で保存・並び替え（重い処理）を行うことで
+        // クリック直後に他の項目のチェックが一瞬残って見えるちらつきを防ぐ
+        _viewModel.Settings.SortMode = option.Value;
+        UpdateSortModeMenuState();
+        _viewModel.SaveSettings();
+        _viewModel.ApplyFilter();
     }
 
     /// <summary>フォントサイズ設定を設定値から適用し、行の高さを再計算する</summary>

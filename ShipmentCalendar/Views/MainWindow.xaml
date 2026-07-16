@@ -44,10 +44,10 @@
                                 <ControlTemplate TargetType="Button">
                                     <Border
                                         x:Name="border"
+                                        Padding="{TemplateBinding Padding}"
                                         Background="{TemplateBinding Background}"
                                         BorderBrush="{TemplateBinding BorderBrush}"
-                                        BorderThickness="{TemplateBinding BorderThickness}"
-                                        Padding="{TemplateBinding Padding}">
+                                        BorderThickness="{TemplateBinding BorderThickness}">
                                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                                     </Border>
                                 </ControlTemplate>
@@ -65,6 +65,59 @@
                             </Trigger>
                         </Style.Triggers>
                     </Style>
+                    <!--  設定▾・並び順▾・部署▾など、ツールバー上でボタン風に見せるMenuItem（ポップアップメニュー）の共通スタイル  -->
+                    <!--  既定のMenuItemテンプレートはハイライト時の背景をトリガーで上書きするため、Style.Triggersだけでは反映されない。Templateを再定義して対応  -->
+                    <Style x:Key="ToolbarMenuButtonStyle" TargetType="MenuItem">
+                        <Setter Property="Padding" Value="8,4" />
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="BorderThickness" Value="0" />
+                        <Setter Property="FontSize" Value="14" />
+                        <Setter Property="Foreground" Value="White" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="MenuItem">
+                                    <Border
+                                        x:Name="border"
+                                        Padding="{TemplateBinding Padding}"
+                                        Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}">
+                                        <Grid>
+                                            <ContentPresenter
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                ContentSource="Header"
+                                                RecognizesAccessKey="True" />
+                                            <Popup
+                                                Name="PART_Popup"
+                                                AllowsTransparency="True"
+                                                Focusable="False"
+                                                IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                                                Placement="Bottom"
+                                                PopupAnimation="Fade">
+                                                <Border
+                                                    Padding="2"
+                                                    Background="White"
+                                                    BorderBrush="#ADADAD"
+                                                    BorderThickness="1"
+                                                    TextElement.Foreground="Black">
+                                                    <StackPanel
+                                                        IsItemsHost="True"
+                                                        KeyboardNavigation.DirectionalNavigation="Cycle"
+                                                        Orientation="Vertical" />
+                                                </Border>
+                                            </Popup>
+                                        </Grid>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsHighlighted" Value="True">
+                                            <Setter TargetName="border" Property="Background" Value="#0D47A1" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
                 </ToolBar.Resources>
                 <Button Command="{Binding LoadOrdersCommand}">
                     更新
@@ -72,54 +125,7 @@
                 <Separator />
                 <!--  設定系をまとめたドロップダウンメニュー  -->
                 <Menu VerticalAlignment="Center" Background="Transparent">
-                    <MenuItem
-                        Padding="8,4"
-                        Background="Transparent"
-                        BorderThickness="0"
-                        FontSize="14"
-                        Foreground="White">
-                        <!--  既定のMenuItemテンプレートはハイライト時の背景をトリガーで上書きするため、Style.Triggersだけでは反映されない。Templateを再定義して対応  -->
-                        <MenuItem.Template>
-                            <ControlTemplate TargetType="MenuItem">
-                                <Border
-                                    x:Name="border"
-                                    Background="{TemplateBinding Background}"
-                                    BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="{TemplateBinding BorderThickness}"
-                                    Padding="{TemplateBinding Padding}">
-                                    <Grid>
-                                        <ContentPresenter
-                                            HorizontalAlignment="Center"
-                                            VerticalAlignment="Center"
-                                            ContentSource="Header"
-                                            RecognizesAccessKey="True" />
-                                        <Popup
-                                            Name="PART_Popup"
-                                            AllowsTransparency="True"
-                                            Focusable="False"
-                                            IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
-                                            Placement="Bottom"
-                                            PopupAnimation="Fade">
-                                            <Border
-                                                Background="White"
-                                                BorderBrush="#ADADAD"
-                                                BorderThickness="1"
-                                                Padding="2">
-                                                <StackPanel
-                                                    IsItemsHost="True"
-                                                    KeyboardNavigation.DirectionalNavigation="Cycle"
-                                                    Orientation="Vertical" />
-                                            </Border>
-                                        </Popup>
-                                    </Grid>
-                                </Border>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsHighlighted" Value="True">
-                                        <Setter TargetName="border" Property="Background" Value="#0D47A1" />
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </MenuItem.Template>
+                    <MenuItem Style="{StaticResource ToolbarMenuButtonStyle}">
                         <MenuItem.Header>設定 ▾</MenuItem.Header>
                         <MenuItem Click="BtnSettings_Click" Header="データソース設定" />
                         <MenuItem Click="BtnProcess_Click" Header="工程設定" />
@@ -128,66 +134,119 @@
                         <MenuItem Click="BtnDisplaySettings_Click" Header="表示設定" />
                         <MenuItem Click="BtnProductPerformance_Click" Header="製品別実績分析" />
                         <Separator />
-                        <MenuItem Header="列の表示設定">
-                            <MenuItem
-                                Name="MnuColDeliveryDate"
-                                Checked="ColumnVisibilityCheckBox_Changed"
-                                Header="出荷日"
-                                IsCheckable="True"
-                                StaysOpenOnClick="True"
-                                Unchecked="ColumnVisibilityCheckBox_Changed" />
-                            <MenuItem
-                                Name="MnuColCompletionDate"
-                                Checked="ColumnVisibilityCheckBox_Changed"
-                                Header="完了日"
-                                IsCheckable="True"
-                                StaysOpenOnClick="True"
-                                Unchecked="ColumnVisibilityCheckBox_Changed" />
-                            <MenuItem
-                                Name="MnuColItemNumber"
-                                Checked="ColumnVisibilityCheckBox_Changed"
-                                Header="品目番号"
-                                IsCheckable="True"
-                                StaysOpenOnClick="True"
-                                Unchecked="ColumnVisibilityCheckBox_Changed" />
-                            <MenuItem
-                                Name="MnuColModelCode"
-                                Checked="ColumnVisibilityCheckBox_Changed"
-                                Header="機種コード"
-                                IsCheckable="True"
-                                StaysOpenOnClick="True"
-                                Unchecked="ColumnVisibilityCheckBox_Changed" />
-                            <MenuItem
-                                Name="MnuColProductName"
-                                Checked="ColumnVisibilityCheckBox_Changed"
-                                Header="品目名"
-                                IsCheckable="True"
-                                StaysOpenOnClick="True"
-                                Unchecked="ColumnVisibilityCheckBox_Changed" />
-                            <MenuItem
-                                Name="MnuColManufactureNumber"
-                                Checked="ColumnVisibilityCheckBox_Changed"
-                                Header="製番"
-                                IsCheckable="True"
-                                StaysOpenOnClick="True"
-                                Unchecked="ColumnVisibilityCheckBox_Changed" />
-                            <MenuItem
-                                Name="MnuColPlannedQuantity"
-                                Checked="ColumnVisibilityCheckBox_Changed"
-                                Header="計画数"
-                                IsCheckable="True"
-                                StaysOpenOnClick="True"
-                                Unchecked="ColumnVisibilityCheckBox_Changed" />
+                        <MenuItem Header="列の表示設定" ItemsSource="{Binding ColumnVisibilityItems, RelativeSource={RelativeSource AncestorType=Window}}">
+                            <MenuItem.ItemContainerStyle>
+                                <Style TargetType="MenuItem">
+                                    <Setter Property="Header" Value="{Binding Label}" />
+                                    <Setter Property="IsCheckable" Value="True" />
+                                    <Setter Property="IsChecked" Value="{Binding IsChecked, Mode=OneWay}" />
+                                    <Setter Property="StaysOpenOnClick" Value="True" />
+                                    <EventSetter Event="Click" Handler="ColumnVisibilityMenuItem_Click" />
+                                </Style>
+                            </MenuItem.ItemContainerStyle>
                         </MenuItem>
                     </MenuItem>
                 </Menu>
                 <Separator />
-                <!--  注文一覧の並び順切り替え（出荷日順/工程期限順）  -->
-                <Button Name="BtnToggleSortMode" Click="BtnToggleSortMode_Click" />
-                <!--  未完了工程の表示日切り替え（クリックで着手必須日/完了必須日を切り替え）  -->
-                <Button Name="BtnToggleDueDateDisplay" Click="BtnToggleDueDateDisplay_Click" />
+                <!--  注文一覧の並び順切り替え（出荷日順/完了日順/工程期限順）  -->
+                <Menu VerticalAlignment="Center" Background="Transparent">
+                    <MenuItem
+                        Name="MnuSortMode"
+                        ItemsSource="{Binding SortModeItems, RelativeSource={RelativeSource AncestorType=Window}}"
+                        Style="{StaticResource ToolbarMenuButtonStyle}">
+                        <MenuItem.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="並び順：" />
+                                <TextBlock
+                                    Name="TxtSortModeValue"
+                                    MinWidth="56"
+                                    Text="出荷日" />
+                                <TextBlock Text=" ▾" />
+                            </StackPanel>
+                        </MenuItem.Header>
+                        <MenuItem.ItemContainerStyle>
+                            <Style TargetType="MenuItem">
+                                <Setter Property="Header" Value="{Binding Label}" />
+                                <Setter Property="MinWidth" Value="80" />
+                                <Setter Property="IsCheckable" Value="True" />
+                                <Setter Property="IsChecked" Value="{Binding IsChecked, Mode=OneWay}" />
+                                <EventSetter Event="Click" Handler="SortModeMenuItem_Click" />
+                            </Style>
+                        </MenuItem.ItemContainerStyle>
+                    </MenuItem>
+                </Menu>
+                <!--  未完了工程の表示日切り替え（着手必須日/完了必須日）  -->
+                <Menu VerticalAlignment="Center" Background="Transparent">
+                    <MenuItem
+                        Name="MnuDueDateDisplay"
+                        ItemsSource="{Binding DueDateDisplayItems, RelativeSource={RelativeSource AncestorType=Window}}"
+                        Style="{StaticResource ToolbarMenuButtonStyle}">
+                        <MenuItem.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="表示中：" />
+                                <TextBlock
+                                    Name="TxtDueDateDisplayValue"
+                                    MinWidth="56"
+                                    Text="着手期限" />
+                                <TextBlock Text=" ▾" />
+                            </StackPanel>
+                        </MenuItem.Header>
+                        <MenuItem.ItemContainerStyle>
+                            <Style TargetType="MenuItem">
+                                <Setter Property="Header" Value="{Binding Label}" />
+                                <Setter Property="MinWidth" Value="80" />
+                                <Setter Property="IsCheckable" Value="True" />
+                                <Setter Property="IsChecked" Value="{Binding IsChecked, Mode=OneWay}" />
+                                <EventSetter Event="Click" Handler="DueDateDisplayMenuItem_Click" />
+                            </Style>
+                        </MenuItem.ItemContainerStyle>
+                    </MenuItem>
+                </Menu>
                 <!--  工程表示モード切り替え（バー/リスト）  -->
-                <Button Name="BtnToggleProcessMode" Click="BtnToggleProcessMode_Click" />
+                <Menu VerticalAlignment="Center" Background="Transparent">
+                    <MenuItem
+                        Name="MnuProcessMode"
+                        ItemsSource="{Binding ProcessModeItems, RelativeSource={RelativeSource AncestorType=Window}}"
+                        Style="{StaticResource ToolbarMenuButtonStyle}">
+                        <MenuItem.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="工程: " />
+                                <TextBlock
+                                    Name="TxtProcessModeValue"
+                                    MinWidth="40"
+                                    Text="バー" />
+                                <TextBlock Text=" ▾" />
+                            </StackPanel>
+                        </MenuItem.Header>
+                        <MenuItem.ItemContainerStyle>
+                            <Style TargetType="MenuItem">
+                                <Setter Property="Header" Value="{Binding Label}" />
+                                <Setter Property="MinWidth" Value="80" />
+                                <Setter Property="IsCheckable" Value="True" />
+                                <Setter Property="IsChecked" Value="{Binding IsChecked, Mode=OneWay}" />
+                                <EventSetter Event="Click" Handler="ProcessModeMenuItem_Click" />
+                            </Style>
+                        </MenuItem.ItemContainerStyle>
+                    </MenuItem>
+                </Menu>
+                <Separator />
+                <!--  担当部署フィルターボタン（ポップアップメニュー化）  -->
+                <Menu VerticalAlignment="Center" Background="Transparent">
+                    <MenuItem
+                        Header="{Binding SelectedDepartmentLabel}"
+                        ItemsSource="{Binding DepartmentFilters}"
+                        Style="{StaticResource ToolbarMenuButtonStyle}">
+                        <MenuItem.ItemContainerStyle>
+                            <Style TargetType="MenuItem">
+                                <Setter Property="Header" Value="{Binding Name}" />
+                                <Setter Property="IsCheckable" Value="True" />
+                                <Setter Property="IsChecked" Value="{Binding IsSelected, Mode=OneWay}" />
+                                <Setter Property="Command" Value="{Binding DataContext.SelectDepartmentCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                <Setter Property="CommandParameter" Value="{Binding Id}" />
+                            </Style>
+                        </MenuItem.ItemContainerStyle>
+                    </MenuItem>
+                </Menu>
                 <Separator />
                 <!--  クイックフィルター（超過・警告・今日対応）  -->
                 <ToggleButton
@@ -299,45 +358,6 @@
                         </Style>
                     </ToggleButton.Style>
                 </ToggleButton>
-                <Separator />
-                <!--  担当部署フィルターボタン（動的生成）  -->
-                <ItemsControl ItemsSource="{Binding DepartmentFilters}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal" />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <ToggleButton
-                                Margin="2,0"
-                                Padding="10,4"
-                                Background="Transparent"
-                                BorderThickness="0"
-                                Command="{Binding DataContext.SelectDepartmentCommand, RelativeSource={RelativeSource AncestorType=ToolBar}}"
-                                CommandParameter="{Binding Id}"
-                                Content="{Binding Name}"
-                                FontSize="13"
-                                FontWeight="SemiBold"
-                                Foreground="White"
-                                IsChecked="{Binding IsSelected, Mode=OneWay}">
-                                <ToggleButton.Style>
-                                    <Style TargetType="ToggleButton">
-                                        <Setter Property="Foreground" Value="White" />
-                                        <Setter Property="Background" Value="Transparent" />
-                                        <Setter Property="BorderThickness" Value="0" />
-                                        <Style.Triggers>
-                                            <Trigger Property="IsChecked" Value="True">
-                                                <Setter Property="BorderThickness" Value="0,0,0,3" />
-                                                <Setter Property="BorderBrush" Value="White" />
-                                            </Trigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </ToggleButton.Style>
-                            </ToggleButton>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
                 <Separator />
                 <!--  フルスクリーン表示の切り替え（F11キーと同じ動作）  -->
                 <Button Name="BtnToggleFullScreen" Click="BtnToggleFullScreen_Click">
