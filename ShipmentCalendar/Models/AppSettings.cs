@@ -17,10 +17,11 @@ public class AppSettings
     public int CompletionDateLeadDays { get; set; } = 1;
     private int _dayMinutes = 420;
     /// <summary>1営業日あたりの稼働時間（分）。工程期限日・工程バーの日割り計算に使う。
-    /// 0以下は後続のゼロ除算を防ぐため既定値(420)に補正する（設定ファイルの直接編集等を想定）</summary>
+    /// 0以下・1440(24時間)超は後続のゼロ除算や無意味な設定値を防ぐため既定値(420)に補正する
+    /// （設定ファイルの直接編集等を想定）</summary>
     public int DayMinutes {
         get => _dayMinutes;
-        set => _dayMinutes = value > 0 ? value : 420;
+        set => _dayMinutes = value > 0 && value <= 1440 ? value : 420;
     }
     /// <summary>未完了工程の表示日付を完了必須日にするか（false=着手必須日を表示）</summary>
     public bool ShowDueDateForNotStarted { get; set; } = false;
