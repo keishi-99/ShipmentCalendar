@@ -5,6 +5,20 @@
     xmlns:local="clr-namespace:ShipmentCalendar"
     StartupUri="Views/MainWindow.xaml">
     <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Fluent;Component/Themes/Generic.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+        <!--
+            リボンのタブ内背景色（旧ツールバーと同じ青)。Fluent.Ribbonの既定リソースをApplication.Resources内で
+            同名キー上書きすることでDynamicResource参照先を差し替える。
+            LabelTextはツールチップ・ドロップダウン一覧など白背景の箇所でも共有されるため、
+            ここではグローバル上書きせず、青背景に直接乗るコントロールにだけ個別にForeground="White"を指定する
+        -->
+        <SolidColorBrush x:Key="Fluent.Ribbon.Brushes.RibbonTabControl.Content.Background" Color="#1976D2" />
+        <SolidColorBrush x:Key="Fluent.Ribbon.Brushes.RibbonGroupBox.Header.Foreground" Color="White" />
+
         <!--  工程ステータス色定義  -->
         <SolidColorBrush x:Key="StatusNotStarted" Color="#D2E1F5" />
         <SolidColorBrush x:Key="StatusInProgress" Color="#FFE066" />
@@ -20,5 +34,6 @@
         <!--  日付バーのゼブラ柄背景  -->
         <SolidColorBrush x:Key="DateBarBackgroundBrushA" Color="#FFFFFF" />
         <SolidColorBrush x:Key="DateBarBackgroundBrushB" Color="#DCE6F1" />
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

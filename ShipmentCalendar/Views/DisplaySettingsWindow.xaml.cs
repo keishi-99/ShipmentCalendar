@@ -1,3 +1,4 @@
+using ShipmentCalendar.Services;
 using ShipmentCalendar.ViewModels;
 using System.Windows;
 using System.Windows.Controls;
@@ -7,7 +8,7 @@ namespace ShipmentCalendar.Views;
 public partial class DisplaySettingsWindow : Window
 {
     private readonly MainViewModel _viewModel;
-    private readonly MainWindow _mainWindow;
+    private readonly IDisplaySettingsPreviewTarget _previewTarget;
     private readonly bool _isInitializing = true;
     // キャンセル時に復元するための保存値
     private readonly double _savedFixedFontSize;
@@ -15,11 +16,11 @@ public partial class DisplaySettingsWindow : Window
     private readonly double _savedProcessColumnFontSize;
     private readonly double _savedManualRowHeight;
 
-    public DisplaySettingsWindow(MainViewModel viewModel, MainWindow mainWindow)
+    public DisplaySettingsWindow(MainViewModel viewModel, IDisplaySettingsPreviewTarget previewTarget)
     {
         InitializeComponent();
         _viewModel = viewModel;
-        _mainWindow = mainWindow;
+        _previewTarget = previewTarget;
 
         var settings = viewModel.Settings;
         _savedFixedFontSize = settings.FixedColumnFontSize;
@@ -40,28 +41,28 @@ public partial class DisplaySettingsWindow : Window
     private void TxtFixedFontSize_TextChanged(object sender, TextChangedEventArgs e) {
         if (_isInitializing) return;
         if (double.TryParse(TxtFixedColumnFontSize.Text, out var size) && size >= 5 && size <= 100)
-            _mainWindow.PreviewFontSizes(size, 0);
+            _previewTarget.PreviewFontSizes(size, 0);
     }
 
     private void TxtProcessBarFontSize_TextChanged(object sender, TextChangedEventArgs e) {
         if (_isInitializing) return;
         if (double.TryParse(TxtProcessBarFontSize.Text, out var size) && size >= 5 && size <= 100)
-            _mainWindow.PreviewFontSizes(0, size);
+            _previewTarget.PreviewFontSizes(0, size);
     }
 
     private void TxtProcessColumnFontSize_TextChanged(object sender, TextChangedEventArgs e) {
         if (_isInitializing) return;
         if (double.TryParse(TxtProcessColumnFontSize.Text, out var size) && size >= 5 && size <= 100)
-            _mainWindow.PreviewFontSizes(0, 0, size);
+            _previewTarget.PreviewFontSizes(0, 0, size);
     }
 
     private void TxtManualRowHeight_TextChanged(object sender, TextChangedEventArgs e) {
         if (_isInitializing) return;
         var text = TxtManualRowHeight.Text;
         if (string.IsNullOrEmpty(text))
-            _mainWindow.PreviewRowHeight(0);
+            _previewTarget.PreviewRowHeight(0);
         else if (double.TryParse(text, out var h) && h >= 0)
-            _mainWindow.PreviewRowHeight(h);
+            _previewTarget.PreviewRowHeight(h);
     }
 
     private void BtnSave_Click(object sender, RoutedEventArgs e)
@@ -110,8 +111,8 @@ public partial class DisplaySettingsWindow : Window
     protected override void OnClosed(EventArgs e) {
         base.OnClosed(e);
         if (DialogResult != true) {
-            _mainWindow.PreviewFontSizes(_savedFixedFontSize, _savedProcessBarFontSize, _savedProcessColumnFontSize);
-            _mainWindow.PreviewRowHeight(_savedManualRowHeight);
+            _previewTarget.PreviewFontSizes(_savedFixedFontSize, _savedProcessBarFontSize, _savedProcessColumnFontSize);
+            _previewTarget.PreviewRowHeight(_savedManualRowHeight);
         }
     }
 }

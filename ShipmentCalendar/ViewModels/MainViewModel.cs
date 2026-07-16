@@ -12,8 +12,15 @@ public partial class MainViewModel : ObservableObject {
     private readonly IHolidayRepository _holidayRepository;
     private readonly IProcessDefinitionRepository _processDefinitionRepository;
     private readonly IModelCodeRepository _modelCodeRepository;
+    private readonly IDialogService _dialogService;
     private readonly DispatcherTimer _refreshTimer;
     private readonly DispatcherTimer _filterDebounceTimer;
+
+    /// <summary>表示設定ダイアログのリアルタイムプレビュー先（MainWindowが起動時に自分自身を設定する）</summary>
+    public IDisplaySettingsPreviewTarget? PreviewTarget { get; set; }
+
+    /// <summary>工程表示モード変更・表示設定の保存など、DataGridの列再構築がView側で必要になったときに発火する</summary>
+    public event EventHandler? GridRebuildRequested;
 
     // 全件キャッシュ（フィルター用）
     private List<Order> _allOrders = [];
@@ -49,12 +56,8 @@ public partial class MainViewModel : ObservableObject {
     public static IReadOnlyList<string> ProductCategoryOptions { get; } =
         ["全て", "製品", "半製品", "半製品（工程未登録）", "どちらでもない"];
 
-    /// <summary>ツールバー部署フィルターボタン用リスト（「全て」含む）</summary>
+    /// <summary>ツールバー部署フィルターコンボボックス用リスト（「全て」含む）</summary>
     public ObservableCollection<DepartmentFilterItem> DepartmentFilters { get; } = [];
-
-    /// <summary>担当部署フィルターの親メニュー見出し（例:「部署：全て ▾」）</summary>
-    public string SelectedDepartmentLabel =>
-        $"部署：{DepartmentFilters.FirstOrDefault(d => d.IsSelected)?.Name ?? "全て"} ▾";
 
     /// <summary>選択中の担当部署ID（0=全て）</summary>
     [ObservableProperty] private int _filterDepartmentId = 0;
@@ -109,17 +112,92 @@ public partial class MainViewModel : ObservableObject {
         }
     }
     partial void OnFilterProductCategoryChanged(string value) => ApplyFilter();
-    partial void OnFilterDepartmentIdChanged(int value) {
-        // 各ボタンの選択状態を同期してからフィルターを適用
-        foreach (var item in DepartmentFilters)
-            item.IsSelected = item.Id == value;
-        OnPropertyChanged(nameof(SelectedDepartmentLabel));
-        ApplyFilter();
+    partial void OnFilterDepartmentIdChanged(int value) => ApplyFilter();
+
+    /// <summary>並び順コンボボックスの選択肢（ItemsSource用）</summary>
+    public ObservableCollection<MenuOption<SortMode>> SortModeItems { get; } = [
+        new("出荷日",   SortMode.DeliveryDate),
+        new("完了日",   SortMode.CompletionDate),
+        new("工程期限", SortMode.ProcessDeadline),
+    ];
+
+    public SortMode SelectedSortMode {
+        get => Settings.SortMode;
+        set {
+            if (Settings.SortMode == value) return;
+            Settings.SortMode = value;
+            OnPropertyChanged();
+            SaveSettings();
+            ApplyFilter();
+        }
+    }
+
+    /// <summary>未完了工程の表示日切り替えコンボボックスの選択肢（ItemsSource用）</summary>
+    public ObservableCollection<MenuOption<bool>> DueDateDisplayItems { get; } = [
+        new("着手期限", false),
+        new("完了期限", true),
+    ];
+
+    public bool SelectedDueDateDisplay {
+        get => Settings.ShowDueDateForNotStarted;
+        set {
+            if (Settings.ShowDueDateForNotStarted == value) return;
+            Settings.ShowDueDateForNotStarted = value;
+            OnPropertyChanged();
+            SaveSettings();
+            ApplyFilter();
+        }
+    }
+
+    /// <summary>工程表示モードコンボボックスの選択肢（ItemsSource用）</summary>
+    public ObservableCollection<MenuOption<(bool ShowProcessBar, bool ShowProcessColumns)>> ProcessModeItems { get; } = [
+        new("バー",   (true, false)),
+        new("リスト", (false, true)),
+    ];
+
+    public (bool ShowProcessBar, bool ShowProcessColumns) SelectedProcessMode {
+        get => (Settings.ShowProcessBar, Settings.ShowProcessColumns);
+        set {
+            if (Settings.ShowProcessBar == value.ShowProcessBar && Settings.ShowProcessColumns == value.ShowProcessColumns) return;
+            Settings.ShowProcessBar = value.ShowProcessBar;
+            Settings.ShowProcessColumns = value.ShowProcessColumns;
+            OnPropertyChanged();
+            SaveSettings();
+            GridRebuildRequested?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     [RelayCommand]
-    private void SelectDepartment(int id) => FilterDepartmentId = id;
+    private void OpenBasicSettings() => _dialogService.ShowBasicSettings(this);
 
+    [RelayCommand]
+    private async Task OpenProcessSettingAsync() {
+        _dialogService.ShowProcessSetting();
+        await LoadOrdersAsync();
+    }
+
+    [RelayCommand]
+    private void OpenHolidaySetting() => _dialogService.ShowHolidaySetting();
+
+    [RelayCommand]
+    private async Task OpenDepartmentSettingAsync() {
+        _dialogService.ShowDepartmentSetting();
+        // 部署マスタが変更された可能性があるため、フィルターボタンリストを更新
+        await RefreshDepartmentFiltersAsync();
+    }
+
+    [RelayCommand]
+    private void OpenProductPerformance() => _dialogService.ShowProductPerformance(Settings);
+
+    [RelayCommand]
+    private void OpenDisplaySettings() {
+        if (PreviewTarget is null) return;
+        var saved = _dialogService.ShowDisplaySettings(this, PreviewTarget);
+        if (saved == true)
+            GridRebuildRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    [RelayCommand]
     public void ClearFilter() {
         FilterItemNumber = string.Empty;
         FilterProductName = string.Empty;
@@ -209,14 +287,13 @@ public partial class MainViewModel : ObservableObject {
         UpdateStatusMessage();
     }
 
-    /// <summary>部署マスタを再取得してフィルターボタンリストを更新する</summary>
+    /// <summary>部署マスタを再取得してフィルターコンボボックスの選択肢を更新する</summary>
     public async Task RefreshDepartmentFiltersAsync() {
         var departments = await Repositories.SqliteDepartmentRepository.GetAllAsync();
         DepartmentFilters.Clear();
-        DepartmentFilters.Add(new DepartmentFilterItem { Id = 0, Name = "全て", IsSelected = FilterDepartmentId == 0 });
+        DepartmentFilters.Add(new DepartmentFilterItem { Id = 0, Name = "全て" });
         foreach (var d in departments)
-            DepartmentFilters.Add(new DepartmentFilterItem { Id = d.Id, Name = d.Name, IsSelected = FilterDepartmentId == d.Id });
-        OnPropertyChanged(nameof(SelectedDepartmentLabel));
+            DepartmentFilters.Add(new DepartmentFilterItem { Id = d.Id, Name = d.Name });
     }
 
     private void RefreshFilterDateRange() {
@@ -238,10 +315,11 @@ public partial class MainViewModel : ObservableObject {
     [ObservableProperty]
     private AppSettings _settings;
 
-    public MainViewModel(IHolidayRepository holidayRepository, IProcessDefinitionRepository processDefinitionRepository, IModelCodeRepository modelCodeRepository) {
+    public MainViewModel(IHolidayRepository holidayRepository, IProcessDefinitionRepository processDefinitionRepository, IModelCodeRepository modelCodeRepository, IDialogService dialogService) {
         _holidayRepository = holidayRepository;
         _processDefinitionRepository = processDefinitionRepository;
         _modelCodeRepository = modelCodeRepository;
+        _dialogService = dialogService;
         _settings = AppSettingsService.Load();
 
         _refreshTimer = new DispatcherTimer();

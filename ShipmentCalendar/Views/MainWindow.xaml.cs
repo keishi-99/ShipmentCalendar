@@ -1,4 +1,3 @@
-using CommunityToolkit.Mvvm.ComponentModel;
 using ShipmentCalendar.Models;
 using ShipmentCalendar.Repositories;
 using ShipmentCalendar.Services;
@@ -12,23 +11,16 @@ using System.Windows.Media;
 
 namespace ShipmentCalendar.Views;
 
-/// <summary>ツールバーのポップアップメニュー項目1件を表す（ItemsSource経由で動的生成しないと標準のIsCheckableチェックマークが正しく描画されないため使用）</summary>
-public partial class MenuOption<T>(string label, T value) : ObservableObject {
-    public string Label { get; } = label;
-    public T Value { get; } = value;
-    [ObservableProperty] private bool _isChecked;
-}
-
 /// <summary>列の表示/非表示メニュー項目1件を表す（複数選択可能な独立したON/OFFチェックボックス）</summary>
-public partial class ColumnVisibilityOption(string label, DataGridColumn column, Func<AppSettings, bool> getter, Action<AppSettings, bool> setter) : ObservableObject {
+public partial class ColumnVisibilityOption(string label, DataGridColumn column, Func<AppSettings, bool> getter, Action<AppSettings, bool> setter) : CommunityToolkit.Mvvm.ComponentModel.ObservableObject {
     public string Label { get; } = label;
     public DataGridColumn Column { get; } = column;
     public Func<AppSettings, bool> Getter { get; } = getter;
     public Action<AppSettings, bool> Setter { get; } = setter;
-    [ObservableProperty] private bool _isChecked;
+    [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isChecked;
 }
 
-public partial class MainWindow : Window {
+public partial class MainWindow : Window, IDisplaySettingsPreviewTarget {
     // 外注待ち表示の背景色（App.xamlのリソースで一元管理、ProcessBarControlの外注待ちバーと同じ色）
     private static Brush OutsourceLeadBrush => (Brush)Application.Current.Resources["OutsourceLeadBrush"];
 
@@ -38,15 +30,18 @@ public partial class MainWindow : Window {
 
     public MainWindow() {
         InitializeComponent();
-        _viewModel = new MainViewModel(new SqliteHolidayRepository(), new SqliteProcessDefinitionRepository(), new SqliteModelCodeRepository());
+        _viewModel = new MainViewModel(new SqliteHolidayRepository(), new SqliteProcessDefinitionRepository(), new SqliteModelCodeRepository(), new DialogService());
         DataContext = _viewModel;
+        _viewModel.PreviewTarget = this;
         Loaded += async (_, _) => await _viewModel.LoadOrdersAsync();
         _viewModel.PropertyChanged += (_, e) => {
             if (e.PropertyName == nameof(_viewModel.Orders))
                 BuildProcessColumns();
         };
-        UpdateDueDateDisplayMenuState();
-        UpdateSortModeMenuState();
+        _viewModel.GridRebuildRequested += (_, _) => {
+            _lastColumnSignature = null;
+            BuildProcessColumns();
+        };
         InitializeColumnVisibility();
         ApplyFixedColumnFontSize();
         PreviewKeyDown += MainWindow_PreviewKeyDown;
@@ -69,7 +64,7 @@ public partial class MainWindow : Window {
         ToggleFullScreen();
     }
 
-    /// <summary>F11キー・ツールバーボタンでフルスクリーン表示（タイトルバー・タスクバーを隠す）と通常表示を切り替える</summary>
+    /// <summary>F11キー・リボンボタンでフルスクリーン表示（タイトルバー・タスクバーを隠す）と通常表示を切り替える</summary>
     private void ToggleFullScreen() {
         if (!_isFullScreen) {
             _previousWindowState = WindowState;
@@ -88,7 +83,7 @@ public partial class MainWindow : Window {
             WindowState = _previousWindowState;
         }
         _isFullScreen = !_isFullScreen;
-        BtnToggleFullScreen.Content = _isFullScreen ? "ウィンドウ表示 [F11]" : "フルスクリーン [F11]";
+        BtnToggleFullScreen.ToolTip = _isFullScreen ? "ウィンドウ表示に戻す (F11)" : "全画面表示切り替え (F11)";
     }
 
     /// <summary>列の表示/非表示メニューの選択肢（ItemsSource用）。DataGridColumnの参照が必要なためコンストラクタ内で追加する</summary>
@@ -109,39 +104,6 @@ public partial class MainWindow : Window {
             option.IsChecked = isVisible;
             option.Column.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
         }
-        UpdateProcessModeMenuState();
-    }
-
-    /// <summary>工程表示モードメニューの選択肢（ItemsSource用）</summary>
-    public ObservableCollection<MenuOption<(bool ShowProcessBar, bool ShowProcessColumns)>> ProcessModeItems { get; } = [
-        new("バー",   (true, false)),
-        new("リスト", (false, true)),
-    ];
-
-    private void ProcessModeMenuItem_Click(object sender, RoutedEventArgs e) {
-        if (sender is not MenuItem { DataContext: MenuOption<(bool ShowProcessBar, bool ShowProcessColumns)> option }) return;
-
-        // チェック状態の反映（軽い処理）を先に行い、その後で保存・列再構築（重い処理）を行うことで
-        // クリック直後に他の項目のチェックが一瞬残って見えるちらつきを防ぐ
-        _viewModel.Settings.ShowProcessBar = option.Value.ShowProcessBar;
-        _viewModel.Settings.ShowProcessColumns = option.Value.ShowProcessColumns;
-        UpdateProcessModeMenuState();
-        _viewModel.SaveSettings();
-        _lastColumnSignature = null;
-        BuildProcessColumns();
-    }
-
-    /// <summary>工程表示モードメニューのチェック状態と見出し文言を現在の設定に合わせて更新する</summary>
-    private void UpdateProcessModeMenuState() {
-        var settings = _viewModel.Settings;
-        foreach (var option in ProcessModeItems)
-            option.IsChecked = option.Value.ShowProcessBar == settings.ShowProcessBar && option.Value.ShowProcessColumns == settings.ShowProcessColumns;
-        TxtProcessModeValue.Text = (settings.ShowProcessBar, settings.ShowProcessColumns) switch {
-            (true, false) => "バー",
-            (false, true) => "リスト",
-            (true, true)  => "バー＋リスト",
-            _             => "なし",
-        };
     }
 
     private void ColumnVisibilityMenuItem_Click(object sender, RoutedEventArgs e) {
@@ -153,59 +115,6 @@ public partial class MainWindow : Window {
         option.Column.Visibility = isChecked ? Visibility.Visible : Visibility.Collapsed;
         option.Setter(_viewModel.Settings, isChecked);
         _viewModel.SaveSettings();
-    }
-
-    /// <summary>表示日切り替えメニューの選択肢（ItemsSource用）</summary>
-    public ObservableCollection<MenuOption<bool>> DueDateDisplayItems { get; } = [
-        new("着手期限", false),
-        new("完了期限", true),
-    ];
-
-    /// <summary>表示日切り替えメニューのチェック状態と見出し文言を現在の設定に合わせて更新する</summary>
-    private void UpdateDueDateDisplayMenuState() {
-        var value = _viewModel.Settings.ShowDueDateForNotStarted;
-        foreach (var option in DueDateDisplayItems)
-            option.IsChecked = option.Value == value;
-        TxtDueDateDisplayValue.Text = value ? "完了期限" : "着手期限";
-    }
-
-    /// <summary>並び順メニューの選択肢（ItemsSource用）</summary>
-    public ObservableCollection<MenuOption<SortMode>> SortModeItems { get; } = [
-        new("出荷日",   SortMode.DeliveryDate),
-        new("完了日",   SortMode.CompletionDate),
-        new("工程期限", SortMode.ProcessDeadline),
-    ];
-
-    /// <summary>並び順メニューのチェック状態と見出し文言を現在の設定に合わせて更新する</summary>
-    private void UpdateSortModeMenuState() {
-        var mode = _viewModel.Settings.SortMode;
-        foreach (var option in SortModeItems)
-            option.IsChecked = option.Value == mode;
-        TxtSortModeValue.Text = mode switch {
-            SortMode.CompletionDate  => "完了日",
-            SortMode.ProcessDeadline => "工程期限",
-            _                        => "出荷日",
-        };
-    }
-
-    private void DueDateDisplayMenuItem_Click(object sender, RoutedEventArgs e) {
-        if (sender is not MenuItem { DataContext: MenuOption<bool> option }) return;
-
-        _viewModel.Settings.ShowDueDateForNotStarted = option.Value;
-        UpdateDueDateDisplayMenuState();
-        _viewModel.SaveSettings();
-        _viewModel.ApplyFilter();
-    }
-
-    private void SortModeMenuItem_Click(object sender, RoutedEventArgs e) {
-        if (sender is not MenuItem { DataContext: MenuOption<SortMode> option }) return;
-
-        // チェック状態の反映（軽い処理）を先に行い、その後で保存・並び替え（重い処理）を行うことで
-        // クリック直後に他の項目のチェックが一瞬残って見えるちらつきを防ぐ
-        _viewModel.Settings.SortMode = option.Value;
-        UpdateSortModeMenuState();
-        _viewModel.SaveSettings();
-        _viewModel.ApplyFilter();
     }
 
     /// <summary>フォントサイズ設定を設定値から適用し、行の高さを再計算する</summary>
@@ -380,33 +289,6 @@ public partial class MainWindow : Window {
         return column;
     }
 
-    private void BtnSettings_Click(object sender, RoutedEventArgs e) {
-        var window = new SettingsWindow(_viewModel) { Owner = this };
-        window.ShowDialog();
-    }
-
-    private async void BtnProcess_Click(object sender, RoutedEventArgs e) {
-        var window = new ProcessSettingWindow() { Owner = this };
-        window.ShowDialog();
-        await _viewModel.LoadOrdersAsync();
-    }
-
-    private void BtnHoliday_Click(object sender, RoutedEventArgs e) {
-        var window = new HolidaySettingWindow() { Owner = this };
-        window.ShowDialog();
-    }
-
-    private async void BtnDeptSetting_Click(object sender, RoutedEventArgs e) {
-        var window = new DepartmentSettingWindow() { Owner = this };
-        window.ShowDialog();
-        // 部署マスタが変更された可能性があるため、フィルターボタンリストを更新
-        await _viewModel.RefreshDepartmentFiltersAsync();
-    }
-
-    private void BtnProductPerformance_Click(object sender, RoutedEventArgs e) {
-        new ProductPerformanceWindow(_viewModel.Settings) { Owner = this }.ShowDialog();
-    }
-
     /// <summary>表示設定ダイアログからのリアルタイムプレビュー用（設定には保存しない）</summary>
     public void PreviewRowHeight(double height) {
         _previewManualRowHeight = height;
@@ -446,20 +328,6 @@ public partial class MainWindow : Window {
         if (settings.ShowProcessBar)
             processHeight = Math.Max(processHeight, ProcessBarControl.DateBarHeight + (settings.ProcessBarFontSize * 1.8) + 8);
         return Math.Max(processHeight, settings.FixedColumnFontSize * 1.8 + 8);
-    }
-
-    private void BtnDisplaySettings_Click(object sender, RoutedEventArgs e) {
-        var window = new DisplaySettingsWindow(_viewModel, this) { Owner = this };
-        window.ShowDialog();
-        _previewManualRowHeight = null;
-        if (window.DialogResult == true) {
-            ApplyFixedColumnFontSize();
-            BuildProcessColumns();
-        }
-    }
-
-    private void BtnClearFilter_Click(object sender, RoutedEventArgs e) {
-        _viewModel.ClearFilter();
     }
 
     private void OrderRow_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e) {
