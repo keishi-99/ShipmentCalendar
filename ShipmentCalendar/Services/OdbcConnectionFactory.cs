@@ -10,9 +10,7 @@ public static class OdbcConnectionFactory
     {
         var builder = new OdbcConnectionStringBuilder
         {
-            ["DSN"] = settings.OdbcDsn,
-            ["Uid"] = settings.OdbcUserId,
-            ["Pwd"] = settings.OdbcPassword
+            ["DSN"] = settings.OdbcDsn
         };
         return builder.ConnectionString;
     }

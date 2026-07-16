@@ -27,7 +27,7 @@ public class BusinessDayCalculatorTests
     /// </summary>
     [Fact]
     public void BuildProcesses_OutsourceWaitOnMiddleProcess_ShouldShareRemainingCapacityWithPrecedingProcess() {
-        var calculator = new BusinessDayCalculator(holidays: []);
+        var calculator = new BusinessDayCalculator(holidays: [], dayMinutes: 480);
         var order = MakeOrder(new DateOnly(2026, 6, 30)); // 火曜日
 
         var defs = new[] {
@@ -61,7 +61,7 @@ public class BusinessDayCalculatorTests
     /// </summary>
     [Fact]
     public void BuildProcesses_NoOutsourceWait_ShouldPackProcessesTightly() {
-        var calculator = new BusinessDayCalculator(holidays: []);
+        var calculator = new BusinessDayCalculator(holidays: [], dayMinutes: 480);
         var order = MakeOrder(new DateOnly(2026, 6, 30));
 
         var defs = new[] {
@@ -89,7 +89,7 @@ public class BusinessDayCalculatorTests
     /// </summary>
     [Fact]
     public void BuildProcesses_TwoConsecutiveOutsourceWaits_ShouldCarryOverRoundingToEarlierGate() {
-        var calculator = new BusinessDayCalculator(holidays: []);
+        var calculator = new BusinessDayCalculator(holidays: [], dayMinutes: 480);
         var order = MakeOrder(new DateOnly(2026, 6, 30));
 
         var defs = new[] {
@@ -120,7 +120,7 @@ public class BusinessDayCalculatorTests
     /// </summary>
     [Fact]
     public void BuildProcesses_ZeroLeadTimeProcessWithOutsourceWait_ShouldNotOverestimateBuffer() {
-        var calculator = new BusinessDayCalculator(holidays: []);
+        var calculator = new BusinessDayCalculator(holidays: [], dayMinutes: 480);
         var order = MakeOrder(new DateOnly(2026, 6, 30));
 
         var defs = new[] {
@@ -144,7 +144,7 @@ public class BusinessDayCalculatorTests
     /// </summary>
     [Fact]
     public void BuildProcesses_PlannedQuantityGreaterThanOne_ShouldScaleMinutesBeforeGateCalculation() {
-        var calculator = new BusinessDayCalculator(holidays: []);
+        var calculator = new BusinessDayCalculator(holidays: [], dayMinutes: 480);
         var order = MakeOrder(new DateOnly(2026, 6, 30), plannedQuantity: 10);
 
         var defs = new[] {
@@ -171,7 +171,7 @@ public class BusinessDayCalculatorTests
     /// </summary>
     [Fact]
     public void BuildProcesses_DwellTimeOnly_ShouldCarryOverBusinessDayWithoutOutsource() {
-        var calculator = new BusinessDayCalculator(holidays: []);
+        var calculator = new BusinessDayCalculator(holidays: [], dayMinutes: 480);
         var order = MakeOrder(new DateOnly(2026, 6, 30));
 
         var defs = new[] {

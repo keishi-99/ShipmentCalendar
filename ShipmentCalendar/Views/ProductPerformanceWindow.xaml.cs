@@ -24,6 +24,9 @@ public partial class ProductPerformanceWindow : Window {
     public ProductPerformanceWindow(AppSettings settings) {
         InitializeComponent();
         _settings = settings;
+        // DataTemplate内（ItemsControl配下）のProcessBarControlはXAMLから個別にBindingできないため、
+        // 継承プロパティとしてWindow自身にセットし、ビジュアルツリーの子孫全体に伝播させる
+        SetValue(ProcessBarControl.DayMinutesProperty, (double)settings.DayMinutes);
         StartDatePicker.SelectedDate = DateTime.Today.AddDays(-90);
         EndDatePicker.SelectedDate = DateTime.Today;
         ViewModeCombo.SelectedIndex = 0;
@@ -108,7 +111,7 @@ public partial class ProductPerformanceWindow : Window {
                     kv.Key,
                     kv.Value.Max(p => p.ActualDate),
                     plannedQuantityBySeiban.GetValueOrDefault(kv.Key, 1),
-                    BuildStandardProcesses(defs, plannedQuantityBySeiban.GetValueOrDefault(kv.Key, 1)),
+                    BuildStandardProcesses(defs, plannedQuantityBySeiban.GetValueOrDefault(kv.Key, 1), _settings.DayMinutes),
                     kv.Value.OrderBy(p => p.SortOrder).ToList(),
                     orderInfoBySeiban.GetValueOrDefault(kv.Key).ProductName ?? "",
                     orderInfoBySeiban.GetValueOrDefault(kv.Key).DeliveryDate,
@@ -119,7 +122,7 @@ public partial class ProductPerformanceWindow : Window {
             _lastDefs = defs;
 
             // 標準・実績バー共通の全幅は、検索結果全体を通した最大値を使うことで「1日」の幅を注文間で揃える
-            var maxScaleMinutes = groups.Count == 0 ? 0.0 : RoundToDayBoundary(groups.Max(ComputeRawScaleMinutes));
+            var maxScaleMinutes = groups.Count == 0 ? 0.0 : RoundToDayBoundary(groups.Max(g => ComputeRawScaleMinutes(g, _settings.DayMinutes)), _settings.DayMinutes);
             groups = groups.Select(g => g with { ScaleMinutes = maxScaleMinutes, Lanes = BuildLanes(g) }).ToList();
 
             _lastScaleMinutes = maxScaleMinutes;
@@ -143,8 +146,8 @@ public partial class ProductPerformanceWindow : Window {
 
     // 標準工数バーは実際の日付を持たないため、休日カレンダー無し・当日基準の仮の注文でBuildProcessesを再利用して組み立てる
     // （バー幅はRequiredMinutesのみで決まるため、日付ラベルに休日が反映されない点を除き表示には影響しない）
-    private static List<OrderProcess> BuildStandardProcesses(IEnumerable<ProcessDefinition> defs, int plannedQuantity) {
-        var calculator = new BusinessDayCalculator([]);
+    private static List<OrderProcess> BuildStandardProcesses(IEnumerable<ProcessDefinition> defs, int plannedQuantity, int dayMinutes) {
+        var calculator = new BusinessDayCalculator([], dayMinutes);
         var dummyOrder = new Order { CompletionDate = DateOnly.FromDateTime(DateTime.Today), PlannedQuantity = plannedQuantity };
         return calculator.BuildProcesses(dummyOrder, defs, new Dictionary<string, (DateOnly?, string, double)>());
     }
@@ -182,7 +185,7 @@ public partial class ProductPerformanceWindow : Window {
             return;
         }
 
-        var calculator = new BusinessDayCalculator(holidays);
+        var calculator = new BusinessDayCalculator(holidays, _settings.DayMinutes);
         var deliveryDate = group.DeliveryDate ?? DateOnly.FromDateTime(DateTime.Today);
         var itemLeadDays = await SqliteProductDisplayNameRepository.GetCompletionDateLeadDaysAsync(_searchedItemNumber ?? "")
             ?? _settings.CompletionDateLeadDays;
@@ -208,24 +211,24 @@ public partial class ProductPerformanceWindow : Window {
                 process.Status = ProcessStatus.Completed;
         }
 
-        new OrderDetailWindow(order, _settings.ShowRequiredTimeInMinutes) { Owner = this }.ShowDialog();
+        new OrderDetailWindow(order, _settings.ShowRequiredTimeInMinutes, _settings.DayMinutes) { Owner = this }.ShowDialog();
     }
 
     // 標準工数の合計に1営業日分の余白を足した値（丸め前）
     // 実績が標準を大幅に超過している場合、標準工数だけを基準にするとスケールが崩れて実績バーが
     // 正しく比較できなくなるため、標準・実績のうち大きい方の合計を基準にする
-    private static double ComputeRawScaleMinutes(ResultGroup group) {
-        var standardMinutes = group.StandardProcesses.Sum(p => p.RequiredMinutes + p.DwellTimeMinutes + p.OutsourceLeadDays * 480.0);
-        var actualMinutes = group.ActualProcesses.Sum(p => p.RequiredMinutes + p.DwellTimeMinutes + p.OutsourceLeadDays * 480.0);
-        return Math.Max(standardMinutes, actualMinutes) + 480.0;
+    private static double ComputeRawScaleMinutes(ResultGroup group, int dayMinutes) {
+        var standardMinutes = group.StandardProcesses.Sum(p => p.RequiredMinutes + p.DwellTimeMinutes + p.OutsourceLeadDays * dayMinutes);
+        var actualMinutes = group.ActualProcesses.Sum(p => p.RequiredMinutes + p.DwellTimeMinutes + p.OutsourceLeadDays * dayMinutes);
+        return Math.Max(standardMinutes, actualMinutes) + dayMinutes;
     }
 
-    // 480分単位に丸める。単純に切り上げるだけだと端数が小さいときに「4日目がほんの少しだけ」のような
-    // 見づらい端切れが出るため、480で割った余りが半日（240分）を超える場合のみ次の日に切り上げ、
-    // 240分以下なら切り捨てて端切れを消す
-    private static double RoundToDayBoundary(double minutes) {
-        var remainder = minutes % 480.0;
-        return remainder > 240.0 ? minutes + (480.0 - remainder) : minutes - remainder;
+    // dayMinutes単位に丸める。単純に切り上げるだけだと端数が小さいときに「4日目がほんの少しだけ」のような
+    // 見づらい端切れが出るため、dayMinutesで割った余りが半日を超える場合のみ次の日に切り上げ、
+    // 半日以下なら切り捨てて端切れを消す
+    private static double RoundToDayBoundary(double minutes, int dayMinutes) {
+        var remainder = minutes % dayMinutes;
+        return remainder > dayMinutes / 2.0 ? minutes + (dayMinutes - remainder) : minutes - remainder;
     }
 
     // 工程（指示先番号）ごとに標準・実績の分数をペアにしたレーンを作る。標準は固定長（100%基準）の背景バーとして表現し、
@@ -261,7 +264,7 @@ public partial class ProductPerformanceWindow : Window {
     }
 
     // タイムライン表示専用の共通日数ルーラーを1回だけ組み立てる（全注文がScaleMinutesを共有しているため）。
-    // ProcessBarControlの相対日数ルーラーと同じ考え方（480分＝1営業日ごとに区切り、交互背景で「n日目」を表示）
+    // ProcessBarControlの相対日数ルーラーと同じ考え方（DayMinutes＝1営業日ごとに区切り、交互背景で「n日目」を表示）
     private void RebuildDayRulerHeader(double totalMinutes) {
         DayRulerGrid.ColumnDefinitions.Clear();
         DayRulerGrid.Children.Clear();
@@ -271,10 +274,10 @@ public partial class ProductPerformanceWindow : Window {
         var brushB = (Brush)Application.Current.Resources["DateBarBackgroundBrushB"];
         var borderBrush = new SolidColorBrush(Color.FromRgb(154, 176, 204));
 
-        var dayCount = Math.Max(1, (int)Math.Ceiling(totalMinutes / 480.0));
+        var dayCount = Math.Max(1, (int)Math.Ceiling(totalMinutes / _settings.DayMinutes));
         var remaining = totalMinutes;
         for (int day = 0; day < dayCount && remaining >= 1; day++) {
-            var width = Math.Min(480.0, remaining);
+            var width = Math.Min(_settings.DayMinutes, remaining);
             DayRulerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(width, GridUnitType.Star) });
             var border = new Border {
                 Background = day % 2 == 0 ? brushA : brushB,

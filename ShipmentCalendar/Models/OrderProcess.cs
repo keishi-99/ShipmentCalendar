@@ -8,7 +8,7 @@ public class OrderProcess
     public string ProcessName { get; set; } = string.Empty;
     /// <summary>指示先番号（工程ごとに一意。完了判定のキーに使用）</summary>
     public string DestinationCode { get; set; } = string.Empty;
-    /// <summary>着手予定日（開始日）。DueDateより前になる場合がある（480分超えの工程）</summary>
+    /// <summary>着手予定日（開始日）。DueDateより前になる場合がある（1営業日の稼働時間を超える工程）</summary>
     public DateOnly StartDate { get; set; }
     public DateOnly DueDate { get; set; }
     /// <summary>実際の完了日（受入実績の受入日）。完了工程のみセット</summary>

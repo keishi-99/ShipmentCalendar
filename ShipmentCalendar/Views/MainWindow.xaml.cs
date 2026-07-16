@@ -264,6 +264,7 @@ public partial class MainWindow : Window {
         barFactory.SetBinding(ProcessBarControl.ProcessesProperty, new Binding("Processes"));
         barFactory.SetValue(ProcessBarControl.BarFontSizeProperty, settings.ProcessBarFontSize);
         barFactory.SetValue(ProcessBarControl.ShowRequiredTimeInMinutesProperty, settings.ShowRequiredTimeInMinutes);
+        barFactory.SetValue(ProcessBarControl.DayMinutesProperty, (double)settings.DayMinutes);
         barTemplate.VisualTree = barFactory;
         barColumn.CellTemplate = barTemplate;
         // 工程バー列はフォーカス枠を出さず、選択状態になっても背景の青いハイライトを表示しない
@@ -463,7 +464,7 @@ public partial class MainWindow : Window {
 
     private void OrderRow_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e) {
         if (sender is not DataGridRow row || row.Item is not Order order) return;
-        new OrderDetailWindow(order, _viewModel.Settings.ShowRequiredTimeInMinutes) { Owner = this }.ShowDialog();
+        new OrderDetailWindow(order, _viewModel.Settings.ShowRequiredTimeInMinutes, _viewModel.Settings.DayMinutes) { Owner = this }.ShowDialog();
     }
 }
 
