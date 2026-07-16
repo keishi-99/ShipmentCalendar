@@ -225,7 +225,7 @@
                     </Fluent:RibbonGroupBox>
 
                     <Fluent:RibbonGroupBox Header="表示列">
-                        <Fluent:DropDownButton Header="表示列" ItemsSource="{Binding ColumnVisibilityItems, RelativeSource={RelativeSource AncestorType=Window}}" SizeDefinition="Middle,Middle,Small" Style="{StaticResource ColumnVisibilityDropDownStyle}">
+                        <Fluent:DropDownButton Header="表示列" ItemsSource="{Binding ColumnVisibilityItems, RelativeSource={RelativeSource AncestorType=Window}}" SizeDefinition="Middle,Middle,Small" Style="{StaticResource ColumnVisibilityDropDownStyle}" UsesItemContainerTemplate="True">
                             <Fluent:DropDownButton.ItemTemplate>
                                 <DataTemplate>
                                     <Fluent:MenuItem

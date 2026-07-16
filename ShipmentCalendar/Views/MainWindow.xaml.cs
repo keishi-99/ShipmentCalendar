@@ -39,6 +39,8 @@ public partial class MainWindow : Window, IDisplaySettingsPreviewTarget {
                 BuildProcessColumns();
         };
         _viewModel.GridRebuildRequested += (_, _) => {
+            _previewManualRowHeight = null;
+            ApplyFixedColumnFontSize();
             _lastColumnSignature = null;
             BuildProcessColumns();
         };
