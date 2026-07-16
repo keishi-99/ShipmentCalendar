@@ -69,9 +69,15 @@ public partial class ProcessBarControl : UserControl {
             nameof(DayMinutes),
             typeof(double),
             typeof(ProcessBarControl),
-            new FrameworkPropertyMetadata(420.0, FrameworkPropertyMetadataOptions.Inherits, (d, _) => ((ProcessBarControl)d).RebuildBars()));
+            new FrameworkPropertyMetadata(
+                420.0,
+                FrameworkPropertyMetadataOptions.Inherits,
+                (d, _) => ((ProcessBarControl)d).RebuildBars(),
+                // 0以下は後続の除算でNaN・無限大の原因になるため既定値(420)に補正する
+                (_, baseValue) => baseValue is double v && v > 0 ? v : 420.0));
 
-    /// <summary>1営業日あたりの稼働時間（分）。設定していない祖先要素配下では既定の420分として扱われる</summary>
+    /// <summary>1営業日あたりの稼働時間（分）。設定していない祖先要素配下、または0以下の値を
+    /// 設定しようとした場合は既定の420分として扱われる</summary>
     public double DayMinutes {
         get => (double)GetValue(DayMinutesProperty);
         set => SetValue(DayMinutesProperty, value);
