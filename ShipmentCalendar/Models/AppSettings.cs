@@ -21,8 +21,8 @@ public class AppSettings
     public int CompletionDateLeadDays { get; set; } = 1;
     /// <summary>未完了工程の表示日付を完了必須日にするか（false=着手必須日を表示）</summary>
     public bool ShowDueDateForNotStarted { get; set; } = false;
-    /// <summary>注文一覧の並び順を「次の未完了工程の期限日」にするか（false=出荷日順）</summary>
-    public bool SortByProcessDeadline { get; set; } = false;
+    /// <summary>注文一覧の並び順</summary>
+    public SortMode SortMode { get; set; } = SortMode.DeliveryDate;
 
     /// <summary>メイン画面の「出荷日」列を表示するか</summary>
     public bool ShowColumnDeliveryDate { get; set; } = true;
@@ -60,4 +60,12 @@ public class AppSettings
 
     /// <summary>ODBC接続設定が入力済みか</summary>
     public bool IsOdbcConfigured => !string.IsNullOrEmpty(OdbcDsn);
+}
+
+/// <summary>注文一覧の並び順</summary>
+public enum SortMode
+{
+    DeliveryDate,     // 出荷日順
+    CompletionDate,   // 完了日順
+    ProcessDeadline,  // 工程期限順（次の未完了工程の期限日）
 }

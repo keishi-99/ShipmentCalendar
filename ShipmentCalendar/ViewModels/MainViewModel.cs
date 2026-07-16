@@ -52,6 +52,10 @@ public partial class MainViewModel : ObservableObject {
     /// <summary>ツールバー部署フィルターボタン用リスト（「全て」含む）</summary>
     public ObservableCollection<DepartmentFilterItem> DepartmentFilters { get; } = [];
 
+    /// <summary>担当部署フィルターの親メニュー見出し（例:「部署：全て ▾」）</summary>
+    public string SelectedDepartmentLabel =>
+        $"部署：{DepartmentFilters.FirstOrDefault(d => d.IsSelected)?.Name ?? "全て"} ▾";
+
     /// <summary>選択中の担当部署ID（0=全て）</summary>
     [ObservableProperty] private int _filterDepartmentId = 0;
 
@@ -109,6 +113,7 @@ public partial class MainViewModel : ObservableObject {
         // 各ボタンの選択状態を同期してからフィルターを適用
         foreach (var item in DepartmentFilters)
             item.IsSelected = item.Id == value;
+        OnPropertyChanged(nameof(SelectedDepartmentLabel));
         ApplyFilter();
     }
 
@@ -196,9 +201,11 @@ public partial class MainViewModel : ObservableObject {
             });
         }
 
-        Orders = new ObservableCollection<Order>(Settings.SortByProcessDeadline
-            ? result.OrderBy(GetNextProcessSortDate)
-            : result.OrderBy(o => o.DeliveryDate));
+        Orders = new ObservableCollection<Order>(Settings.SortMode switch {
+            SortMode.CompletionDate  => result.OrderBy(o => o.CompletionDate),
+            SortMode.ProcessDeadline => result.OrderBy(GetNextProcessSortDate),
+            _                        => result.OrderBy(o => o.DeliveryDate),
+        });
         UpdateStatusMessage();
     }
 
@@ -209,6 +216,7 @@ public partial class MainViewModel : ObservableObject {
         DepartmentFilters.Add(new DepartmentFilterItem { Id = 0, Name = "全て", IsSelected = FilterDepartmentId == 0 });
         foreach (var d in departments)
             DepartmentFilters.Add(new DepartmentFilterItem { Id = d.Id, Name = d.Name, IsSelected = FilterDepartmentId == d.Id });
+        OnPropertyChanged(nameof(SelectedDepartmentLabel));
     }
 
     private void RefreshFilterDateRange() {
@@ -430,13 +438,6 @@ public partial class MainViewModel : ObservableObject {
             var defs = processRepo.GetAll().ToList();
             return (orders, defs);
         });
-    }
-
-    /// <summary>注文一覧の並び順（出荷日順/工程期限順）を切り替える</summary>
-    public void ToggleSortMode() {
-        Settings.SortByProcessDeadline = !Settings.SortByProcessDeadline;
-        SaveSettings();
-        ApplyFilter();
     }
 
     public void SaveSettings() {
