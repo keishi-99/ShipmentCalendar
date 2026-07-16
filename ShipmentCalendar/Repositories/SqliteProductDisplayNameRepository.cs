@@ -61,7 +61,7 @@ public static class SqliteProductDisplayNameRepository
         command.CommandText = "SELECT CompletionDateLeadDays FROM Products WHERE ItemNumber = $pn LIMIT 1";
         command.Parameters.AddWithValue("$pn", itemNumber);
         var result = await command.ExecuteScalarAsync();
-        return result is long l ? (int)l : null;
+        return result == null || result == DBNull.Value ? null : Convert.ToInt32(result);
     }
 
     /// <summary>全品目の品目番号→完了日リードタイム辞書を返す（未設定の品目は含まれない）</summary>
