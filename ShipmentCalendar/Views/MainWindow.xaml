@@ -225,17 +225,17 @@
                     </Fluent:RibbonGroupBox>
 
                     <Fluent:RibbonGroupBox Header="表示列">
-                        <Fluent:DropDownButton Header="表示列" ItemsSource="{Binding ColumnVisibilityItems, RelativeSource={RelativeSource AncestorType=Window}}" SizeDefinition="Middle,Middle,Small" Style="{StaticResource ColumnVisibilityDropDownStyle}">
-                            <Fluent:DropDownButton.ItemTemplate>
-                                <DataTemplate>
+                        <Fluent:DropDownButton Header="表示列" ItemsSource="{Binding ColumnVisibilityItems, RelativeSource={RelativeSource AncestorType=Window}}" SizeDefinition="Middle,Middle,Small" Style="{StaticResource ColumnVisibilityDropDownStyle}" UsesItemContainerTemplate="True">
+                            <Fluent:DropDownButton.Resources>
+                                <ItemContainerTemplate x:Key="{ItemContainerTemplateKey {x:Type views:ColumnVisibilityOption}}">
                                     <Fluent:MenuItem
                                         Click="ColumnVisibilityMenuItem_Click"
                                         Header="{Binding Label}"
                                         IsCheckable="True"
                                         IsChecked="{Binding IsChecked, Mode=OneWay}"
                                         IsDefinitive="False" />
-                                </DataTemplate>
-                            </Fluent:DropDownButton.ItemTemplate>
+                                </ItemContainerTemplate>
+                            </Fluent:DropDownButton.Resources>
                         </Fluent:DropDownButton>
                     </Fluent:RibbonGroupBox>
                 </Fluent:RibbonTabItem>
