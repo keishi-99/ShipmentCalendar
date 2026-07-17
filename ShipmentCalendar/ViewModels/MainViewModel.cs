@@ -152,17 +152,19 @@ public partial class MainViewModel : ObservableObject {
     }
 
     /// <summary>工程表示モードコンボボックスの選択肢（ItemsSource用）</summary>
-    public ObservableCollection<MenuOption<(bool ShowProcessBar, bool ShowProcessColumns)>> ProcessModeItems { get; } = [
-        new("バー",   (true, false)),
-        new("リスト", (false, true)),
+    public ObservableCollection<MenuOption<ProcessMode>> ProcessModeItems { get; } = [
+        new("バー",   ProcessMode.Bar),
+        new("リスト", ProcessMode.List),
     ];
 
-    public (bool ShowProcessBar, bool ShowProcessColumns) SelectedProcessMode {
-        get => (Settings.ShowProcessBar, Settings.ShowProcessColumns);
+    public ProcessMode SelectedProcessMode {
+        get => Settings.ShowProcessBar ? ProcessMode.Bar : ProcessMode.List;
         set {
-            if (Settings.ShowProcessBar == value.ShowProcessBar && Settings.ShowProcessColumns == value.ShowProcessColumns) return;
-            Settings.ShowProcessBar = value.ShowProcessBar;
-            Settings.ShowProcessColumns = value.ShowProcessColumns;
+            var showBar = value == ProcessMode.Bar;
+            var showColumns = value == ProcessMode.List;
+            if (Settings.ShowProcessBar == showBar && Settings.ShowProcessColumns == showColumns) return;
+            Settings.ShowProcessBar = showBar;
+            Settings.ShowProcessColumns = showColumns;
             OnPropertyChanged();
             SaveSettings();
             GridRebuildRequested?.Invoke(this, EventArgs.Empty);

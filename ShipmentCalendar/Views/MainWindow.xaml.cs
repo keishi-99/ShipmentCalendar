@@ -4,10 +4,12 @@ using ShipmentCalendar.Repositories;
 using ShipmentCalendar.Services;
 using ShipmentCalendar.ViewModels;
 using System.Collections.ObjectModel;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 
 namespace ShipmentCalendar.Views;
@@ -78,14 +80,17 @@ public partial class MainWindow : Fluent.RibbonWindow, IDisplaySettingsPreviewTa
             _previousHeight = Height;
 
             // RibbonWindow既定のWindowChromeはWindowState.Maximized時にタスクバー分を除いた
-            // ワークエリアに制限してしまうため、Maximizedではなく画面全体のサイズを明示的に指定する
+            // ワークエリアに制限してしまうため、Maximizedではなく画面全体のサイズを明示的に指定する。
+            // ウィンドウが表示されているモニターの境界を使うことで、マルチモニター環境でも
+            // セカンドモニター側でフルスクリーンにできるようにする
+            var monitorBounds = GetCurrentMonitorBounds();
             WindowStyle = WindowStyle.None;
             ResizeMode = ResizeMode.NoResize;
             WindowState = WindowState.Normal;
-            Left = 0;
-            Top = 0;
-            Width = SystemParameters.PrimaryScreenWidth;
-            Height = SystemParameters.PrimaryScreenHeight;
+            Left = monitorBounds.Left;
+            Top = monitorBounds.Top;
+            Width = monitorBounds.Width;
+            Height = monitorBounds.Height;
             // RibbonWindow独自のタイトルバー行はWindowStyleに関係なくTitleBarHeightで高さが固定されるため、明示的に0にする
             SetCurrentValue(TitleBarHeightProperty, 0d);
         }
@@ -101,6 +106,39 @@ public partial class MainWindow : Fluent.RibbonWindow, IDisplaySettingsPreviewTa
         }
         _isFullScreen = !_isFullScreen;
         BtnToggleFullScreen.ToolTip = _isFullScreen ? "ウィンドウ表示に戻す (F11)" : "全画面表示切り替え (F11)";
+    }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
+
+    [DllImport("user32.dll")]
+    private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT { public int Left, Top, Right, Bottom; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MONITORINFO {
+        public int cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public int dwFlags;
+    }
+
+    private const uint MONITOR_DEFAULTTONEAREST = 2;
+
+    /// <summary>ウィンドウが現在表示されているモニターの境界をWPF座標(DIP)で取得する</summary>
+    private Rect GetCurrentMonitorBounds() {
+        var hwnd = new WindowInteropHelper(this).Handle;
+        var monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        var info = new MONITORINFO { cbSize = Marshal.SizeOf<MONITORINFO>() };
+        if (!GetMonitorInfo(monitor, ref info))
+            return new Rect(0, 0, SystemParameters.PrimaryScreenWidth, SystemParameters.PrimaryScreenHeight);
+
+        var transform = PresentationSource.FromVisual(this)?.CompositionTarget?.TransformFromDevice ?? Matrix.Identity;
+        var topLeft = transform.Transform(new Point(info.rcMonitor.Left, info.rcMonitor.Top));
+        var bottomRight = transform.Transform(new Point(info.rcMonitor.Right, info.rcMonitor.Bottom));
+        return new Rect(topLeft, bottomRight);
     }
 
     /// <summary>列の表示/非表示メニューの選択肢（ItemsSource用）。DataGridColumnの参照が必要なためコンストラクタ内で追加する</summary>
