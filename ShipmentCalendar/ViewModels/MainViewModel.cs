@@ -112,7 +112,9 @@ public partial class MainViewModel : ObservableObject {
         }
     }
     partial void OnFilterProductCategoryChanged(string value) => ApplyFilter();
-    partial void OnFilterDepartmentIdChanged(int value) => ApplyFilter();
+    partial void OnFilterDepartmentIdChanged(int value) {
+        if (!_isUpdatingFilters) ApplyFilter();
+    }
 
     /// <summary>並び順コンボボックスの選択肢（ItemsSource用）</summary>
     public ObservableCollection<MenuOption<SortMode>> SortModeItems { get; } = [
@@ -192,9 +194,7 @@ public partial class MainViewModel : ObservableObject {
     [RelayCommand]
     private void OpenDisplaySettings() {
         if (PreviewTarget is null) return;
-        var saved = _dialogService.ShowDisplaySettings(this, PreviewTarget);
-        if (saved == true)
-            GridRebuildRequested?.Invoke(this, EventArgs.Empty);
+        _dialogService.ShowDisplaySettings(this, PreviewTarget);
     }
 
     [RelayCommand]
@@ -287,14 +287,18 @@ public partial class MainViewModel : ObservableObject {
         UpdateStatusMessage();
     }
 
+    private bool _isUpdatingFilters;
+
     /// <summary>部署マスタを再取得してフィルターコンボボックスの選択肢を更新する</summary>
     public async Task RefreshDepartmentFiltersAsync() {
         var departments = await Repositories.SqliteDepartmentRepository.GetAllAsync();
         var previousSelectedId = FilterDepartmentId;
+        _isUpdatingFilters = true;
         DepartmentFilters.Clear();
         DepartmentFilters.Add(new DepartmentFilterItem { Id = 0, Name = "全て" });
         foreach (var d in departments)
             DepartmentFilters.Add(new DepartmentFilterItem { Id = d.Id, Name = d.Name });
+        _isUpdatingFilters = false;
         FilterDepartmentId = previousSelectedId;
     }
 

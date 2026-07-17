@@ -114,5 +114,6 @@ public partial class DisplaySettingsWindow : Window
             _previewTarget.PreviewFontSizes(_savedFixedFontSize, _savedProcessBarFontSize, _savedProcessColumnFontSize);
             _previewTarget.PreviewRowHeight(_savedManualRowHeight);
         }
+        _previewTarget.EndPreview();
     }
 }

@@ -38,12 +38,7 @@ public partial class MainWindow : Window, IDisplaySettingsPreviewTarget {
             if (e.PropertyName == nameof(_viewModel.Orders))
                 BuildProcessColumns();
         };
-        _viewModel.GridRebuildRequested += (_, _) => {
-            _previewManualRowHeight = null;
-            ApplyFixedColumnFontSize();
-            _lastColumnSignature = null;
-            BuildProcessColumns();
-        };
+        _viewModel.GridRebuildRequested += (_, _) => EndPreview();
         InitializeColumnVisibility();
         ApplyFixedColumnFontSize();
         PreviewKeyDown += MainWindow_PreviewKeyDown;
@@ -289,6 +284,14 @@ public partial class MainWindow : Window, IDisplaySettingsPreviewTarget {
         template.VisualTree = factory;
         column.CellTemplate = template;
         return column;
+    }
+
+    /// <summary>プレビュー状態を終了し、保存・キャンセルに関わらず最終的な設定値をグリッドに反映する</summary>
+    public void EndPreview() {
+        _previewManualRowHeight = null;
+        ApplyFixedColumnFontSize();
+        _lastColumnSignature = null;
+        BuildProcessColumns();
     }
 
     /// <summary>表示設定ダイアログからのリアルタイムプレビュー用（設定には保存しない）</summary>
