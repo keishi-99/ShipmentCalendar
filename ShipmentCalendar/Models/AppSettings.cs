@@ -73,3 +73,10 @@ public enum SortMode
     CompletionDate,   // 完了日順
     ProcessDeadline,  // 工程期限順（次の未完了工程の期限日）
 }
+
+/// <summary>工程の表示モード</summary>
+public enum ProcessMode
+{
+    Bar,  // 工程バー列で表示
+    List, // 工程1つ1列で表示
+}

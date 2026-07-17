@@ -4,20 +4,15 @@ using ShipmentCalendar.Repositories;
 using ShipmentCalendar.Services;
 using ShipmentCalendar.ViewModels;
 using System.Collections.ObjectModel;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 
 namespace ShipmentCalendar.Views;
-
-/// <summary>ツールバーのポップアップメニュー項目1件を表す（ItemsSource経由で動的生成しないと標準のIsCheckableチェックマークが正しく描画されないため使用）</summary>
-public partial class MenuOption<T>(string label, T value) : ObservableObject {
-    public string Label { get; } = label;
-    public T Value { get; } = value;
-    [ObservableProperty] private bool _isChecked;
-}
 
 /// <summary>列の表示/非表示メニュー項目1件を表す（複数選択可能な独立したON/OFFチェックボックス）</summary>
 public partial class ColumnVisibilityOption(string label, DataGridColumn column, Func<AppSettings, bool> getter, Action<AppSettings, bool> setter) : ObservableObject {
@@ -28,7 +23,7 @@ public partial class ColumnVisibilityOption(string label, DataGridColumn column,
     [ObservableProperty] private bool _isChecked;
 }
 
-public partial class MainWindow : Window {
+public partial class MainWindow : Fluent.RibbonWindow, IDisplaySettingsPreviewTarget {
     // 外注待ち表示の背景色（App.xamlのリソースで一元管理、ProcessBarControlの外注待ちバーと同じ色）
     private static Brush OutsourceLeadBrush => (Brush)Application.Current.Resources["OutsourceLeadBrush"];
 
@@ -38,15 +33,15 @@ public partial class MainWindow : Window {
 
     public MainWindow() {
         InitializeComponent();
-        _viewModel = new MainViewModel(new SqliteHolidayRepository(), new SqliteProcessDefinitionRepository(), new SqliteModelCodeRepository());
+        _viewModel = new MainViewModel(new SqliteHolidayRepository(), new SqliteProcessDefinitionRepository(), new SqliteModelCodeRepository(), new DialogService());
         DataContext = _viewModel;
+        _viewModel.PreviewTarget = this;
         Loaded += async (_, _) => await _viewModel.LoadOrdersAsync();
         _viewModel.PropertyChanged += (_, e) => {
             if (e.PropertyName == nameof(_viewModel.Orders))
                 BuildProcessColumns();
         };
-        UpdateDueDateDisplayMenuState();
-        UpdateSortModeMenuState();
+        _viewModel.GridRebuildRequested += (_, _) => EndPreview();
         InitializeColumnVisibility();
         ApplyFixedColumnFontSize();
         PreviewKeyDown += MainWindow_PreviewKeyDown;
@@ -56,6 +51,10 @@ public partial class MainWindow : Window {
     private WindowState _previousWindowState;
     private WindowStyle _previousWindowStyle;
     private ResizeMode _previousResizeMode;
+    private double _previousLeft;
+    private double _previousTop;
+    private double _previousWidth;
+    private double _previousHeight;
     private bool _isFullScreen;
 
     private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e) {
@@ -69,26 +68,90 @@ public partial class MainWindow : Window {
         ToggleFullScreen();
     }
 
-    /// <summary>F11キー・ツールバーボタンでフルスクリーン表示（タイトルバー・タスクバーを隠す）と通常表示を切り替える</summary>
+    /// <summary>F11キー・リボンボタンでフルスクリーン表示（タイトルバー・タスクバーを隠す）と通常表示を切り替える</summary>
     private void ToggleFullScreen() {
         if (!_isFullScreen) {
             _previousWindowState = WindowState;
             _previousWindowStyle = WindowStyle;
             _previousResizeMode = ResizeMode;
+            // 最大化中はLeft/Top/Width/HeightがNaNや最大化後の値になっているため、
+            // WPFが保持する最大化解除時の復元サイズ(RestoreBounds)から退避する
+            if (WindowState == WindowState.Maximized) {
+                var restoreBounds = RestoreBounds;
+                _previousLeft = restoreBounds.Left;
+                _previousTop = restoreBounds.Top;
+                _previousWidth = restoreBounds.Width;
+                _previousHeight = restoreBounds.Height;
+            }
+            else {
+                _previousLeft = Left;
+                _previousTop = Top;
+                _previousWidth = Width;
+                _previousHeight = Height;
+            }
 
+            // RibbonWindow既定のWindowChromeはWindowState.Maximized時にタスクバー分を除いた
+            // ワークエリアに制限してしまうため、Maximizedではなく画面全体のサイズを明示的に指定する。
+            // ウィンドウが表示されているモニターの境界を使うことで、マルチモニター環境でも
+            // セカンドモニター側でフルスクリーンにできるようにする
+            var monitorBounds = GetCurrentMonitorBounds();
             WindowStyle = WindowStyle.None;
             ResizeMode = ResizeMode.NoResize;
-            if (WindowState == WindowState.Maximized)
-                WindowState = WindowState.Normal;
-            WindowState = WindowState.Maximized;
+            WindowState = WindowState.Normal;
+            Left = monitorBounds.Left;
+            Top = monitorBounds.Top;
+            Width = monitorBounds.Width;
+            Height = monitorBounds.Height;
+            // RibbonWindow独自のタイトルバー行はWindowStyleに関係なくTitleBarHeightで高さが固定されるため、明示的に0にする
+            SetCurrentValue(TitleBarHeightProperty, 0d);
         }
         else {
+            // WindowStateをMaximizedに戻す前に位置とサイズを適用しないと、
+            // WPFが保持するRestoreBoundsがフルスクリーンサイズで上書きされてしまう
             WindowStyle = _previousWindowStyle;
             ResizeMode = _previousResizeMode;
+            Left = _previousLeft;
+            Top = _previousTop;
+            Width = _previousWidth;
+            Height = _previousHeight;
             WindowState = _previousWindowState;
+            InvalidateProperty(TitleBarHeightProperty);
         }
         _isFullScreen = !_isFullScreen;
-        BtnToggleFullScreen.Content = _isFullScreen ? "ウィンドウ表示 [F11]" : "フルスクリーン [F11]";
+        BtnToggleFullScreen.ToolTip = _isFullScreen ? "ウィンドウ表示に戻す (F11)" : "全画面表示切り替え (F11)";
+    }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT { public int Left, Top, Right, Bottom; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MONITORINFO {
+        public int cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public int dwFlags;
+    }
+
+    private const uint MONITOR_DEFAULTTONEAREST = 2;
+
+    /// <summary>ウィンドウが現在表示されているモニターの境界をWPF座標(DIP)で取得する</summary>
+    private Rect GetCurrentMonitorBounds() {
+        var hwnd = new WindowInteropHelper(this).Handle;
+        var monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        var info = new MONITORINFO { cbSize = Marshal.SizeOf<MONITORINFO>() };
+        if (!GetMonitorInfo(monitor, ref info))
+            return new Rect(0, 0, SystemParameters.PrimaryScreenWidth, SystemParameters.PrimaryScreenHeight);
+
+        var transform = PresentationSource.FromVisual(this)?.CompositionTarget?.TransformFromDevice ?? Matrix.Identity;
+        var topLeft = transform.Transform(new Point(info.rcMonitor.Left, info.rcMonitor.Top));
+        var bottomRight = transform.Transform(new Point(info.rcMonitor.Right, info.rcMonitor.Bottom));
+        return new Rect(topLeft, bottomRight);
     }
 
     /// <summary>列の表示/非表示メニューの選択肢（ItemsSource用）。DataGridColumnの参照が必要なためコンストラクタ内で追加する</summary>
@@ -109,39 +172,6 @@ public partial class MainWindow : Window {
             option.IsChecked = isVisible;
             option.Column.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
         }
-        UpdateProcessModeMenuState();
-    }
-
-    /// <summary>工程表示モードメニューの選択肢（ItemsSource用）</summary>
-    public ObservableCollection<MenuOption<(bool ShowProcessBar, bool ShowProcessColumns)>> ProcessModeItems { get; } = [
-        new("バー",   (true, false)),
-        new("リスト", (false, true)),
-    ];
-
-    private void ProcessModeMenuItem_Click(object sender, RoutedEventArgs e) {
-        if (sender is not MenuItem { DataContext: MenuOption<(bool ShowProcessBar, bool ShowProcessColumns)> option }) return;
-
-        // チェック状態の反映（軽い処理）を先に行い、その後で保存・列再構築（重い処理）を行うことで
-        // クリック直後に他の項目のチェックが一瞬残って見えるちらつきを防ぐ
-        _viewModel.Settings.ShowProcessBar = option.Value.ShowProcessBar;
-        _viewModel.Settings.ShowProcessColumns = option.Value.ShowProcessColumns;
-        UpdateProcessModeMenuState();
-        _viewModel.SaveSettings();
-        _lastColumnSignature = null;
-        BuildProcessColumns();
-    }
-
-    /// <summary>工程表示モードメニューのチェック状態と見出し文言を現在の設定に合わせて更新する</summary>
-    private void UpdateProcessModeMenuState() {
-        var settings = _viewModel.Settings;
-        foreach (var option in ProcessModeItems)
-            option.IsChecked = option.Value.ShowProcessBar == settings.ShowProcessBar && option.Value.ShowProcessColumns == settings.ShowProcessColumns;
-        TxtProcessModeValue.Text = (settings.ShowProcessBar, settings.ShowProcessColumns) switch {
-            (true, false) => "バー",
-            (false, true) => "リスト",
-            (true, true)  => "バー＋リスト",
-            _             => "なし",
-        };
     }
 
     private void ColumnVisibilityMenuItem_Click(object sender, RoutedEventArgs e) {
@@ -153,59 +183,6 @@ public partial class MainWindow : Window {
         option.Column.Visibility = isChecked ? Visibility.Visible : Visibility.Collapsed;
         option.Setter(_viewModel.Settings, isChecked);
         _viewModel.SaveSettings();
-    }
-
-    /// <summary>表示日切り替えメニューの選択肢（ItemsSource用）</summary>
-    public ObservableCollection<MenuOption<bool>> DueDateDisplayItems { get; } = [
-        new("着手期限", false),
-        new("完了期限", true),
-    ];
-
-    /// <summary>表示日切り替えメニューのチェック状態と見出し文言を現在の設定に合わせて更新する</summary>
-    private void UpdateDueDateDisplayMenuState() {
-        var value = _viewModel.Settings.ShowDueDateForNotStarted;
-        foreach (var option in DueDateDisplayItems)
-            option.IsChecked = option.Value == value;
-        TxtDueDateDisplayValue.Text = value ? "完了期限" : "着手期限";
-    }
-
-    /// <summary>並び順メニューの選択肢（ItemsSource用）</summary>
-    public ObservableCollection<MenuOption<SortMode>> SortModeItems { get; } = [
-        new("出荷日",   SortMode.DeliveryDate),
-        new("完了日",   SortMode.CompletionDate),
-        new("工程期限", SortMode.ProcessDeadline),
-    ];
-
-    /// <summary>並び順メニューのチェック状態と見出し文言を現在の設定に合わせて更新する</summary>
-    private void UpdateSortModeMenuState() {
-        var mode = _viewModel.Settings.SortMode;
-        foreach (var option in SortModeItems)
-            option.IsChecked = option.Value == mode;
-        TxtSortModeValue.Text = mode switch {
-            SortMode.CompletionDate  => "完了日",
-            SortMode.ProcessDeadline => "工程期限",
-            _                        => "出荷日",
-        };
-    }
-
-    private void DueDateDisplayMenuItem_Click(object sender, RoutedEventArgs e) {
-        if (sender is not MenuItem { DataContext: MenuOption<bool> option }) return;
-
-        _viewModel.Settings.ShowDueDateForNotStarted = option.Value;
-        UpdateDueDateDisplayMenuState();
-        _viewModel.SaveSettings();
-        _viewModel.ApplyFilter();
-    }
-
-    private void SortModeMenuItem_Click(object sender, RoutedEventArgs e) {
-        if (sender is not MenuItem { DataContext: MenuOption<SortMode> option }) return;
-
-        // チェック状態の反映（軽い処理）を先に行い、その後で保存・並び替え（重い処理）を行うことで
-        // クリック直後に他の項目のチェックが一瞬残って見えるちらつきを防ぐ
-        _viewModel.Settings.SortMode = option.Value;
-        UpdateSortModeMenuState();
-        _viewModel.SaveSettings();
-        _viewModel.ApplyFilter();
     }
 
     /// <summary>フォントサイズ設定を設定値から適用し、行の高さを再計算する</summary>
@@ -380,31 +357,12 @@ public partial class MainWindow : Window {
         return column;
     }
 
-    private void BtnSettings_Click(object sender, RoutedEventArgs e) {
-        var window = new SettingsWindow(_viewModel) { Owner = this };
-        window.ShowDialog();
-    }
-
-    private async void BtnProcess_Click(object sender, RoutedEventArgs e) {
-        var window = new ProcessSettingWindow() { Owner = this };
-        window.ShowDialog();
-        await _viewModel.LoadOrdersAsync();
-    }
-
-    private void BtnHoliday_Click(object sender, RoutedEventArgs e) {
-        var window = new HolidaySettingWindow() { Owner = this };
-        window.ShowDialog();
-    }
-
-    private async void BtnDeptSetting_Click(object sender, RoutedEventArgs e) {
-        var window = new DepartmentSettingWindow() { Owner = this };
-        window.ShowDialog();
-        // 部署マスタが変更された可能性があるため、フィルターボタンリストを更新
-        await _viewModel.RefreshDepartmentFiltersAsync();
-    }
-
-    private void BtnProductPerformance_Click(object sender, RoutedEventArgs e) {
-        new ProductPerformanceWindow(_viewModel.Settings) { Owner = this }.ShowDialog();
+    /// <summary>プレビュー状態を終了し、保存・キャンセルに関わらず最終的な設定値をグリッドに反映する</summary>
+    public void EndPreview() {
+        _previewManualRowHeight = null;
+        ApplyFixedColumnFontSize();
+        _lastColumnSignature = null;
+        BuildProcessColumns();
     }
 
     /// <summary>表示設定ダイアログからのリアルタイムプレビュー用（設定には保存しない）</summary>
@@ -448,20 +406,6 @@ public partial class MainWindow : Window {
         return Math.Max(processHeight, settings.FixedColumnFontSize * 1.8 + 8);
     }
 
-    private void BtnDisplaySettings_Click(object sender, RoutedEventArgs e) {
-        var window = new DisplaySettingsWindow(_viewModel, this) { Owner = this };
-        window.ShowDialog();
-        _previewManualRowHeight = null;
-        if (window.DialogResult == true) {
-            ApplyFixedColumnFontSize();
-            BuildProcessColumns();
-        }
-    }
-
-    private void BtnClearFilter_Click(object sender, RoutedEventArgs e) {
-        _viewModel.ClearFilter();
-    }
-
     private void OrderRow_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e) {
         if (sender is not DataGridRow row || row.Item is not Order order) return;
         new OrderDetailWindow(order, _viewModel.Settings.ShowRequiredTimeInMinutes, _viewModel.Settings.DayMinutes) { Owner = this }.ShowDialog();
@@ -497,6 +441,26 @@ public class InverseBooleanConverter : System.Windows.Data.IValueConverter {
 
     public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
         => !(value is bool b && b);
+}
+
+/// <summary>文字列が空でなければVisible、空ならHiddenを返すコンバーター（クリアボタンの表示切り替え用。
+/// Collapsedではなくレイアウト崩れ防止のためHiddenを使う）</summary>
+public class StringEmptyToVisibilityConverter : System.Windows.Data.IValueConverter {
+    public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        => string.IsNullOrEmpty(value as string) ? Visibility.Hidden : Visibility.Visible;
+
+    public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
+/// <summary>複数の値のうち1つでも設定済み(non-null)ならVisible、全てnullならHiddenを返すコンバーター
+/// （出荷日範囲のクリアボタンを開始・終了どちらかに値があれば表示するために使う）</summary>
+public class AnyValueSetToVisibilityConverter : System.Windows.Data.IMultiValueConverter {
+    public object Convert(object[] values, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        => values.Any(v => v is not null && v != DependencyProperty.UnsetValue) ? Visibility.Visible : Visibility.Hidden;
+
+    public object[] ConvertBack(object value, Type[] targetTypes, object parameter, System.Globalization.CultureInfo culture)
+        => throw new NotSupportedException();
 }
 
 /// <summary>インデックスでProcessリストを検索して背景色を返すコンバーター</summary>

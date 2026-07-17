@@ -1,15 +1,26 @@
-<Window
+<Fluent:RibbonWindow
     x:Class="ShipmentCalendar.Views.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:models="clr-namespace:ShipmentCalendar.Models"
     xmlns:views="clr-namespace:ShipmentCalendar.Views"
+    xmlns:Fluent="clr-namespace:Fluent;assembly=Fluent"
+    xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
     Title="出荷カレンダー"
     Width="1500"
     Height="700"
     WindowStartupLocation="CenterScreen">
 
     <Window.Resources>
+        <!--
+            リボンボタンの文字色を白にするスタイル。Foregroundを直接指定すると値の優先順位でローカル値が
+            スタイルのホバー時トリガーより優先されてしまい、ホバー時に背景が明るくなっても文字が白のまま
+            残り視認性が落ちるため、Setterで指定してトリガーが上書きできるようにする
+        -->
+        <Style x:Key="RibbonWhiteForegroundButtonStyle" BasedOn="{StaticResource {x:Type Fluent:Button}}" TargetType="{x:Type Fluent:Button}">
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
         <!--  工程ステータスによる色分けコンバーター  -->
         <Style x:Key="ProcessCellStyle" TargetType="TextBlock">
             <Setter Property="Padding" Value="4,2" />
@@ -18,352 +29,270 @@
         </Style>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <views:InverseBooleanConverter x:Key="InverseBool" />
+        <views:StringEmptyToVisibilityConverter x:Key="StringEmptyToVisibility" />
+        <views:AnyValueSetToVisibilityConverter x:Key="AnyValueSetToVisibility" />
         <!--  固定列のセル内テキストを縦中央に揃えるスタイル  -->
         <Style x:Key="FixedColumnCellStyle" TargetType="TextBlock">
             <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <!--  表示列ドロップダウンを他のコンボボックスと同じ白背景・枠線の見た目に揃えるスタイル  -->
+        <Style x:Key="ColumnVisibilityDropDownStyle" BasedOn="{StaticResource Fluent.Ribbon.Styles.RibbonDropDownButton}" TargetType="{x:Type Fluent:DropDownButton}">
+            <Setter Property="Background" Value="{DynamicResource Fluent.Ribbon.Brushes.TextBox.Background}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Fluent.Ribbon.Brushes.TextBox.Border}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="Black" />
+        </Style>
+
+        <!--
+            クイックフィルターの色分け用スタイル。既定のFluent:ToggleButtonテンプレートはIsChecked時の背景色を
+            DynamicResourceで固定しておりBackgroundプロパティを無視するため、Tagに設定した色をトリガーで反映する
+            独自テンプレートに差し替える（Tag=各ボタンごとの強調色、TemplatedParent経由で参照）
+        -->
+        <Style x:Key="QuickFilterToggleButtonStyle" BasedOn="{StaticResource Fluent.Ribbon.Styles.RibbonToggleButton}" TargetType="{x:Type Fluent:ToggleButton}">
+            <Setter Property="Background" Value="#F0F0F0" />
+            <Setter Property="BorderBrush" Value="#D0D0D0" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="10,3" />
+            <Setter Property="Margin" Value="3,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Fluent:ToggleButton}">
+                        <Border
+                            x:Name="border"
+                            HorizontalAlignment="{TemplateBinding HorizontalAlignment}"
+                            VerticalAlignment="{TemplateBinding VerticalAlignment}"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="4">
+                            <StackPanel x:Name="stackPanel" Margin="{TemplateBinding Padding}" Orientation="Vertical" VerticalAlignment="Center">
+                                <Fluent:IconPresenter
+                                    x:Name="iconImage"
+                                    Margin="0,2,0,0"
+                                    CustomSize="{Binding Path=(Fluent:RibbonProperties.CustomIconSize), RelativeSource={RelativeSource TemplatedParent}}"
+                                    IconSize="{Binding Path=(Fluent:RibbonProperties.IconSize), RelativeSource={RelativeSource TemplatedParent}}"
+                                    LargeIcon="{Binding LargeIcon, RelativeSource={RelativeSource TemplatedParent}}"
+                                    MediumIcon="{Binding MediumIcon, RelativeSource={RelativeSource TemplatedParent}}"
+                                    SmallIcon="{Binding Icon, RelativeSource={RelativeSource TemplatedParent}}" />
+                                <ContentControl
+                                    x:Name="PART_HeaderContentHost"
+                                    Content="{TemplateBinding Header}"
+                                    ContentTemplate="{TemplateBinding HeaderTemplate}"
+                                    ContentTemplateSelector="{TemplateBinding HeaderTemplateSelector}"
+                                    Focusable="False"
+                                    TextElement.Foreground="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" />
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger SourceName="iconImage" Property="OptimalIcon" Value="{x:Null}">
+                                <Setter TargetName="iconImage" Property="Visibility" Value="Collapsed" />
+                            </Trigger>
+                            <Trigger Property="Size" Value="Middle">
+                                <Setter TargetName="PART_HeaderContentHost" Property="Margin" Value="2,0" />
+                                <Setter TargetName="PART_HeaderContentHost" Property="VerticalAlignment" Value="Center" />
+                                <Setter TargetName="border" Property="VerticalAlignment" Value="Center" />
+                                <Setter TargetName="iconImage" Property="Margin" Value="0" />
+                                <Setter TargetName="iconImage" Property="VerticalAlignment" Value="Center" />
+                                <Setter TargetName="stackPanel" Property="Orientation" Value="Horizontal" />
+                                <Setter TargetName="stackPanel" Property="Width" Value="Auto" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" />
+                                <Setter TargetName="border" Property="BorderBrush" Value="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" />
+                                <Setter TargetName="PART_HeaderContentHost" Property="TextElement.Foreground" Value="White" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="PART_HeaderContentHost" Property="Opacity" Value="0.5" />
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsMouseOver" Value="True" />
+                                    <Condition Property="IsPressed" Value="False" />
+                                    <Condition Property="IsChecked" Value="False" />
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource Fluent.Ribbon.Brushes.Button.MouseOver.Background}" />
+                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource Fluent.Ribbon.Brushes.Button.MouseOver.Border}" />
+                            </MultiTrigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource Fluent.Ribbon.Brushes.Button.Pressed.Background}" />
+                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource Fluent.Ribbon.Brushes.Button.Pressed.Border}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </Window.Resources>
 
     <!--  ルートを Grid にして DockPanel の上にスピナーオーバーレイを重ねる  -->
     <Grid>
         <DockPanel>
-            <!--  ツールバー  -->
-            <ToolBar Background="#1976D2" DockPanel.Dock="Top">
-                <ToolBar.Resources>
-                    <!--  ToolBarはButtonStyleKeyで子ボタンを上書きするため、暗黙スタイルではなく専用キーで指定する  -->
-                    <!--  非ホバー時はツールバー背景と同化させ、ホバー時のみ背景色を付けてクリック可能を示す  -->
-                    <!--  既定のButtonテンプレートはホバー時の背景をトリガーで上書きするため、Style.Triggersだけでは反映されない。Templateを再定義して対応  -->
-                    <Style x:Key="{x:Static ToolBar.ButtonStyleKey}" TargetType="Button">
-                        <Setter Property="Padding" Value="8,4" />
-                        <Setter Property="Background" Value="Transparent" />
-                        <Setter Property="BorderThickness" Value="0" />
-                        <Setter Property="FontSize" Value="14" />
-                        <Setter Property="Foreground" Value="White" />
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="Button">
-                                    <Border
-                                        x:Name="border"
-                                        Padding="{TemplateBinding Padding}"
-                                        Background="{TemplateBinding Background}"
-                                        BorderBrush="{TemplateBinding BorderBrush}"
-                                        BorderThickness="{TemplateBinding BorderThickness}">
-                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    </Border>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                        <Style.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#0D47A1" />
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#08306B" />
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Foreground" Value="#8CA6C4" />
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                    <!--  設定▾・並び順▾・部署▾など、ツールバー上でボタン風に見せるMenuItem（ポップアップメニュー）の共通スタイル  -->
-                    <!--  既定のMenuItemテンプレートはハイライト時の背景をトリガーで上書きするため、Style.Triggersだけでは反映されない。Templateを再定義して対応  -->
-                    <Style x:Key="ToolbarMenuButtonStyle" TargetType="MenuItem">
-                        <Setter Property="Padding" Value="8,4" />
-                        <Setter Property="Background" Value="Transparent" />
-                        <Setter Property="BorderThickness" Value="0" />
-                        <Setter Property="FontSize" Value="14" />
-                        <Setter Property="Foreground" Value="White" />
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="MenuItem">
-                                    <Border
-                                        x:Name="border"
-                                        Padding="{TemplateBinding Padding}"
-                                        Background="{TemplateBinding Background}"
-                                        BorderBrush="{TemplateBinding BorderBrush}"
-                                        BorderThickness="{TemplateBinding BorderThickness}">
-                                        <Grid>
-                                            <ContentPresenter
-                                                HorizontalAlignment="Center"
-                                                VerticalAlignment="Center"
-                                                ContentSource="Header"
-                                                RecognizesAccessKey="True" />
-                                            <Popup
-                                                Name="PART_Popup"
-                                                AllowsTransparency="True"
-                                                Focusable="False"
-                                                IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
-                                                Placement="Bottom"
-                                                PopupAnimation="Fade">
-                                                <Border
-                                                    Padding="2"
-                                                    Background="White"
-                                                    BorderBrush="#ADADAD"
-                                                    BorderThickness="1"
-                                                    TextElement.Foreground="Black">
-                                                    <StackPanel
-                                                        IsItemsHost="True"
-                                                        KeyboardNavigation.DirectionalNavigation="Cycle"
-                                                        Orientation="Vertical" />
-                                                </Border>
-                                            </Popup>
-                                        </Grid>
-                                    </Border>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsHighlighted" Value="True">
-                                            <Setter TargetName="border" Property="Background" Value="#0D47A1" />
-                                        </Trigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </Style>
-                </ToolBar.Resources>
-                <Button Command="{Binding LoadOrdersCommand}">
-                    更新
-                </Button>
-                <Separator />
-                <!--  設定系をまとめたドロップダウンメニュー  -->
-                <Menu VerticalAlignment="Center" Background="Transparent">
-                    <MenuItem Style="{StaticResource ToolbarMenuButtonStyle}">
-                        <MenuItem.Header>設定 ▾</MenuItem.Header>
-                        <MenuItem Click="BtnSettings_Click" Header="基本設定" />
-                        <MenuItem Click="BtnProcess_Click" Header="工程設定" />
-                        <MenuItem Click="BtnHoliday_Click" Header="休日設定" />
-                        <MenuItem Click="BtnDeptSetting_Click" Header="部署設定" />
-                        <MenuItem Click="BtnDisplaySettings_Click" Header="表示設定" />
-                        <MenuItem Click="BtnProductPerformance_Click" Header="製品別実績分析" />
-                        <Separator />
-                        <MenuItem Header="列の表示設定" ItemsSource="{Binding ColumnVisibilityItems, RelativeSource={RelativeSource AncestorType=Window}}">
-                            <MenuItem.ItemContainerStyle>
-                                <Style TargetType="MenuItem">
-                                    <Setter Property="Header" Value="{Binding Label}" />
-                                    <Setter Property="IsCheckable" Value="True" />
-                                    <Setter Property="IsChecked" Value="{Binding IsChecked, Mode=OneWay}" />
-                                    <Setter Property="StaysOpenOnClick" Value="True" />
-                                    <EventSetter Event="Click" Handler="ColumnVisibilityMenuItem_Click" />
-                                </Style>
-                            </MenuItem.ItemContainerStyle>
-                        </MenuItem>
-                    </MenuItem>
-                </Menu>
-                <Separator />
-                <!--  注文一覧の並び順切り替え（出荷日順/完了日順/工程期限順）  -->
-                <Menu VerticalAlignment="Center" Background="Transparent">
-                    <MenuItem
-                        Name="MnuSortMode"
-                        ItemsSource="{Binding SortModeItems, RelativeSource={RelativeSource AncestorType=Window}}"
-                        Style="{StaticResource ToolbarMenuButtonStyle}">
-                        <MenuItem.Header>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="並び順：" />
-                                <TextBlock
-                                    Name="TxtSortModeValue"
-                                    MinWidth="56"
-                                    Text="出荷日" />
-                                <TextBlock Text=" ▾" />
-                            </StackPanel>
-                        </MenuItem.Header>
-                        <MenuItem.ItemContainerStyle>
-                            <Style TargetType="MenuItem">
-                                <Setter Property="Header" Value="{Binding Label}" />
-                                <Setter Property="MinWidth" Value="80" />
-                                <Setter Property="IsCheckable" Value="True" />
-                                <Setter Property="IsChecked" Value="{Binding IsChecked, Mode=OneWay}" />
-                                <EventSetter Event="Click" Handler="SortModeMenuItem_Click" />
-                            </Style>
-                        </MenuItem.ItemContainerStyle>
-                    </MenuItem>
-                </Menu>
-                <!--  未完了工程の表示日切り替え（着手必須日/完了必須日）  -->
-                <Menu VerticalAlignment="Center" Background="Transparent">
-                    <MenuItem
-                        Name="MnuDueDateDisplay"
-                        ItemsSource="{Binding DueDateDisplayItems, RelativeSource={RelativeSource AncestorType=Window}}"
-                        Style="{StaticResource ToolbarMenuButtonStyle}">
-                        <MenuItem.Header>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="表示中：" />
-                                <TextBlock
-                                    Name="TxtDueDateDisplayValue"
-                                    MinWidth="56"
-                                    Text="着手期限" />
-                                <TextBlock Text=" ▾" />
-                            </StackPanel>
-                        </MenuItem.Header>
-                        <MenuItem.ItemContainerStyle>
-                            <Style TargetType="MenuItem">
-                                <Setter Property="Header" Value="{Binding Label}" />
-                                <Setter Property="MinWidth" Value="80" />
-                                <Setter Property="IsCheckable" Value="True" />
-                                <Setter Property="IsChecked" Value="{Binding IsChecked, Mode=OneWay}" />
-                                <EventSetter Event="Click" Handler="DueDateDisplayMenuItem_Click" />
-                            </Style>
-                        </MenuItem.ItemContainerStyle>
-                    </MenuItem>
-                </Menu>
-                <!--  工程表示モード切り替え（バー/リスト）  -->
-                <Menu VerticalAlignment="Center" Background="Transparent">
-                    <MenuItem
-                        Name="MnuProcessMode"
-                        ItemsSource="{Binding ProcessModeItems, RelativeSource={RelativeSource AncestorType=Window}}"
-                        Style="{StaticResource ToolbarMenuButtonStyle}">
-                        <MenuItem.Header>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="工程: " />
-                                <TextBlock
-                                    Name="TxtProcessModeValue"
-                                    MinWidth="40"
-                                    Text="バー" />
-                                <TextBlock Text=" ▾" />
-                            </StackPanel>
-                        </MenuItem.Header>
-                        <MenuItem.ItemContainerStyle>
-                            <Style TargetType="MenuItem">
-                                <Setter Property="Header" Value="{Binding Label}" />
-                                <Setter Property="MinWidth" Value="80" />
-                                <Setter Property="IsCheckable" Value="True" />
-                                <Setter Property="IsChecked" Value="{Binding IsChecked, Mode=OneWay}" />
-                                <EventSetter Event="Click" Handler="ProcessModeMenuItem_Click" />
-                            </Style>
-                        </MenuItem.ItemContainerStyle>
-                    </MenuItem>
-                </Menu>
-                <Separator />
-                <!--  担当部署フィルターボタン（ポップアップメニュー化）  -->
-                <Menu VerticalAlignment="Center" Background="Transparent">
-                    <MenuItem
-                        Header="{Binding SelectedDepartmentLabel}"
-                        ItemsSource="{Binding DepartmentFilters}"
-                        Style="{StaticResource ToolbarMenuButtonStyle}">
-                        <MenuItem.ItemContainerStyle>
-                            <Style TargetType="MenuItem">
-                                <Setter Property="Header" Value="{Binding Name}" />
-                                <Setter Property="IsCheckable" Value="True" />
-                                <Setter Property="IsChecked" Value="{Binding IsSelected, Mode=OneWay}" />
-                                <Setter Property="Command" Value="{Binding DataContext.SelectDepartmentCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
-                                <Setter Property="CommandParameter" Value="{Binding Id}" />
-                            </Style>
-                        </MenuItem.ItemContainerStyle>
-                    </MenuItem>
-                </Menu>
-                <Separator />
-                <!--  クイックフィルター（超過・警告・今日対応）  -->
-                <ToggleButton
-                    Margin="2,0"
-                    Padding="10,4"
-                    BorderThickness="0"
-                    Content="超過"
-                    FontSize="13"
-                    FontWeight="SemiBold"
-                    Foreground="White"
-                    IsChecked="{Binding FilterOverdueOnly}">
-                    <ToggleButton.Style>
-                        <Style TargetType="ToggleButton">
-                            <Setter Property="Background" Value="Transparent" />
-                            <Setter Property="Foreground" Value="White" />
-                            <Setter Property="BorderThickness" Value="0" />
-                            <Style.Triggers>
-                                <Trigger Property="IsChecked" Value="True">
-                                    <Setter Property="Background" Value="#B71C1C" />
-                                    <Setter Property="BorderThickness" Value="0,0,0,3" />
-                                    <Setter Property="BorderBrush" Value="White" />
-                                </Trigger>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Background" Value="#C62828" />
-                                </Trigger>
-                            </Style.Triggers>
-                        </Style>
-                    </ToggleButton.Style>
-                </ToggleButton>
-                <ToggleButton
-                    Margin="2,0"
-                    Padding="10,4"
-                    BorderThickness="0"
-                    Content="警告"
-                    FontSize="13"
-                    FontWeight="SemiBold"
-                    Foreground="White"
-                    IsChecked="{Binding FilterWarningOnly}">
-                    <ToggleButton.Style>
-                        <Style TargetType="ToggleButton">
-                            <Setter Property="Background" Value="Transparent" />
-                            <Setter Property="Foreground" Value="White" />
-                            <Setter Property="BorderThickness" Value="0" />
-                            <Style.Triggers>
-                                <Trigger Property="IsChecked" Value="True">
-                                    <Setter Property="Background" Value="#E65100" />
-                                    <Setter Property="BorderThickness" Value="0,0,0,3" />
-                                    <Setter Property="BorderBrush" Value="White" />
-                                </Trigger>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Background" Value="#EF6C00" />
-                                </Trigger>
-                            </Style.Triggers>
-                        </Style>
-                    </ToggleButton.Style>
-                </ToggleButton>
-                <ToggleButton
-                    Margin="2,0"
-                    Padding="10,4"
-                    BorderThickness="0"
-                    Content="進行中"
-                    FontSize="13"
-                    FontWeight="SemiBold"
-                    Foreground="White"
-                    IsChecked="{Binding FilterTodayTask}">
-                    <ToggleButton.Style>
-                        <Style TargetType="ToggleButton">
-                            <Setter Property="Background" Value="Transparent" />
-                            <Setter Property="Foreground" Value="White" />
-                            <Setter Property="BorderThickness" Value="0" />
-                            <Style.Triggers>
-                                <!--  凡例の進行中色（StatusInProgress = #FFE066）と同系統の黄色を、超過・警告と同様に濃くして選択色にする  -->
-                                <Trigger Property="IsChecked" Value="True">
-                                    <Setter Property="Background" Value="#B8860B" />
-                                    <Setter Property="BorderThickness" Value="0,0,0,3" />
-                                    <Setter Property="BorderBrush" Value="White" />
-                                </Trigger>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Background" Value="#B8860B" />
-                                </Trigger>
-                            </Style.Triggers>
-                        </Style>
-                    </ToggleButton.Style>
-                </ToggleButton>
-                <ToggleButton
-                    Margin="2,0"
-                    Padding="10,4"
-                    BorderThickness="0"
-                    Content="完了"
-                    FontSize="13"
-                    FontWeight="SemiBold"
-                    Foreground="White"
-                    IsChecked="{Binding FilterCompletedOnly}">
-                    <ToggleButton.Style>
-                        <Style TargetType="ToggleButton">
-                            <Setter Property="Background" Value="Transparent" />
-                            <Setter Property="Foreground" Value="White" />
-                            <Setter Property="BorderThickness" Value="0" />
-                            <Style.Triggers>
-                                <Trigger Property="IsChecked" Value="True">
-                                    <Setter Property="Background" Value="#2E7D32" />
-                                    <Setter Property="BorderThickness" Value="0,0,0,3" />
-                                    <Setter Property="BorderBrush" Value="White" />
-                                </Trigger>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Background" Value="#388E3C" />
-                                </Trigger>
-                            </Style.Triggers>
-                        </Style>
-                    </ToggleButton.Style>
-                </ToggleButton>
-                <Separator />
-                <!--  フルスクリーン表示の切り替え（F11キーと同じ動作）  -->
-                <Button Name="BtnToggleFullScreen" Click="BtnToggleFullScreen_Click">
-                    フルスクリーン [F11]
-                </Button>
-            </ToolBar>
+            <!--  リボン  -->
+            <Fluent:Ribbon ContentHeight="48" DockPanel.Dock="Top" IsQuickAccessToolBarVisible="False">
+                <!--  ホームタブ：並び替え・期限表示・工程表示・フィルター系  -->
+                <Fluent:RibbonTabItem Header="ホーム">
+                    <Fluent:RibbonGroupBox Header="並べ替え">
+                        <Fluent:ComboBox
+                            Foreground="Black"
+                            DisplayMemberPath="Label"
+                            Fluent:InputControlProperties.InputWidth="70"
+                            IsEditable="False"
+                            ItemsSource="{Binding SortModeItems}"
+                            SelectedValue="{Binding SelectedSortMode}"
+                            SelectedValuePath="Value"
+                            SizeDefinition="Middle,Middle,Small" />
+                    </Fluent:RibbonGroupBox>
+
+                    <Fluent:RibbonGroupBox Header="期限表示">
+                        <Fluent:ComboBox
+                            Foreground="Black"
+                            DisplayMemberPath="Label"
+                            Fluent:InputControlProperties.InputWidth="75"
+                            IsEditable="False"
+                            ItemsSource="{Binding DueDateDisplayItems}"
+                            SelectedValue="{Binding SelectedDueDateDisplay}"
+                            SelectedValuePath="Value"
+                            SizeDefinition="Middle,Middle,Small" />
+                    </Fluent:RibbonGroupBox>
+
+                    <Fluent:RibbonGroupBox Header="工程表示">
+                        <Fluent:ComboBox
+                            Foreground="Black"
+                            DisplayMemberPath="Label"
+                            Fluent:InputControlProperties.InputWidth="50"
+                            IsEditable="False"
+                            ItemsSource="{Binding ProcessModeItems}"
+                            SelectedValue="{Binding SelectedProcessMode}"
+                            SelectedValuePath="Value"
+                            SizeDefinition="Middle,Middle,Small" />
+                    </Fluent:RibbonGroupBox>
+
+                    <Fluent:RibbonGroupBox Header="部署">
+                        <Fluent:ComboBox
+                            Foreground="Black"
+                            DisplayMemberPath="Name"
+                            Fluent:InputControlProperties.InputWidth="90"
+                            IsEditable="False"
+                            ItemsSource="{Binding DepartmentFilters}"
+                            SelectedValue="{Binding FilterDepartmentId}"
+                            SelectedValuePath="Id"
+                            SizeDefinition="Middle,Middle,Small" />
+                    </Fluent:RibbonGroupBox>
+
+                    <Fluent:RibbonGroupBox Header="区分">
+                        <Fluent:ComboBox
+                            Foreground="Black"
+                            Fluent:InputControlProperties.InputWidth="90"
+                            IsEditable="False"
+                            ItemsSource="{Binding ProductCategoryOptions}"
+                            SelectedItem="{Binding FilterProductCategory}"
+                            SizeDefinition="Middle,Middle,Small" />
+                    </Fluent:RibbonGroupBox>
+
+                    <Fluent:RibbonGroupBox Header="クイックフィルター">
+                        <!--
+                            RibbonGroupBoxは直下の複数コントロールを既定で縦積みするため、
+                            横並びのバッジにするためStackPanelで1つの子要素としてまとめる
+                        -->
+                        <StackPanel Orientation="Horizontal">
+                            <Fluent:ToggleButton
+                                Header="超過"
+                                IsChecked="{Binding FilterOverdueOnly}"
+                                SizeDefinition="Middle,Middle,Small"
+                                Style="{StaticResource QuickFilterToggleButtonStyle}">
+                                <Fluent:ToggleButton.Tag>
+                                    <SolidColorBrush Color="#B71C1C" />
+                                </Fluent:ToggleButton.Tag>
+                            </Fluent:ToggleButton>
+                            <Fluent:ToggleButton
+                                Header="警告"
+                                IsChecked="{Binding FilterWarningOnly}"
+                                SizeDefinition="Middle,Middle,Small"
+                                Style="{StaticResource QuickFilterToggleButtonStyle}">
+                                <Fluent:ToggleButton.Tag>
+                                    <SolidColorBrush Color="#E65100" />
+                                </Fluent:ToggleButton.Tag>
+                            </Fluent:ToggleButton>
+                            <Fluent:ToggleButton
+                                Header="進行中"
+                                IsChecked="{Binding FilterTodayTask}"
+                                SizeDefinition="Middle,Middle,Small"
+                                Style="{StaticResource QuickFilterToggleButtonStyle}">
+                                <Fluent:ToggleButton.Tag>
+                                    <SolidColorBrush Color="#B8860B" />
+                                </Fluent:ToggleButton.Tag>
+                            </Fluent:ToggleButton>
+                            <Fluent:ToggleButton
+                                Header="完了"
+                                IsChecked="{Binding FilterCompletedOnly}"
+                                SizeDefinition="Middle,Middle,Small"
+                                Style="{StaticResource QuickFilterToggleButtonStyle}">
+                                <Fluent:ToggleButton.Tag>
+                                    <SolidColorBrush Color="#2E7D32" />
+                                </Fluent:ToggleButton.Tag>
+                            </Fluent:ToggleButton>
+                        </StackPanel>
+                    </Fluent:RibbonGroupBox>
+
+                    <Fluent:RibbonGroupBox Header="表示列">
+                        <Fluent:DropDownButton Header="表示列" ItemsSource="{Binding ColumnVisibilityItems, RelativeSource={RelativeSource AncestorType=Window}}" SizeDefinition="Middle,Middle,Small" Style="{StaticResource ColumnVisibilityDropDownStyle}" UsesItemContainerTemplate="True">
+                            <Fluent:DropDownButton.Resources>
+                                <ItemContainerTemplate x:Key="{ItemContainerTemplateKey {x:Type views:ColumnVisibilityOption}}">
+                                    <Fluent:MenuItem
+                                        Click="ColumnVisibilityMenuItem_Click"
+                                        Header="{Binding Label}"
+                                        IsCheckable="True"
+                                        IsChecked="{Binding IsChecked, Mode=OneWay}"
+                                        IsDefinitive="False" />
+                                </ItemContainerTemplate>
+                            </Fluent:DropDownButton.Resources>
+                        </Fluent:DropDownButton>
+                    </Fluent:RibbonGroupBox>
+                </Fluent:RibbonTabItem>
+
+                <!--  設定タブ：各種マスタ・表示設定ダイアログ  -->
+                <Fluent:RibbonTabItem Header="設定">
+                    <Fluent:RibbonGroupBox Header="基本">
+                        <Fluent:Button Command="{Binding OpenBasicSettingsCommand}" Header="基本" SizeDefinition="Middle,Middle,Small" Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
+                            <Fluent:Button.Icon>
+                                <iconPacks:PackIconMaterial Kind="CogOutline" />
+                            </Fluent:Button.Icon>
+                        </Fluent:Button>
+                        <Fluent:Button Command="{Binding OpenDepartmentSettingCommand}" Header="部署" SizeDefinition="Middle,Middle,Small" Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
+                            <Fluent:Button.Icon>
+                                <iconPacks:PackIconMaterial Kind="OfficeBuildingOutline" />
+                            </Fluent:Button.Icon>
+                        </Fluent:Button>
+                        <Fluent:Button Command="{Binding OpenHolidaySettingCommand}" Header="休日" SizeDefinition="Middle,Middle,Small" Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
+                            <Fluent:Button.Icon>
+                                <iconPacks:PackIconMaterial Kind="CalendarRemoveOutline" />
+                            </Fluent:Button.Icon>
+                        </Fluent:Button>
+                    </Fluent:RibbonGroupBox>
+
+                    <Fluent:RibbonGroupBox Header="工程">
+                        <Fluent:Button Command="{Binding OpenProcessSettingCommand}" Header="工程" SizeDefinition="Middle,Middle,Small" Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
+                            <Fluent:Button.Icon>
+                                <iconPacks:PackIconMaterial Kind="Routes" />
+                            </Fluent:Button.Icon>
+                        </Fluent:Button>
+                        <Fluent:Button Command="{Binding OpenDisplaySettingsCommand}" Header="表示" SizeDefinition="Middle,Middle,Small" Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
+                            <Fluent:Button.Icon>
+                                <iconPacks:PackIconMaterial Kind="TuneVariant" />
+                            </Fluent:Button.Icon>
+                        </Fluent:Button>
+                    </Fluent:RibbonGroupBox>
+
+                    <Fluent:RibbonGroupBox Header="分析">
+                        <Fluent:Button Command="{Binding OpenProductPerformanceCommand}" Header="実績分析" SizeDefinition="Middle,Middle,Small" Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
+                            <Fluent:Button.Icon>
+                                <iconPacks:PackIconMaterial Kind="ChartLine" />
+                            </Fluent:Button.Icon>
+                        </Fluent:Button>
+                    </Fluent:RibbonGroupBox>
+                </Fluent:RibbonTabItem>
+            </Fluent:Ribbon>
 
             <!--  フィルターバー  -->
             <StackPanel
@@ -371,6 +300,31 @@
                 Background="#F0F4F8"
                 DockPanel.Dock="Top"
                 Orientation="Horizontal">
+                <Button
+                    Width="28"
+                    Height="26"
+                    Margin="0,0,4,0"
+                    Padding="0"
+                    Command="{Binding LoadOrdersCommand}"
+                    ToolTip="更新">
+                    <iconPacks:PackIconMaterial
+                        Width="16"
+                        Height="16"
+                        Kind="Refresh" />
+                </Button>
+                <Button
+                    Name="BtnToggleFullScreen"
+                    Width="28"
+                    Height="26"
+                    Margin="0,0,10,0"
+                    Padding="0"
+                    Click="BtnToggleFullScreen_Click"
+                    ToolTip="全画面表示切り替え (F11)">
+                    <iconPacks:PackIconMaterial
+                        Width="16"
+                        Height="16"
+                        Kind="Fullscreen" />
+                </Button>
                 <TextBlock
                     Margin="6,0,2,0"
                     VerticalAlignment="Center"
@@ -388,11 +342,32 @@
                     Text="〜" />
                 <DatePicker
                     Width="112"
-                    Margin="0,0,4,0"
+                    Margin="0,0,2,0"
                     DisplayDateEnd="{Binding FilterDateMax}"
                     DisplayDateStart="{Binding FilterDateMin}"
                     IsEnabled="{Binding FilterTodayOnly, Converter={StaticResource InverseBool}}"
                     SelectedDate="{Binding FilterDeliveryTo}" />
+                <Button
+                    Width="16"
+                    Height="26"
+                    Margin="0,0,10,0"
+                    Padding="0"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Command="{Binding ClearDeliveryDateRangeFilterCommand}"
+                    ToolTip="出荷日の範囲をクリア">
+                    <Button.Visibility>
+                        <MultiBinding Converter="{StaticResource AnyValueSetToVisibility}">
+                            <Binding Path="FilterDeliveryFrom" />
+                            <Binding Path="FilterDeliveryTo" />
+                        </MultiBinding>
+                    </Button.Visibility>
+                    <iconPacks:PackIconMaterial
+                        Width="12"
+                        Height="12"
+                        Foreground="Gray"
+                        Kind="Close" />
+                </Button>
                 <CheckBox
                     Margin="0,0,10,0"
                     VerticalAlignment="Center"
@@ -402,41 +377,86 @@
                     Margin="0,0,2,0"
                     VerticalAlignment="Center"
                     Text="品目番号：" />
-                <TextBox
-                    Width="130"
-                    Margin="0,0,10,0"
-                    Padding="3,2"
-                    VerticalContentAlignment="Center"
-                    Text="{Binding FilterItemNumber, UpdateSourceTrigger=PropertyChanged}" />
+                <Grid Width="130" Margin="0,0,10,0">
+                    <TextBox
+                        Padding="3,2,20,2"
+                        VerticalContentAlignment="Center"
+                        Text="{Binding FilterItemNumber, UpdateSourceTrigger=PropertyChanged}" />
+                    <Button
+                        Width="16"
+                        Height="16"
+                        Margin="0,0,2,0"
+                        Padding="0"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Command="{Binding ClearItemNumberFilterCommand}"
+                        ToolTip="品目番号をクリア"
+                        Visibility="{Binding FilterItemNumber, Converter={StaticResource StringEmptyToVisibility}}">
+                        <iconPacks:PackIconMaterial
+                            Width="12"
+                            Height="12"
+                            Foreground="Gray"
+                            Kind="Close" />
+                    </Button>
+                </Grid>
                 <TextBlock
                     Margin="0,0,2,0"
                     VerticalAlignment="Center"
                     Text="品目名：" />
-                <TextBox
-                    Width="130"
-                    Margin="0,0,10,0"
-                    Padding="3,2"
-                    VerticalContentAlignment="Center"
-                    Text="{Binding FilterProductName, UpdateSourceTrigger=PropertyChanged}" />
+                <Grid Width="130" Margin="0,0,10,0">
+                    <TextBox
+                        Padding="3,2,20,2"
+                        VerticalContentAlignment="Center"
+                        Text="{Binding FilterProductName, UpdateSourceTrigger=PropertyChanged}" />
+                    <Button
+                        Width="16"
+                        Height="16"
+                        Margin="0,0,2,0"
+                        Padding="0"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Command="{Binding ClearProductNameFilterCommand}"
+                        ToolTip="品目名をクリア"
+                        Visibility="{Binding FilterProductName, Converter={StaticResource StringEmptyToVisibility}}">
+                        <iconPacks:PackIconMaterial
+                            Width="12"
+                            Height="12"
+                            Foreground="Gray"
+                            Kind="Close" />
+                    </Button>
+                </Grid>
                 <TextBlock
                     Margin="0,0,2,0"
                     VerticalAlignment="Center"
                     Text="製番：" />
-                <TextBox
-                    Width="140"
-                    Margin="0,0,10,0"
-                    Padding="3,2"
-                    VerticalContentAlignment="Center"
-                    Text="{Binding FilterManufactureNumber, UpdateSourceTrigger=PropertyChanged}" />
-                <TextBlock
-                    Margin="0,0,2,0"
-                    VerticalAlignment="Center"
-                    Text="区分：" />
-                <ComboBox
-                    Width="120"
-                    Margin="0,0,10,0"
-                    ItemsSource="{Binding ProductCategoryOptions}"
-                    SelectedItem="{Binding FilterProductCategory}" />
+                <Grid Width="140" Margin="0,0,10,0">
+                    <TextBox
+                        Padding="3,2,20,2"
+                        VerticalContentAlignment="Center"
+                        Text="{Binding FilterManufactureNumber, UpdateSourceTrigger=PropertyChanged}" />
+                    <Button
+                        Width="16"
+                        Height="16"
+                        Margin="0,0,2,0"
+                        Padding="0"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Command="{Binding ClearManufactureNumberFilterCommand}"
+                        ToolTip="製番をクリア"
+                        Visibility="{Binding FilterManufactureNumber, Converter={StaticResource StringEmptyToVisibility}}">
+                        <iconPacks:PackIconMaterial
+                            Width="12"
+                            Height="12"
+                            Foreground="Gray"
+                            Kind="Close" />
+                    </Button>
+                </Grid>
                 <CheckBox
                     Margin="0,0,10,0"
                     VerticalAlignment="Center"
@@ -444,7 +464,7 @@
                     IsChecked="{Binding FilterHideCompleted}" />
                 <Button
                     Padding="8,3"
-                    Click="BtnClearFilter_Click"
+                    Command="{Binding ClearFilterCommand}"
                     Content="クリア" />
             </StackPanel>
 
@@ -690,4 +710,4 @@
         </Grid>
 
     </Grid>
-</Window>
+</Fluent:RibbonWindow>
