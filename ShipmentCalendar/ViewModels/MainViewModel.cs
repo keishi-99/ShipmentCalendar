@@ -298,8 +298,9 @@ public partial class MainViewModel : ObservableObject {
         DepartmentFilters.Add(new DepartmentFilterItem { Id = 0, Name = "全て" });
         foreach (var d in departments)
             DepartmentFilters.Add(new DepartmentFilterItem { Id = d.Id, Name = d.Name });
-        _isUpdatingFilters = false;
         FilterDepartmentId = departments.Any(d => d.Id == previousSelectedId) ? previousSelectedId : 0;
+        _isUpdatingFilters = false;
+        ApplyFilter();
     }
 
     private void RefreshFilterDateRange() {

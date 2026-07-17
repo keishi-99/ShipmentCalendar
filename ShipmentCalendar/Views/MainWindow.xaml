@@ -1,4 +1,4 @@
-<Window
+<Fluent:RibbonWindow
     x:Class="ShipmentCalendar.Views.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -118,7 +118,7 @@
     <Grid>
         <DockPanel>
             <!--  リボン  -->
-            <Fluent:Ribbon ContentHeight="48" DockPanel.Dock="Top">
+            <Fluent:Ribbon ContentHeight="48" DockPanel.Dock="Top" IsQuickAccessToolBarVisible="False">
                 <!--  ホームタブ：並び替え・期限表示・工程表示・フィルター系  -->
                 <Fluent:RibbonTabItem Header="ホーム">
                     <Fluent:RibbonGroupBox Header="並べ替え">
@@ -624,4 +624,4 @@
         </Grid>
 
     </Grid>
-</Window>
+</Fluent:RibbonWindow>

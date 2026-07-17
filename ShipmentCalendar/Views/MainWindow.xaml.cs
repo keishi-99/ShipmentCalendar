@@ -21,7 +21,7 @@ public partial class ColumnVisibilityOption(string label, DataGridColumn column,
     [ObservableProperty] private bool _isChecked;
 }
 
-public partial class MainWindow : Window, IDisplaySettingsPreviewTarget {
+public partial class MainWindow : Fluent.RibbonWindow, IDisplaySettingsPreviewTarget {
     // 外注待ち表示の背景色（App.xamlのリソースで一元管理、ProcessBarControlの外注待ちバーと同じ色）
     private static Brush OutsourceLeadBrush => (Brush)Application.Current.Resources["OutsourceLeadBrush"];
 
@@ -49,6 +49,10 @@ public partial class MainWindow : Window, IDisplaySettingsPreviewTarget {
     private WindowState _previousWindowState;
     private WindowStyle _previousWindowStyle;
     private ResizeMode _previousResizeMode;
+    private double _previousLeft;
+    private double _previousTop;
+    private double _previousWidth;
+    private double _previousHeight;
     private bool _isFullScreen;
 
     private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e) {
@@ -68,17 +72,32 @@ public partial class MainWindow : Window, IDisplaySettingsPreviewTarget {
             _previousWindowState = WindowState;
             _previousWindowStyle = WindowStyle;
             _previousResizeMode = ResizeMode;
+            _previousLeft = Left;
+            _previousTop = Top;
+            _previousWidth = Width;
+            _previousHeight = Height;
 
+            // RibbonWindow既定のWindowChromeはWindowState.Maximized時にタスクバー分を除いた
+            // ワークエリアに制限してしまうため、Maximizedではなく画面全体のサイズを明示的に指定する
             WindowStyle = WindowStyle.None;
             ResizeMode = ResizeMode.NoResize;
-            if (WindowState == WindowState.Maximized)
-                WindowState = WindowState.Normal;
-            WindowState = WindowState.Maximized;
+            WindowState = WindowState.Normal;
+            Left = 0;
+            Top = 0;
+            Width = SystemParameters.PrimaryScreenWidth;
+            Height = SystemParameters.PrimaryScreenHeight;
+            // RibbonWindow独自のタイトルバー行はWindowStyleに関係なくTitleBarHeightで高さが固定されるため、明示的に0にする
+            SetCurrentValue(TitleBarHeightProperty, 0d);
         }
         else {
             WindowStyle = _previousWindowStyle;
             ResizeMode = _previousResizeMode;
             WindowState = _previousWindowState;
+            InvalidateProperty(TitleBarHeightProperty);
+            Left = _previousLeft;
+            Top = _previousTop;
+            Width = _previousWidth;
+            Height = _previousHeight;
         }
         _isFullScreen = !_isFullScreen;
         BtnToggleFullScreen.ToolTip = _isFullScreen ? "ウィンドウ表示に戻す (F11)" : "全画面表示切り替え (F11)";
