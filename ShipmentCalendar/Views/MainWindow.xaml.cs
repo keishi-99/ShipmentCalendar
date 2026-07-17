@@ -443,6 +443,26 @@ public class InverseBooleanConverter : System.Windows.Data.IValueConverter {
         => !(value is bool b && b);
 }
 
+/// <summary>文字列が空でなければVisible、空ならHiddenを返すコンバーター（クリアボタンの表示切り替え用。
+/// Collapsedではなくレイアウト崩れ防止のためHiddenを使う）</summary>
+public class StringEmptyToVisibilityConverter : System.Windows.Data.IValueConverter {
+    public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        => string.IsNullOrEmpty(value as string) ? Visibility.Hidden : Visibility.Visible;
+
+    public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
+/// <summary>複数の値のうち1つでも設定済み(non-null)ならVisible、全てnullならHiddenを返すコンバーター
+/// （出荷日範囲のクリアボタンを開始・終了どちらかに値があれば表示するために使う）</summary>
+public class AnyValueSetToVisibilityConverter : System.Windows.Data.IMultiValueConverter {
+    public object Convert(object[] values, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        => values.Any(v => v is not null) ? Visibility.Visible : Visibility.Hidden;
+
+    public object[] ConvertBack(object value, Type[] targetTypes, object parameter, System.Globalization.CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
 /// <summary>インデックスでProcessリストを検索して背景色を返すコンバーター</summary>
 public class ProcessIndexToStatusColorConverter : System.Windows.Data.IMultiValueConverter {
     public object Convert(object[] values, Type targetType, object parameter, System.Globalization.CultureInfo culture) {

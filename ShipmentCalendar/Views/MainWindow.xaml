@@ -20,6 +20,8 @@
         </Style>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <views:InverseBooleanConverter x:Key="InverseBool" />
+        <views:StringEmptyToVisibilityConverter x:Key="StringEmptyToVisibility" />
+        <views:AnyValueSetToVisibilityConverter x:Key="AnyValueSetToVisibility" />
         <!--  固定列のセル内テキストを縦中央に揃えるスタイル  -->
         <Style x:Key="FixedColumnCellStyle" TargetType="TextBlock">
             <Setter Property="VerticalAlignment" Value="Center" />
@@ -331,11 +333,32 @@
                     Text="〜" />
                 <DatePicker
                     Width="112"
-                    Margin="0,0,4,0"
+                    Margin="0,0,2,0"
                     DisplayDateEnd="{Binding FilterDateMax}"
                     DisplayDateStart="{Binding FilterDateMin}"
                     IsEnabled="{Binding FilterTodayOnly, Converter={StaticResource InverseBool}}"
                     SelectedDate="{Binding FilterDeliveryTo}" />
+                <Button
+                    Width="16"
+                    Height="26"
+                    Margin="0,0,10,0"
+                    Padding="0"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Command="{Binding ClearDeliveryDateRangeFilterCommand}"
+                    ToolTip="出荷日の範囲をクリア">
+                    <Button.Visibility>
+                        <MultiBinding Converter="{StaticResource AnyValueSetToVisibility}">
+                            <Binding Path="FilterDeliveryFrom" />
+                            <Binding Path="FilterDeliveryTo" />
+                        </MultiBinding>
+                    </Button.Visibility>
+                    <iconPacks:PackIconMaterial
+                        Width="12"
+                        Height="12"
+                        Foreground="Gray"
+                        Kind="Close" />
+                </Button>
                 <CheckBox
                     Margin="0,0,10,0"
                     VerticalAlignment="Center"
@@ -345,32 +368,86 @@
                     Margin="0,0,2,0"
                     VerticalAlignment="Center"
                     Text="品目番号：" />
-                <TextBox
-                    Width="130"
-                    Margin="0,0,10,0"
-                    Padding="3,2"
-                    VerticalContentAlignment="Center"
-                    Text="{Binding FilterItemNumber, UpdateSourceTrigger=PropertyChanged}" />
+                <Grid Width="130" Margin="0,0,10,0">
+                    <TextBox
+                        Padding="3,2,20,2"
+                        VerticalContentAlignment="Center"
+                        Text="{Binding FilterItemNumber, UpdateSourceTrigger=PropertyChanged}" />
+                    <Button
+                        Width="16"
+                        Height="16"
+                        Margin="0,0,2,0"
+                        Padding="0"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Command="{Binding ClearItemNumberFilterCommand}"
+                        ToolTip="品目番号をクリア"
+                        Visibility="{Binding FilterItemNumber, Converter={StaticResource StringEmptyToVisibility}}">
+                        <iconPacks:PackIconMaterial
+                            Width="12"
+                            Height="12"
+                            Foreground="Gray"
+                            Kind="Close" />
+                    </Button>
+                </Grid>
                 <TextBlock
                     Margin="0,0,2,0"
                     VerticalAlignment="Center"
                     Text="品目名：" />
-                <TextBox
-                    Width="130"
-                    Margin="0,0,10,0"
-                    Padding="3,2"
-                    VerticalContentAlignment="Center"
-                    Text="{Binding FilterProductName, UpdateSourceTrigger=PropertyChanged}" />
+                <Grid Width="130" Margin="0,0,10,0">
+                    <TextBox
+                        Padding="3,2,20,2"
+                        VerticalContentAlignment="Center"
+                        Text="{Binding FilterProductName, UpdateSourceTrigger=PropertyChanged}" />
+                    <Button
+                        Width="16"
+                        Height="16"
+                        Margin="0,0,2,0"
+                        Padding="0"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Command="{Binding ClearProductNameFilterCommand}"
+                        ToolTip="品目名をクリア"
+                        Visibility="{Binding FilterProductName, Converter={StaticResource StringEmptyToVisibility}}">
+                        <iconPacks:PackIconMaterial
+                            Width="12"
+                            Height="12"
+                            Foreground="Gray"
+                            Kind="Close" />
+                    </Button>
+                </Grid>
                 <TextBlock
                     Margin="0,0,2,0"
                     VerticalAlignment="Center"
                     Text="製番：" />
-                <TextBox
-                    Width="140"
-                    Margin="0,0,10,0"
-                    Padding="3,2"
-                    VerticalContentAlignment="Center"
-                    Text="{Binding FilterManufactureNumber, UpdateSourceTrigger=PropertyChanged}" />
+                <Grid Width="140" Margin="0,0,10,0">
+                    <TextBox
+                        Padding="3,2,20,2"
+                        VerticalContentAlignment="Center"
+                        Text="{Binding FilterManufactureNumber, UpdateSourceTrigger=PropertyChanged}" />
+                    <Button
+                        Width="16"
+                        Height="16"
+                        Margin="0,0,2,0"
+                        Padding="0"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Command="{Binding ClearManufactureNumberFilterCommand}"
+                        ToolTip="製番をクリア"
+                        Visibility="{Binding FilterManufactureNumber, Converter={StaticResource StringEmptyToVisibility}}">
+                        <iconPacks:PackIconMaterial
+                            Width="12"
+                            Height="12"
+                            Foreground="Gray"
+                            Kind="Close" />
+                    </Button>
+                </Grid>
                 <CheckBox
                     Margin="0,0,10,0"
                     VerticalAlignment="Center"

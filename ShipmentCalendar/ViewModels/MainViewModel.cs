@@ -210,6 +210,15 @@ public partial class MainViewModel : ObservableObject {
         FilterProductCategory = "全て";
     }
 
+    [RelayCommand] private void ClearItemNumberFilter() => FilterItemNumber = string.Empty;
+    [RelayCommand] private void ClearProductNameFilter() => FilterProductName = string.Empty;
+    [RelayCommand] private void ClearManufactureNumberFilter() => FilterManufactureNumber = string.Empty;
+    [RelayCommand]
+    private void ClearDeliveryDateRangeFilter() {
+        FilterDeliveryFrom = null;
+        FilterDeliveryTo = null;
+    }
+
     /// <summary>注文の「次の未完了工程」の必須日（表示設定に応じてDueDate/StartDate）を返す。
     /// 全工程完了済みならDateOnly.MaxValue</summary>
     private DateOnly GetNextProcessSortDate(Order o) {
