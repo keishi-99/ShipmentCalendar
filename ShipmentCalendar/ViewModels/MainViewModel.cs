@@ -296,12 +296,15 @@ public partial class MainViewModel : ObservableObject {
         var departments = await Repositories.SqliteDepartmentRepository.GetAllAsync();
         var previousSelectedId = FilterDepartmentId;
         _isUpdatingFilters = true;
-        DepartmentFilters.Clear();
-        DepartmentFilters.Add(new DepartmentFilterItem { Id = 0, Name = "全て" });
-        foreach (var d in departments)
-            DepartmentFilters.Add(new DepartmentFilterItem { Id = d.Id, Name = d.Name });
-        FilterDepartmentId = departments.Any(d => d.Id == previousSelectedId) ? previousSelectedId : 0;
-        _isUpdatingFilters = false;
+        try {
+            DepartmentFilters.Clear();
+            DepartmentFilters.Add(new DepartmentFilterItem { Id = 0, Name = "全て" });
+            foreach (var d in departments)
+                DepartmentFilters.Add(new DepartmentFilterItem { Id = d.Id, Name = d.Name });
+            FilterDepartmentId = departments.Any(d => d.Id == previousSelectedId) ? previousSelectedId : 0;
+        } finally {
+            _isUpdatingFilters = false;
+        }
         ApplyFilter();
     }
 

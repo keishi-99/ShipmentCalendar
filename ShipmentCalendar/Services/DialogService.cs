@@ -6,7 +6,7 @@ using System.Windows;
 namespace ShipmentCalendar.Services;
 
 public class DialogService : IDialogService {
-    private static Window? Owner => Application.Current.MainWindow;
+    private static Window? Owner => Application.Current?.MainWindow;
 
     public void ShowBasicSettings(MainViewModel viewModel) =>
         new SettingsWindow(viewModel) { Owner = Owner }.ShowDialog();
