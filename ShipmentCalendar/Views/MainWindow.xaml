@@ -42,7 +42,6 @@
             <Setter Property="Background" Value="#F0F0F0" />
             <Setter Property="BorderBrush" Value="#D0D0D0" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Foreground" Value="Black" />
             <Setter Property="Padding" Value="10,3" />
             <Setter Property="Margin" Value="3,0" />
             <Setter Property="Template">
@@ -70,7 +69,8 @@
                                     Content="{TemplateBinding Header}"
                                     ContentTemplate="{TemplateBinding HeaderTemplate}"
                                     ContentTemplateSelector="{TemplateBinding HeaderTemplateSelector}"
-                                    Focusable="False" />
+                                    Focusable="False"
+                                    TextElement.Foreground="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" />
                             </StackPanel>
                         </Border>
                         <ControlTemplate.Triggers>
