@@ -290,10 +290,12 @@ public partial class MainViewModel : ObservableObject {
     /// <summary>部署マスタを再取得してフィルターコンボボックスの選択肢を更新する</summary>
     public async Task RefreshDepartmentFiltersAsync() {
         var departments = await Repositories.SqliteDepartmentRepository.GetAllAsync();
+        var previousSelectedId = FilterDepartmentId;
         DepartmentFilters.Clear();
         DepartmentFilters.Add(new DepartmentFilterItem { Id = 0, Name = "全て" });
         foreach (var d in departments)
             DepartmentFilters.Add(new DepartmentFilterItem { Id = d.Id, Name = d.Name });
+        FilterDepartmentId = previousSelectedId;
     }
 
     private void RefreshFilterDateRange() {
