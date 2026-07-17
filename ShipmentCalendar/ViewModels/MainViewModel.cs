@@ -299,7 +299,7 @@ public partial class MainViewModel : ObservableObject {
         foreach (var d in departments)
             DepartmentFilters.Add(new DepartmentFilterItem { Id = d.Id, Name = d.Name });
         _isUpdatingFilters = false;
-        FilterDepartmentId = previousSelectedId;
+        FilterDepartmentId = departments.Any(d => d.Id == previousSelectedId) ? previousSelectedId : 0;
     }
 
     private void RefreshFilterDateRange() {

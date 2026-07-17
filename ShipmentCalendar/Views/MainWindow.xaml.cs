@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using ShipmentCalendar.Models;
 using ShipmentCalendar.Repositories;
 using ShipmentCalendar.Services;
@@ -12,12 +13,12 @@ using System.Windows.Media;
 namespace ShipmentCalendar.Views;
 
 /// <summary>列の表示/非表示メニュー項目1件を表す（複数選択可能な独立したON/OFFチェックボックス）</summary>
-public partial class ColumnVisibilityOption(string label, DataGridColumn column, Func<AppSettings, bool> getter, Action<AppSettings, bool> setter) : CommunityToolkit.Mvvm.ComponentModel.ObservableObject {
+public partial class ColumnVisibilityOption(string label, DataGridColumn column, Func<AppSettings, bool> getter, Action<AppSettings, bool> setter) : ObservableObject {
     public string Label { get; } = label;
     public DataGridColumn Column { get; } = column;
     public Func<AppSettings, bool> Getter { get; } = getter;
     public Action<AppSettings, bool> Setter { get; } = setter;
-    [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isChecked;
+    [ObservableProperty] private bool _isChecked;
 }
 
 public partial class MainWindow : Window, IDisplaySettingsPreviewTarget {
