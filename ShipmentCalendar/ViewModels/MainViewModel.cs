@@ -151,8 +151,10 @@ public partial class MainViewModel : ObservableObject {
 
     /// <summary>工程表示モードコンボボックスの選択肢（ItemsSource用）</summary>
     public ObservableCollection<MenuOption<(bool ShowProcessBar, bool ShowProcessColumns)>> ProcessModeItems { get; } = [
-        new("バー",   (true, false)),
-        new("リスト", (false, true)),
+        new("バー",       (true, false)),
+        new("リスト",     (false, true)),
+        new("バー＋リスト", (true, true)),
+        new("なし",       (false, false)),
     ];
 
     public (bool ShowProcessBar, bool ShowProcessColumns) SelectedProcessMode {
