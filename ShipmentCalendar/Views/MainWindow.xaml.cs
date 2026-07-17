@@ -457,7 +457,7 @@ public class StringEmptyToVisibilityConverter : System.Windows.Data.IValueConver
 /// （出荷日範囲のクリアボタンを開始・終了どちらかに値があれば表示するために使う）</summary>
 public class AnyValueSetToVisibilityConverter : System.Windows.Data.IMultiValueConverter {
     public object Convert(object[] values, Type targetType, object parameter, System.Globalization.CultureInfo culture)
-        => values.Any(v => v is not null) ? Visibility.Visible : Visibility.Hidden;
+        => values.Any(v => v is not null && v != DependencyProperty.UnsetValue) ? Visibility.Visible : Visibility.Hidden;
 
     public object[] ConvertBack(object value, Type[] targetTypes, object parameter, System.Globalization.CultureInfo culture)
         => throw new NotSupportedException();

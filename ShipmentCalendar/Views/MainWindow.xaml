@@ -12,6 +12,15 @@
     WindowStartupLocation="CenterScreen">
 
     <Window.Resources>
+        <!--
+            リボンボタンの文字色を白にするスタイル。Foregroundを直接指定すると値の優先順位でローカル値が
+            スタイルのホバー時トリガーより優先されてしまい、ホバー時に背景が明るくなっても文字が白のまま
+            残り視認性が落ちるため、Setterで指定してトリガーが上書きできるようにする
+        -->
+        <Style x:Key="RibbonWhiteForegroundButtonStyle" BasedOn="{StaticResource {x:Type Fluent:Button}}" TargetType="{x:Type Fluent:Button}">
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
         <!--  工程ステータスによる色分けコンバーター  -->
         <Style x:Key="ProcessCellStyle" TargetType="TextBlock">
             <Setter Property="Padding" Value="4,2" />
@@ -245,17 +254,17 @@
                 <!--  設定タブ：各種マスタ・表示設定ダイアログ  -->
                 <Fluent:RibbonTabItem Header="設定">
                     <Fluent:RibbonGroupBox Header="基本">
-                        <Fluent:Button Command="{Binding OpenBasicSettingsCommand}" Header="基本" Foreground="White" SizeDefinition="Middle,Middle,Small">
+                        <Fluent:Button Command="{Binding OpenBasicSettingsCommand}" Header="基本" SizeDefinition="Middle,Middle,Small" Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
                             <Fluent:Button.Icon>
                                 <iconPacks:PackIconMaterial Kind="CogOutline" />
                             </Fluent:Button.Icon>
                         </Fluent:Button>
-                        <Fluent:Button Command="{Binding OpenDepartmentSettingCommand}" Header="部署" Foreground="White" SizeDefinition="Middle,Middle,Small">
+                        <Fluent:Button Command="{Binding OpenDepartmentSettingCommand}" Header="部署" SizeDefinition="Middle,Middle,Small" Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
                             <Fluent:Button.Icon>
                                 <iconPacks:PackIconMaterial Kind="OfficeBuildingOutline" />
                             </Fluent:Button.Icon>
                         </Fluent:Button>
-                        <Fluent:Button Command="{Binding OpenHolidaySettingCommand}" Header="休日" Foreground="White" SizeDefinition="Middle,Middle,Small">
+                        <Fluent:Button Command="{Binding OpenHolidaySettingCommand}" Header="休日" SizeDefinition="Middle,Middle,Small" Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
                             <Fluent:Button.Icon>
                                 <iconPacks:PackIconMaterial Kind="CalendarRemoveOutline" />
                             </Fluent:Button.Icon>
@@ -263,12 +272,12 @@
                     </Fluent:RibbonGroupBox>
 
                     <Fluent:RibbonGroupBox Header="工程">
-                        <Fluent:Button Command="{Binding OpenProcessSettingCommand}" Header="工程" Foreground="White" SizeDefinition="Middle,Middle,Small">
+                        <Fluent:Button Command="{Binding OpenProcessSettingCommand}" Header="工程" SizeDefinition="Middle,Middle,Small" Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
                             <Fluent:Button.Icon>
                                 <iconPacks:PackIconMaterial Kind="Routes" />
                             </Fluent:Button.Icon>
                         </Fluent:Button>
-                        <Fluent:Button Command="{Binding OpenDisplaySettingsCommand}" Header="表示" Foreground="White" SizeDefinition="Middle,Middle,Small">
+                        <Fluent:Button Command="{Binding OpenDisplaySettingsCommand}" Header="表示" SizeDefinition="Middle,Middle,Small" Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
                             <Fluent:Button.Icon>
                                 <iconPacks:PackIconMaterial Kind="TuneVariant" />
                             </Fluent:Button.Icon>
@@ -276,7 +285,7 @@
                     </Fluent:RibbonGroupBox>
 
                     <Fluent:RibbonGroupBox Header="分析">
-                        <Fluent:Button Command="{Binding OpenProductPerformanceCommand}" Header="実績分析" Foreground="White" SizeDefinition="Middle,Middle,Small">
+                        <Fluent:Button Command="{Binding OpenProductPerformanceCommand}" Header="実績分析" SizeDefinition="Middle,Middle,Small" Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
                             <Fluent:Button.Icon>
                                 <iconPacks:PackIconMaterial Kind="ChartLine" />
                             </Fluent:Button.Icon>
