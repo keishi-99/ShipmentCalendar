@@ -74,10 +74,21 @@ public partial class MainWindow : Fluent.RibbonWindow, IDisplaySettingsPreviewTa
             _previousWindowState = WindowState;
             _previousWindowStyle = WindowStyle;
             _previousResizeMode = ResizeMode;
-            _previousLeft = Left;
-            _previousTop = Top;
-            _previousWidth = Width;
-            _previousHeight = Height;
+            // 最大化中はLeft/Top/Width/HeightがNaNや最大化後の値になっているため、
+            // WPFが保持する最大化解除時の復元サイズ(RestoreBounds)から退避する
+            if (WindowState == WindowState.Maximized) {
+                var restoreBounds = RestoreBounds;
+                _previousLeft = restoreBounds.Left;
+                _previousTop = restoreBounds.Top;
+                _previousWidth = restoreBounds.Width;
+                _previousHeight = restoreBounds.Height;
+            }
+            else {
+                _previousLeft = Left;
+                _previousTop = Top;
+                _previousWidth = Width;
+                _previousHeight = Height;
+            }
 
             // RibbonWindow既定のWindowChromeはWindowState.Maximized時にタスクバー分を除いた
             // ワークエリアに制限してしまうため、Maximizedではなく画面全体のサイズを明示的に指定する。
@@ -95,14 +106,16 @@ public partial class MainWindow : Fluent.RibbonWindow, IDisplaySettingsPreviewTa
             SetCurrentValue(TitleBarHeightProperty, 0d);
         }
         else {
+            // WindowStateをMaximizedに戻す前に位置とサイズを適用しないと、
+            // WPFが保持するRestoreBoundsがフルスクリーンサイズで上書きされてしまう
             WindowStyle = _previousWindowStyle;
             ResizeMode = _previousResizeMode;
-            WindowState = _previousWindowState;
-            InvalidateProperty(TitleBarHeightProperty);
             Left = _previousLeft;
             Top = _previousTop;
             Width = _previousWidth;
             Height = _previousHeight;
+            WindowState = _previousWindowState;
+            InvalidateProperty(TitleBarHeightProperty);
         }
         _isFullScreen = !_isFullScreen;
         BtnToggleFullScreen.ToolTip = _isFullScreen ? "ウィンドウ表示に戻す (F11)" : "全画面表示切り替え (F11)";
