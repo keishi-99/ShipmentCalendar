@@ -311,6 +311,9 @@ public partial class MainViewModel : ObservableObject {
             foreach (var d in departments)
                 DepartmentFilters.Add(new DepartmentFilterItem { Id = d.Id, Name = d.Name });
             FilterDepartmentId = departments.Any(d => d.Id == previousSelectedId) ? previousSelectedId : 0;
+            // DepartmentFilters.Clear()でコンボボックスが選択状態を失うため、
+            // 値が変化しない場合でも表示を再同期させるために明示的に通知する
+            OnPropertyChanged(nameof(FilterDepartmentId));
         } finally {
             _isUpdatingFilters = false;
         }
