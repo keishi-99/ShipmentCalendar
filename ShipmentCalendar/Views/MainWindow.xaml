@@ -19,6 +19,8 @@
         -->
         <Style x:Key="RibbonWhiteForegroundButtonStyle" BasedOn="{StaticResource {x:Type Fluent:Button}}" TargetType="{x:Type Fluent:Button}">
             <Setter Property="Foreground" Value="White" />
+            <!--  リボンを折りたたんだ状態から一時表示している時、クリックでリボンごと閉じてしまわないようにする  -->
+            <Setter Property="IsDefinitive" Value="False" />
         </Style>
 
         <!--  工程ステータスによる色分けコンバーター  -->
@@ -55,6 +57,8 @@
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Padding" Value="10,3" />
             <Setter Property="Margin" Value="3,0" />
+            <!--  リボンを折りたたんだ状態から一時表示している時、クリックでリボンごと閉じてしまわないようにする  -->
+            <Setter Property="IsDefinitive" Value="False" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type Fluent:ToggleButton}">
