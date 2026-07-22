@@ -212,8 +212,8 @@ public partial class ProductPerformanceWindow : Window {
 
         order.Processes = calculator.BuildProcesses(order, _lastDefs.Where(d => d.IsVisible), completedByDestNumber);
 
-        // 順序999（最終受入）が完了している場合、前工程すべてを完了扱いにする（MainViewModelと同じ規則）
-        var def999 = _lastDefs.FirstOrDefault(d => d.SortOrder == 999);
+        // 最終受入工程が完了している場合、前工程すべてを完了扱いにする（MainViewModelと同じ規則）
+        var def999 = _lastDefs.FirstOrDefault(d => d.SortOrder == ProcessDefinition.FinalReceiptSortOrder);
         if (def999 != null && completedByDestNumber.ContainsKey(def999.DestinationCode)) {
             foreach (var process in order.Processes)
                 process.Status = ProcessStatus.Completed;
@@ -477,8 +477,8 @@ public partial class ProductPerformanceWindow : Window {
         public string StandardTotalText => $"{TotalLane.StandardMinutes / 60.0:F1}h";
         public string ActualTotalText => $"{TotalLane.ActualMinutes / 60.0:F1}h";
 
-        // 順序999（最終受入）が品目に定義されているのに、まだ実績が無い場合は作業途中とみなす
-        public bool IsInProgress => StandardProcesses.Any(p => p.SortOrder == 999) && !ActualProcesses.Any(p => p.SortOrder == 999);
+        // 最終受入工程が品目に定義されているのに、まだ実績が無い場合は作業途中とみなす
+        public bool IsInProgress => StandardProcesses.Any(p => p.SortOrder == ProcessDefinition.FinalReceiptSortOrder) && !ActualProcesses.Any(p => p.SortOrder == ProcessDefinition.FinalReceiptSortOrder);
     }
 
     private record ProcessLane(string ProcessName, double StandardMinutes, double ActualMinutes, double ActualWithinStandardSize, double ActualOverflowSize, string WorkerName, bool IsTotal = false) {

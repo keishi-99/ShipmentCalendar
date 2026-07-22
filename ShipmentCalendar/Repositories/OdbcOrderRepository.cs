@@ -58,7 +58,7 @@ public class OdbcOrderRepository(AppSettings settings) {
     }
 
     /// <summary>VP_受入実績情報_YD と VP_生産計画情報_YD を製番でJOINし、指定した品目番号・受入日範囲の完了工程実績を製番横断で取得する。
-    /// 日付範囲はLoadSeisanKeikakuと同様、ドライバーの型差異を避けるため文字列形式でSQL側に埋め込む（DateOnly由来の固定書式のみで注入経路はない）</summary>
+    /// 日付範囲はLoadSeisanKeikakuと同様、ドライバーの型差異を避けるためyyyy-MM-dd文字列としてバインドする（?プレースホルダー使用）</summary>
     public IEnumerable<(string Seiban, int PlannedQuantity, string DestinationCode, DateOnly ActualDate, string WorkerName, double ActualWorkMinutes, string ProductName, DateOnly? DeliveryDate, string ModelCode)>
         GetCompletedProcessesByItemNumberAndDateRange(string itemNumber, DateOnly from, DateOnly to) {
         if (string.IsNullOrEmpty(itemNumber)) return [];
@@ -68,17 +68,19 @@ public class OdbcOrderRepository(AppSettings settings) {
 
         var results = new List<(string, int, string, DateOnly, string, double, string, DateOnly?, string)>();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = $@"SELECT t1.製番 AS 製番, t2.計画数 AS 計画数, t1.指示先番号 AS 指示先番号, t1.受入日 AS 受入日, t1.作業時間 AS 作業時間, t3.担当者名 AS 担当者名, t2.品目名 AS 品目名, t2.納期 AS 納期, t2.機種コード AS 機種コード
+        cmd.CommandText = @"SELECT t1.製番 AS 製番, t2.計画数 AS 計画数, t1.指示先番号 AS 指示先番号, t1.受入日 AS 受入日, t1.作業時間 AS 作業時間, t3.担当者名 AS 担当者名, t2.品目名 AS 品目名, t2.納期 AS 納期, t2.機種コード AS 機種コード
             FROM VP_受入実績情報_YD t1
             JOIN VP_生産計画情報_YD t2 ON t1.製番 = t2.製番
             LEFT JOIN VP_ユーザ情報_YD t3 ON t1.手配担当者 = t3.ユーザID
             WHERE t2.品目番号 = ?
               AND t2.工場番号 = ?
-              AND t1.受入日 >= '{from:yyyy-MM-dd}' AND t1.受入日 <= '{to:yyyy-MM-dd}'
+              AND t1.受入日 >= ? AND t1.受入日 <= ?
               AND t1.指示先番号 IS NOT NULL
               AND t1.指示先番号 <> '< NULL >'";
         cmd.Parameters.Add("@ItemNumber", OdbcType.VarChar).Value = itemNumber;
         cmd.Parameters.Add("@FactoryNumber", OdbcType.VarChar).Value = settings.OdbcFactoryNumber;
+        cmd.Parameters.Add("@FromDate", OdbcType.VarChar).Value = from.ToString("yyyy-MM-dd");
+        cmd.Parameters.Add("@ToDate", OdbcType.VarChar).Value = to.ToString("yyyy-MM-dd");
 
         using var reader = cmd.ExecuteReader();
         while (reader.Read()) {
@@ -133,12 +135,14 @@ public class OdbcOrderRepository(AppSettings settings) {
         return reader.Read();
     }
 
-    /// <summary>生産計画ビューから注文を取得する。日付フィルターはSQL側で適用（文字列形式でドライバーの型差異を回避）</summary>
+    /// <summary>生産計画ビューから注文を取得する。日付フィルターはSQL側で適用（yyyy-MM-dd文字列としてバインドし、ドライバーの型差異を回避）</summary>
     private static Dictionary<string, Order> LoadSeisanKeikaku(OdbcConnection conn, DateOnly rangeStart, DateOnly rangeEnd) {
         Dictionary<string, Order> orders = [];
 
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = $"SELECT 製番, 品目番号, 品目名, 納期, 計画数, 機種コード FROM VP_生産計画情報_YD WHERE 納期 >= '{rangeStart:yyyy-MM-dd}' AND 納期 <= '{rangeEnd:yyyy-MM-dd}'";
+        cmd.CommandText = "SELECT 製番, 品目番号, 品目名, 納期, 計画数, 機種コード FROM VP_生産計画情報_YD WHERE 納期 >= ? AND 納期 <= ?";
+        cmd.Parameters.Add("@RangeStart", OdbcType.VarChar).Value = rangeStart.ToString("yyyy-MM-dd");
+        cmd.Parameters.Add("@RangeEnd", OdbcType.VarChar).Value = rangeEnd.ToString("yyyy-MM-dd");
 
         using var reader = cmd.ExecuteReader();
         while (reader.Read()) {
