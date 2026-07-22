@@ -351,7 +351,8 @@ public partial class ProductPerformanceWindow : Window {
     // 実績が標準の200%まで超過した場合、オーバーレイバーは(LaneBarMaxSize×2)×0.5=200pxまで伸びうるため、
     // それが列内に収まるよう列幅を確保する（収まらないとDataGridは既定でクリップしないため隣列に重なって見えてしまう）
     private DataGridTemplateColumn BuildMatrixProcessColumn(string header, int laneIndex, bool isTotal = false) {
-        var column = new DataGridTemplateColumn { Header = header, Width = LaneBarMaxSize + 10 };
+        // ラベルに%表記が付いた分(例: " (112%)")、以前の+10幅では収まらずDataGridの既定動作で隣列に重なるため広げてある
+        var column = new DataGridTemplateColumn { Header = header, Width = LaneBarMaxSize + 60 };
         var template = new DataTemplate();
 
         // 合計列は通常の工程列と区別するため、左側に区切り線とヘッダー太字を入れる
@@ -470,7 +471,10 @@ public partial class ProductPerformanceWindow : Window {
             : $"実績 {ActualMinutes:F1}分 / 標準 {StandardMinutes:F1}分\n担当: {WorkerName}";
 
         public string ActualMinutesText => $"{ActualMinutes:F1}分";
-        public string StandardComparisonText => $" / {StandardMinutes:F1}分";
+        // 標準工数が0分の場合は比率が定義できないため%は付けない
+        public string StandardComparisonText => StandardMinutes > 0
+            ? $" / {StandardMinutes:F1}分 ({ActualMinutes / StandardMinutes * 100:F0}%)"
+            : $" / {StandardMinutes:F1}分";
         // 標準を超過している場合、実績分数の文字色もバーの超過色（赤系）に合わせる。
         // バー自体は半透明の赤（#B3D9534F）にしているため、文字はそれより濃い暗めの赤にしてコントラストを確保する
         public Brush ActualTextBrush => ActualOverflowSize > 0 ? new SolidColorBrush(Color.FromRgb(0x7A, 0x1A, 0x1A)) : Brushes.Black;
