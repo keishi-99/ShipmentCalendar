@@ -160,7 +160,7 @@ public partial class MainWindow : Fluent.RibbonWindow, IDisplaySettingsPreviewTa
     /// <summary>保存済みの設定値をColumnVisibilityItemsとDataGridColumnの表示状態に反映する（保存はしない）</summary>
     private void InitializeColumnVisibility() {
         ColumnVisibilityItems.Add(new("出荷日",     ColDeliveryDate,      s => s.ShowColumnDeliveryDate,      (s, v) => s.ShowColumnDeliveryDate = v));
-        ColumnVisibilityItems.Add(new("完了日",     ColCompletionDate,    s => s.ShowColumnCompletionDate,    (s, v) => s.ShowColumnCompletionDate = v));
+        ColumnVisibilityItems.Add(new("完了期限日", ColCompletionDate,    s => s.ShowColumnCompletionDate,    (s, v) => s.ShowColumnCompletionDate = v));
         ColumnVisibilityItems.Add(new("品目番号",   ColItemNumber,        s => s.ShowColumnItemNumber,        (s, v) => s.ShowColumnItemNumber = v));
         ColumnVisibilityItems.Add(new("機種コード", ColModelCode,         s => s.ShowColumnModelCode,         (s, v) => s.ShowColumnModelCode = v));
         ColumnVisibilityItems.Add(new("品目名",     ColProductName,       s => s.ShowColumnProductName,       (s, v) => s.ShowColumnProductName = v));
@@ -214,7 +214,7 @@ public partial class MainWindow : Fluent.RibbonWindow, IDisplaySettingsPreviewTa
         if (signature == _lastColumnSignature) return;
         _lastColumnSignature = signature;
 
-        // 固定列（出荷日・完了日・品目番号・機種コード・品目名・製番・計画数）以外を削除
+        // 固定列（出荷日・完了期限日・品目番号・機種コード・品目名・製番・計画数）以外を削除
         while (OrderGrid.Columns.Count > 7)
             OrderGrid.Columns.RemoveAt(7);
 

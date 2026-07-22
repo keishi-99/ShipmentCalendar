@@ -172,7 +172,7 @@
                             SizeDefinition="Middle,Middle,Small" />
                     </Fluent:RibbonGroupBox>
 
-                    <Fluent:RibbonGroupBox Header="部署">
+                    <Fluent:RibbonGroupBox Header="次工程部署">
                         <Fluent:ComboBox
                             Foreground="Black"
                             DisplayMemberPath="Name"
@@ -181,7 +181,8 @@
                             ItemsSource="{Binding DepartmentFilters}"
                             SelectedValue="{Binding FilterDepartmentId}"
                             SelectedValuePath="Id"
-                            SizeDefinition="Middle,Middle,Small" />
+                            SizeDefinition="Middle,Middle,Small"
+                            ToolTip="未完了工程のうち次に着手すべき工程の担当部署で絞り込む（その部署の工程を既に終えた注文は表示されない）" />
                     </Fluent:RibbonGroupBox>
 
                     <Fluent:RibbonGroupBox Header="区分">
@@ -360,12 +361,25 @@
                     BorderThickness="0"
                     Command="{Binding ClearDeliveryDateRangeFilterCommand}"
                     ToolTip="出荷日の範囲をクリア">
-                    <Button.Visibility>
-                        <MultiBinding Converter="{StaticResource AnyValueSetToVisibility}">
-                            <Binding Path="FilterDeliveryFrom" />
-                            <Binding Path="FilterDeliveryTo" />
-                        </MultiBinding>
-                    </Button.Visibility>
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Visibility">
+                                <Setter.Value>
+                                    <MultiBinding Converter="{StaticResource AnyValueSetToVisibility}">
+                                        <Binding Path="FilterDeliveryFrom" />
+                                        <Binding Path="FilterDeliveryTo" />
+                                    </MultiBinding>
+                                </Setter.Value>
+                            </Setter>
+                            <Style.Triggers>
+                                <!--  本日のみ選択中はDatePickerがロックされているため、クリアボタンも操作対象から外す。
+                                      Collapsedだと横並びの他コントロールが詰まって左にずれるため、幅を保持するHiddenにする  -->
+                                <DataTrigger Binding="{Binding FilterTodayOnly}" Value="True">
+                                    <Setter Property="Visibility" Value="Hidden" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
                     <iconPacks:PackIconMaterial
                         Width="12"
                         Height="12"
@@ -597,7 +611,7 @@
                         Width="100"
                         Binding="{Binding CompletionDate, StringFormat=yyyy/MM/dd}"
                         ElementStyle="{StaticResource FixedColumnCellStyle}"
-                        Header="完了日" />
+                        Header="完了期限日" />
                     <DataGridTextColumn
                         x:Name="ColItemNumber"
                         Width="150"

@@ -3,6 +3,7 @@ using ShipmentCalendar.Repositories;
 using ShipmentCalendar.Services;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -107,15 +108,22 @@ public partial class ProductPerformanceWindow : Window {
                 .ToDictionary(g => g.Key, g => (g.First().ProductName, g.First().DeliveryDate, g.First().ModelCode), StringComparer.OrdinalIgnoreCase);
 
             var groups = actualByGroup
-                .Select(kv => new ResultGroup(
-                    kv.Key,
-                    kv.Value.Max(p => p.ActualDate),
-                    plannedQuantityBySeiban.GetValueOrDefault(kv.Key, 1),
-                    BuildStandardProcesses(defs, plannedQuantityBySeiban.GetValueOrDefault(kv.Key, 1), _settings.DayMinutes),
-                    kv.Value.OrderBy(p => p.SortOrder).ToList(),
-                    orderInfoBySeiban.GetValueOrDefault(kv.Key).ProductName ?? "",
-                    orderInfoBySeiban.GetValueOrDefault(kv.Key).DeliveryDate,
-                    orderInfoBySeiban.GetValueOrDefault(kv.Key).ModelCode ?? ""))
+                .Select(kv => {
+                    var standardProcesses = BuildStandardProcesses(defs, plannedQuantityBySeiban.GetValueOrDefault(kv.Key, 1), _settings.DayMinutes);
+                    var actualProcesses = kv.Value.OrderBy(p => p.SortOrder).ToList();
+                    return new ResultGroup(
+                        kv.Key,
+                        kv.Value.Max(p => p.ActualDate),
+                        plannedQuantityBySeiban.GetValueOrDefault(kv.Key, 1),
+                        standardProcesses,
+                        actualProcesses,
+                        orderInfoBySeiban.GetValueOrDefault(kv.Key).ProductName ?? "",
+                        orderInfoBySeiban.GetValueOrDefault(kv.Key).DeliveryDate,
+                        orderInfoBySeiban.GetValueOrDefault(kv.Key).ModelCode ?? "") {
+                        Lanes = BuildLanes(standardProcesses, actualProcesses),
+                        TotalLane = BuildTotalLane(standardProcesses, actualProcesses)
+                    };
+                })
                 .OrderByDescending(g => g.LatestActualDate)
                 .ToList();
 
@@ -123,7 +131,7 @@ public partial class ProductPerformanceWindow : Window {
 
             // 標準・実績バー共通の全幅は、検索結果全体を通した最大値を使うことで「1日」の幅を注文間で揃える
             var maxScaleMinutes = groups.Count == 0 ? 0.0 : RoundToDayBoundary(groups.Max(g => ComputeRawScaleMinutes(g, _settings.DayMinutes)), _settings.DayMinutes);
-            groups = groups.Select(g => g with { ScaleMinutes = maxScaleMinutes, Lanes = BuildLanes(g) }).ToList();
+            groups = groups.Select(g => g with { ScaleMinutes = maxScaleMinutes }).ToList();
 
             _lastScaleMinutes = maxScaleMinutes;
             _lastGroups = groups;
@@ -234,24 +242,15 @@ public partial class ProductPerformanceWindow : Window {
     // 工程（指示先番号）ごとに標準・実績の分数をペアにしたレーンを作る。標準は固定長（100%基準）の背景バーとして表現し、
     // 実績バーはその上に重ねて表示する。標準以内の部分と、標準を超えた部分を別の長さとして分けて持たせることで、
     // XAML側で色分けした2色バーとして描ける
-    private static List<ProcessLane> BuildLanes(ResultGroup group) {
-        var actualByDestination = group.ActualProcesses.ToDictionary(p => p.DestinationCode, StringComparer.OrdinalIgnoreCase);
+    private static List<ProcessLane> BuildLanes(IReadOnlyList<OrderProcess> standardProcesses, IReadOnlyList<OrderProcess> actualProcesses) {
+        var actualByDestination = actualProcesses.ToDictionary(p => p.DestinationCode, StringComparer.OrdinalIgnoreCase);
 
-        return group.StandardProcesses
+        return standardProcesses
             .OrderBy(p => p.SortOrder)
             .Select(std => {
                 var hasActual = actualByDestination.TryGetValue(std.DestinationCode, out var actual);
                 var actualMinutes = hasActual ? actual!.ActualWorkMinutes : 0.0;
-                var withinStandardSize = std.RequiredMinutes > 0
-                    ? Math.Min(actualMinutes, std.RequiredMinutes) / std.RequiredMinutes * LaneBarMaxSize
-                    : 0.0;
-                // 標準工数が0分（未設定の工程等）で実績だけがある場合、比率計算では常に0になり実績バーが
-                // 見えなくなってしまうため、超過（警告色）として最大幅で表示し実績の存在を示す。
-                // 超過分自体は標準の200%（LaneBarMaxSize分）を上限にする。実際の数値は常時表示のラベル側で
-                // 正確に伝わるため、視覚上の長さだけ頭打ちにしても情報は失われない
-                var overflowSize = std.RequiredMinutes > 0
-                    ? Math.Min(LaneBarMaxSize, Math.Max(0, actualMinutes - std.RequiredMinutes) / std.RequiredMinutes * LaneBarMaxSize)
-                    : actualMinutes > 0 ? LaneBarMaxSize : 0.0;
+                var (withinStandardSize, overflowSize) = ComputeBarSizes(std.RequiredMinutes, actualMinutes);
                 return new ProcessLane(
                     std.ProcessName,
                     std.RequiredMinutes,
@@ -261,6 +260,25 @@ public partial class ProductPerformanceWindow : Window {
                     hasActual ? actual!.WorkerName : "");
             })
             .ToList();
+    }
+
+    // 合計レーン: 各工程バーと同じ「実績÷標準」の比率式を使うため、既存のProcessLane描画をそのまま流用できる
+    private static ProcessLane BuildTotalLane(IReadOnlyList<OrderProcess> standardProcesses, IReadOnlyList<OrderProcess> actualProcesses) {
+        var standardTotal = standardProcesses.Sum(p => p.RequiredMinutes);
+        var actualTotal = actualProcesses.Sum(p => p.ActualWorkMinutes);
+        var (withinStandardSize, overflowSize) = ComputeBarSizes(standardTotal, actualTotal);
+        return new ProcessLane("合計", standardTotal, actualTotal, withinStandardSize, overflowSize, "", IsTotal: true);
+    }
+
+    // 標準工数が0分（未設定の工程等）で実績だけがある場合、比率計算では常に0になり実績バーが
+    // 見えなくなってしまうため、超過（警告色）として最大幅で表示し実績の存在を示す。
+    // 超過分自体は標準の200%（LaneBarMaxSize分）を上限にする。実際の数値は常時表示のラベル側で
+    // 正確に伝わるため、視覚上の長さだけ頭打ちにしても情報は失われない
+    private static (double withinStandardSize, double overflowSize) ComputeBarSizes(double standardMinutes, double actualMinutes) {
+        if (standardMinutes <= 0) return (0.0, actualMinutes > 0 ? LaneBarMaxSize : 0.0);
+        var within = Math.Min(actualMinutes, standardMinutes) / standardMinutes * LaneBarMaxSize;
+        var overflow = Math.Min(LaneBarMaxSize, Math.Max(0, actualMinutes - standardMinutes) / standardMinutes * LaneBarMaxSize);
+        return (within, overflow);
     }
 
     // タイムライン表示専用の共通日数ルーラーを1回だけ組み立てる（全注文がScaleMinutesを共有しているため）。
@@ -328,6 +346,9 @@ public partial class ProductPerformanceWindow : Window {
         for (int i = 0; i < orderedDefs.Count; i++)
             MatrixGrid.Columns.Add(BuildMatrixProcessColumn(orderedDefs[i].ProcessName, i));
 
+        // 合計列: ResultGroup.TotalLaneを名前で直接参照する（インデックスに依存しない）
+        MatrixGrid.Columns.Add(BuildMatrixProcessColumn("合計", isTotal: true));
+
         MatrixGrid.ItemsSource = _lastGroups;
     }
 
@@ -336,15 +357,30 @@ public partial class ProductPerformanceWindow : Window {
     // 表側に収める（文字はレーン表示と同じフォントサイズのまま、スケールによるにじみもない）
     // 実績が標準の200%まで超過した場合、オーバーレイバーは(LaneBarMaxSize×2)×0.5=200pxまで伸びうるため、
     // それが列内に収まるよう列幅を確保する（収まらないとDataGridは既定でクリップしないため隣列に重なって見えてしまう）
-    private DataGridTemplateColumn BuildMatrixProcessColumn(string header, int laneIndex) {
-        var column = new DataGridTemplateColumn { Header = header, Width = LaneBarMaxSize + 10 };
+    private DataGridTemplateColumn BuildMatrixProcessColumn(string header, int laneIndex = -1, bool isTotal = false) {
+        // ラベルに%表記が付いた分(例: " (112%)")、以前の+10幅では収まらずDataGridの既定動作で隣列に重なるため広げてある
+        var column = new DataGridTemplateColumn { Header = header, Width = LaneBarMaxSize + 60 };
         var template = new DataTemplate();
 
+        // 合計列は通常の工程列と区別するため、左側に区切り線とヘッダー太字を入れる
+        var rootFactory = new FrameworkElementFactory(typeof(Border));
+        if (isTotal) {
+            rootFactory.SetValue(Border.BorderBrushProperty, new SolidColorBrush(Color.FromRgb(0xCC, 0xCC, 0xCC)));
+            rootFactory.SetValue(Border.BorderThicknessProperty, new Thickness(1, 0, 0, 0));
+            rootFactory.SetValue(Border.PaddingProperty, new Thickness(6, 0, 0, 0));
+
+            // BasedOnを指定しないとテーマの既定スタイル(Template)を引き継げず、ヘッダーが空白になるため明示的に継承する
+            var baseHeaderStyle = (Style)Application.Current.FindResource(typeof(DataGridColumnHeader));
+            var headerStyle = new Style(typeof(DataGridColumnHeader), baseHeaderStyle);
+            headerStyle.Setters.Add(new Setter(Control.FontWeightProperty, FontWeights.Bold));
+            column.HeaderStyle = headerStyle;
+        }
+
         var containerFactory = new FrameworkElementFactory(typeof(Grid));
-        containerFactory.SetBinding(FrameworkElement.DataContextProperty, new Binding(nameof(ResultGroup.Lanes)) {
-            Converter = new LaneByIndexConverter(),
-            ConverterParameter = laneIndex
-        });
+        // 合計列はResultGroup.TotalLaneを直接参照する。工程列はLanesをインデックスで参照する
+        containerFactory.SetBinding(FrameworkElement.DataContextProperty, isTotal
+            ? new Binding(nameof(ResultGroup.TotalLane))
+            : new Binding(nameof(ResultGroup.Lanes)) { Converter = new LaneByIndexConverter(), ConverterParameter = laneIndex });
 
         var backgroundFactory = new FrameworkElementFactory(typeof(Border));
         backgroundFactory.SetValue(FrameworkElement.WidthProperty, LaneBarMaxSize / 2);
@@ -382,12 +418,13 @@ public partial class ProductPerformanceWindow : Window {
 
         var actualTextFactory = new FrameworkElementFactory(typeof(TextBlock));
         actualTextFactory.SetValue(TextBlock.FontSizeProperty, 10.0);
-        actualTextFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.SemiBold);
+        actualTextFactory.SetValue(TextBlock.FontWeightProperty, isTotal ? FontWeights.Bold : FontWeights.SemiBold);
         actualTextFactory.SetBinding(TextBlock.ForegroundProperty, new Binding(nameof(ProcessLane.ActualTextBrush)));
         actualTextFactory.SetBinding(TextBlock.TextProperty, new Binding(nameof(ProcessLane.ActualMinutesText)));
 
         var standardTextFactory = new FrameworkElementFactory(typeof(TextBlock));
         standardTextFactory.SetValue(TextBlock.FontSizeProperty, 10.0);
+        standardTextFactory.SetValue(TextBlock.FontWeightProperty, isTotal ? FontWeights.Bold : FontWeights.Normal);
         standardTextFactory.SetValue(TextBlock.ForegroundProperty, new SolidColorBrush(Color.FromRgb(0x66, 0x66, 0x66)));
         standardTextFactory.SetBinding(TextBlock.TextProperty, new Binding(nameof(ProcessLane.StandardComparisonText)));
 
@@ -398,7 +435,8 @@ public partial class ProductPerformanceWindow : Window {
         containerFactory.AppendChild(overlayFactory);
         containerFactory.AppendChild(labelFactory);
 
-        template.VisualTree = containerFactory;
+        rootFactory.AppendChild(containerFactory);
+        template.VisualTree = rootFactory;
         column.CellTemplate = template;
         return column;
     }
@@ -427,22 +465,32 @@ public partial class ProductPerformanceWindow : Window {
         // 標準・実績バー共通の全幅（分）。検索結果全体を通した最大値（BtnSearch_Clickで計算）を全行で共有することで、
         // 注文をまたいでも「1時間」「1日」の幅が揃う
         public double ScaleMinutes { get; init; }
+        // Lanesは実在する工程のみを保持する。合計はTotalLaneとして別枠に持たせ、
+        // 「Lanesを列挙・集計する処理」が合計を実工程と取り違えて二重集計しないようにする
         public IReadOnlyList<ProcessLane> Lanes { get; init; } = [];
+        // 未設定のまま使うと「合計 0.0分」という一見正常なデータに見えてしまうため、設定漏れをコンパイルエラーにする
+        public required ProcessLane TotalLane { get; init; }
 
-        public string StandardTotalText => $"{StandardProcesses.Sum(p => p.RequiredMinutes) / 60.0:F1}h";
-        public string ActualTotalText => $"{ActualProcesses.Sum(p => p.ActualWorkMinutes) / 60.0:F1}h";
+        // 工程別レーン表示用。表示上は合計を工程レーンの末尾に並べたいだけなので、ここでのみ結合する
+        public IEnumerable<ProcessLane> LanesWithTotal => [.. Lanes, TotalLane];
+
+        public string StandardTotalText => $"{TotalLane.StandardMinutes / 60.0:F1}h";
+        public string ActualTotalText => $"{TotalLane.ActualMinutes / 60.0:F1}h";
 
         // 順序999（最終受入）が品目に定義されているのに、まだ実績が無い場合は作業途中とみなす
         public bool IsInProgress => StandardProcesses.Any(p => p.SortOrder == 999) && !ActualProcesses.Any(p => p.SortOrder == 999);
     }
 
-    private record ProcessLane(string ProcessName, double StandardMinutes, double ActualMinutes, double ActualWithinStandardSize, double ActualOverflowSize, string WorkerName) {
+    private record ProcessLane(string ProcessName, double StandardMinutes, double ActualMinutes, double ActualWithinStandardSize, double ActualOverflowSize, string WorkerName, bool IsTotal = false) {
         public string ActualTooltip => string.IsNullOrEmpty(WorkerName)
             ? $"実績 {ActualMinutes:F1}分 / 標準 {StandardMinutes:F1}分"
             : $"実績 {ActualMinutes:F1}分 / 標準 {StandardMinutes:F1}分\n担当: {WorkerName}";
 
         public string ActualMinutesText => $"{ActualMinutes:F1}分";
-        public string StandardComparisonText => $" / {StandardMinutes:F1}分";
+        // 標準工数が0分の場合は比率が定義できないため%は付けない
+        public string StandardComparisonText => StandardMinutes > 0
+            ? $" / {StandardMinutes:F1}分 ({ActualMinutes / StandardMinutes * 100:F0}%)"
+            : $" / {StandardMinutes:F1}分";
         // 標準を超過している場合、実績分数の文字色もバーの超過色（赤系）に合わせる。
         // バー自体は半透明の赤（#B3D9534F）にしているため、文字はそれより濃い暗めの赤にしてコントラストを確保する
         public Brush ActualTextBrush => ActualOverflowSize > 0 ? new SolidColorBrush(Color.FromRgb(0x7A, 0x1A, 0x1A)) : Brushes.Black;
