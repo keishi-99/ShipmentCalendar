@@ -172,7 +172,7 @@
                             SizeDefinition="Middle,Middle,Small" />
                     </Fluent:RibbonGroupBox>
 
-                    <Fluent:RibbonGroupBox Header="部署">
+                    <Fluent:RibbonGroupBox Header="次工程部署">
                         <Fluent:ComboBox
                             Foreground="Black"
                             DisplayMemberPath="Name"
@@ -181,7 +181,8 @@
                             ItemsSource="{Binding DepartmentFilters}"
                             SelectedValue="{Binding FilterDepartmentId}"
                             SelectedValuePath="Id"
-                            SizeDefinition="Middle,Middle,Small" />
+                            SizeDefinition="Middle,Middle,Small"
+                            ToolTip="未完了工程のうち次に着手すべき工程の担当部署で絞り込む（その部署の工程を既に終えた注文は表示されない）" />
                     </Fluent:RibbonGroupBox>
 
                     <Fluent:RibbonGroupBox Header="区分">
