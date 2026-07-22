@@ -3,6 +3,7 @@ using ShipmentCalendar.Repositories;
 using ShipmentCalendar.Services;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -353,12 +354,16 @@ public partial class ProductPerformanceWindow : Window {
         var column = new DataGridTemplateColumn { Header = header, Width = LaneBarMaxSize + 10 };
         var template = new DataTemplate();
 
-        // 合計列は通常の工程列と区別するため、左側に区切り線を入れる
+        // 合計列は通常の工程列と区別するため、左側に区切り線とヘッダー太字を入れる
         var rootFactory = new FrameworkElementFactory(typeof(Border));
         if (isTotal) {
             rootFactory.SetValue(Border.BorderBrushProperty, new SolidColorBrush(Color.FromRgb(0xCC, 0xCC, 0xCC)));
             rootFactory.SetValue(Border.BorderThicknessProperty, new Thickness(1, 0, 0, 0));
             rootFactory.SetValue(Border.PaddingProperty, new Thickness(6, 0, 0, 0));
+
+            var headerStyle = new Style(typeof(DataGridColumnHeader));
+            headerStyle.Setters.Add(new Setter(Control.FontWeightProperty, FontWeights.Bold));
+            column.HeaderStyle = headerStyle;
         }
 
         var containerFactory = new FrameworkElementFactory(typeof(Grid));
@@ -403,12 +408,13 @@ public partial class ProductPerformanceWindow : Window {
 
         var actualTextFactory = new FrameworkElementFactory(typeof(TextBlock));
         actualTextFactory.SetValue(TextBlock.FontSizeProperty, 10.0);
-        actualTextFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.SemiBold);
+        actualTextFactory.SetValue(TextBlock.FontWeightProperty, isTotal ? FontWeights.Bold : FontWeights.SemiBold);
         actualTextFactory.SetBinding(TextBlock.ForegroundProperty, new Binding(nameof(ProcessLane.ActualTextBrush)));
         actualTextFactory.SetBinding(TextBlock.TextProperty, new Binding(nameof(ProcessLane.ActualMinutesText)));
 
         var standardTextFactory = new FrameworkElementFactory(typeof(TextBlock));
         standardTextFactory.SetValue(TextBlock.FontSizeProperty, 10.0);
+        standardTextFactory.SetValue(TextBlock.FontWeightProperty, isTotal ? FontWeights.Bold : FontWeights.Normal);
         standardTextFactory.SetValue(TextBlock.ForegroundProperty, new SolidColorBrush(Color.FromRgb(0x66, 0x66, 0x66)));
         standardTextFactory.SetBinding(TextBlock.TextProperty, new Binding(nameof(ProcessLane.StandardComparisonText)));
 
