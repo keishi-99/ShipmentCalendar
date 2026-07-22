@@ -34,6 +34,9 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays, double dayMinu
     /// 「完了必須日（finishBucket）」を別々に算出する。
     /// 工程自身の所要時間が日をまたぐ場合（例: 当日の残り枠に収まらず前営業日から
     /// 着手しないと完了できない場合）、着手必須日と完了必須日が異なる日になる。
+    /// ※この「末尾工程から逆向きに外注待ち・滞留時間を積み上げる」考え方は
+    /// ProcessBarControl.xaml.cs の RebuildBars（UI描画用の区間幅計算）にも
+    /// 別実装で存在する。片方の計算ルールを変更した場合はもう片方も確認・追従すること。
     /// </summary>
     /// <summary>
     /// completedByDestNumber: 完了済み指示先番号→（受入日, 作業者名, 実工数(分)） のマッピング（指示先番号は工程ごとに一意）

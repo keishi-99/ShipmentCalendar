@@ -142,6 +142,8 @@ public partial class ProcessBarControl : UserControl {
         // BusinessDayCalculator.BuildProcessesと同じ考え方で、末尾工程から逆向きに積み上げる。
         // 外注待ちのゲート（待機日数分の空白）は日付境界に固定し、工程自身の所要時間は
         // 分単位で正確に積むことで、外注待ち直前の工程がその日の終わりにぴったり収まる
+        // ※日付計算（BusinessDayCalculator）とUI描画用の区間幅計算（ここ）は別実装の重複。
+        // 片方の計算ルールを変更した場合はもう片方も確認・追従すること。
         var segments = new List<Segment>();
         double pos = 0;
         for (int i = Processes.Count - 1; i >= 0; i--) {

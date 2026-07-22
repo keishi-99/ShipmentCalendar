@@ -476,10 +476,10 @@ public partial class MainViewModel : ObservableObject {
 
                 order.Processes = calculator.BuildProcesses(order, productDefs.Where(d => d.IsVisible), completedByDestNumber);
 
-                // 順序999（最終受入）が完了している場合、前工程すべてを完了扱いにする
-                // ※999番工程がIsVisible=falseで非表示でも判定できるよう、フィルタ前のproductDefsと
+                // 最終受入工程が完了している場合、前工程すべてを完了扱いにする
+                // ※最終受入工程がIsVisible=falseで非表示でも判定できるよう、フィルタ前のproductDefsと
                 //   完了済み指示先番号セットから直接判定する
-                var def999 = productDefs.FirstOrDefault(d => d.SortOrder == 999);
+                var def999 = productDefs.FirstOrDefault(d => d.SortOrder == ProcessDefinition.FinalReceiptSortOrder);
                 if (def999 != null && completedByDestNumber.ContainsKey(def999.DestinationCode)) {
                     foreach (var process in order.Processes)
                         process.Status = ProcessStatus.Completed;

@@ -3,6 +3,9 @@ namespace ShipmentCalendar.Models;
 /// <summary>工程マスタ定義（製品ごとに設定）</summary>
 public class ProcessDefinition
 {
+    /// <summary>「最終受入」を表す特別なSortOrder値。この工程が完了扱いになった場合、前工程すべてを完了扱いにする</summary>
+    public const int FinalReceiptSortOrder = 999;
+
     public int Id { get; set; }
     public string ItemNumber { get; set; } = string.Empty;
     public string ProcessName { get; set; } = string.Empty;
