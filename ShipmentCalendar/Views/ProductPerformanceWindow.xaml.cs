@@ -108,15 +108,22 @@ public partial class ProductPerformanceWindow : Window {
                 .ToDictionary(g => g.Key, g => (g.First().ProductName, g.First().DeliveryDate, g.First().ModelCode), StringComparer.OrdinalIgnoreCase);
 
             var groups = actualByGroup
-                .Select(kv => new ResultGroup(
-                    kv.Key,
-                    kv.Value.Max(p => p.ActualDate),
-                    plannedQuantityBySeiban.GetValueOrDefault(kv.Key, 1),
-                    BuildStandardProcesses(defs, plannedQuantityBySeiban.GetValueOrDefault(kv.Key, 1), _settings.DayMinutes),
-                    kv.Value.OrderBy(p => p.SortOrder).ToList(),
-                    orderInfoBySeiban.GetValueOrDefault(kv.Key).ProductName ?? "",
-                    orderInfoBySeiban.GetValueOrDefault(kv.Key).DeliveryDate,
-                    orderInfoBySeiban.GetValueOrDefault(kv.Key).ModelCode ?? ""))
+                .Select(kv => {
+                    var standardProcesses = BuildStandardProcesses(defs, plannedQuantityBySeiban.GetValueOrDefault(kv.Key, 1), _settings.DayMinutes);
+                    var actualProcesses = kv.Value.OrderBy(p => p.SortOrder).ToList();
+                    return new ResultGroup(
+                        kv.Key,
+                        kv.Value.Max(p => p.ActualDate),
+                        plannedQuantityBySeiban.GetValueOrDefault(kv.Key, 1),
+                        standardProcesses,
+                        actualProcesses,
+                        orderInfoBySeiban.GetValueOrDefault(kv.Key).ProductName ?? "",
+                        orderInfoBySeiban.GetValueOrDefault(kv.Key).DeliveryDate,
+                        orderInfoBySeiban.GetValueOrDefault(kv.Key).ModelCode ?? "") {
+                        Lanes = BuildLanes(standardProcesses, actualProcesses),
+                        TotalLane = BuildTotalLane(standardProcesses, actualProcesses)
+                    };
+                })
                 .OrderByDescending(g => g.LatestActualDate)
                 .ToList();
 
@@ -124,7 +131,7 @@ public partial class ProductPerformanceWindow : Window {
 
             // 標準・実績バー共通の全幅は、検索結果全体を通した最大値を使うことで「1日」の幅を注文間で揃える
             var maxScaleMinutes = groups.Count == 0 ? 0.0 : RoundToDayBoundary(groups.Max(g => ComputeRawScaleMinutes(g, _settings.DayMinutes)), _settings.DayMinutes);
-            groups = groups.Select(g => g with { ScaleMinutes = maxScaleMinutes, Lanes = BuildLanes(g), TotalLane = BuildTotalLane(g) }).ToList();
+            groups = groups.Select(g => g with { ScaleMinutes = maxScaleMinutes }).ToList();
 
             _lastScaleMinutes = maxScaleMinutes;
             _lastGroups = groups;
@@ -235,10 +242,10 @@ public partial class ProductPerformanceWindow : Window {
     // 工程（指示先番号）ごとに標準・実績の分数をペアにしたレーンを作る。標準は固定長（100%基準）の背景バーとして表現し、
     // 実績バーはその上に重ねて表示する。標準以内の部分と、標準を超えた部分を別の長さとして分けて持たせることで、
     // XAML側で色分けした2色バーとして描ける
-    private static List<ProcessLane> BuildLanes(ResultGroup group) {
-        var actualByDestination = group.ActualProcesses.ToDictionary(p => p.DestinationCode, StringComparer.OrdinalIgnoreCase);
+    private static List<ProcessLane> BuildLanes(IReadOnlyList<OrderProcess> standardProcesses, IReadOnlyList<OrderProcess> actualProcesses) {
+        var actualByDestination = actualProcesses.ToDictionary(p => p.DestinationCode, StringComparer.OrdinalIgnoreCase);
 
-        return group.StandardProcesses
+        return standardProcesses
             .OrderBy(p => p.SortOrder)
             .Select(std => {
                 var hasActual = actualByDestination.TryGetValue(std.DestinationCode, out var actual);
@@ -256,9 +263,9 @@ public partial class ProductPerformanceWindow : Window {
     }
 
     // 合計レーン: 各工程バーと同じ「実績÷標準」の比率式を使うため、既存のProcessLane描画をそのまま流用できる
-    private static ProcessLane BuildTotalLane(ResultGroup group) {
-        var standardTotal = group.StandardProcesses.Sum(p => p.RequiredMinutes);
-        var actualTotal = group.ActualProcesses.Sum(p => p.ActualWorkMinutes);
+    private static ProcessLane BuildTotalLane(IReadOnlyList<OrderProcess> standardProcesses, IReadOnlyList<OrderProcess> actualProcesses) {
+        var standardTotal = standardProcesses.Sum(p => p.RequiredMinutes);
+        var actualTotal = actualProcesses.Sum(p => p.ActualWorkMinutes);
         var (withinStandardSize, overflowSize) = ComputeBarSizes(standardTotal, actualTotal);
         return new ProcessLane("合計", standardTotal, actualTotal, withinStandardSize, overflowSize, "", IsTotal: true);
     }
@@ -461,7 +468,8 @@ public partial class ProductPerformanceWindow : Window {
         // Lanesは実在する工程のみを保持する。合計はTotalLaneとして別枠に持たせ、
         // 「Lanesを列挙・集計する処理」が合計を実工程と取り違えて二重集計しないようにする
         public IReadOnlyList<ProcessLane> Lanes { get; init; } = [];
-        public ProcessLane TotalLane { get; init; } = new("合計", 0, 0, 0, 0, "", IsTotal: true);
+        // 未設定のまま使うと「合計 0.0分」という一見正常なデータに見えてしまうため、設定漏れをコンパイルエラーにする
+        public required ProcessLane TotalLane { get; init; }
 
         // 工程別レーン表示用。表示上は合計を工程レーンの末尾に並べたいだけなので、ここでのみ結合する
         public IEnumerable<ProcessLane> LanesWithTotal => [.. Lanes, TotalLane];
