@@ -1,2 +1,4 @@
 reviews:
   language: ja-JP
+  auto_review:
+    enabled: false
