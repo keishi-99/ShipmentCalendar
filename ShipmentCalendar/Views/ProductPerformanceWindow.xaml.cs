@@ -124,7 +124,7 @@ public partial class ProductPerformanceWindow : Window {
 
             // 標準・実績バー共通の全幅は、検索結果全体を通した最大値を使うことで「1日」の幅を注文間で揃える
             var maxScaleMinutes = groups.Count == 0 ? 0.0 : RoundToDayBoundary(groups.Max(g => ComputeRawScaleMinutes(g, _settings.DayMinutes)), _settings.DayMinutes);
-            groups = groups.Select(g => g with { ScaleMinutes = maxScaleMinutes, Lanes = BuildLanes(g) }).ToList();
+            groups = groups.Select(g => g with { ScaleMinutes = maxScaleMinutes, Lanes = BuildLanes(g), TotalLane = BuildTotalLane(g) }).ToList();
 
             _lastScaleMinutes = maxScaleMinutes;
             _lastGroups = groups;
@@ -238,7 +238,7 @@ public partial class ProductPerformanceWindow : Window {
     private static List<ProcessLane> BuildLanes(ResultGroup group) {
         var actualByDestination = group.ActualProcesses.ToDictionary(p => p.DestinationCode, StringComparer.OrdinalIgnoreCase);
 
-        var lanes = group.StandardProcesses
+        return group.StandardProcesses
             .OrderBy(p => p.SortOrder)
             .Select(std => {
                 var hasActual = actualByDestination.TryGetValue(std.DestinationCode, out var actual);
@@ -253,14 +253,14 @@ public partial class ProductPerformanceWindow : Window {
                     hasActual ? actual!.WorkerName : "");
             })
             .ToList();
+    }
 
-        // 合計レーン: 各工程バーと同じ「実績÷標準」の比率式を使うため、既存のProcessLane描画をそのまま流用できる
+    // 合計レーン: 各工程バーと同じ「実績÷標準」の比率式を使うため、既存のProcessLane描画をそのまま流用できる
+    private static ProcessLane BuildTotalLane(ResultGroup group) {
         var standardTotal = group.StandardProcesses.Sum(p => p.RequiredMinutes);
         var actualTotal = group.ActualProcesses.Sum(p => p.ActualWorkMinutes);
-        var (totalWithinStandardSize, totalOverflowSize) = ComputeBarSizes(standardTotal, actualTotal);
-        lanes.Add(new ProcessLane("合計", standardTotal, actualTotal, totalWithinStandardSize, totalOverflowSize, "", IsTotal: true));
-
-        return lanes;
+        var (withinStandardSize, overflowSize) = ComputeBarSizes(standardTotal, actualTotal);
+        return new ProcessLane("合計", standardTotal, actualTotal, withinStandardSize, overflowSize, "", IsTotal: true);
     }
 
     // 標準工数が0分（未設定の工程等）で実績だけがある場合、比率計算では常に0になり実績バーが
@@ -339,8 +339,8 @@ public partial class ProductPerformanceWindow : Window {
         for (int i = 0; i < orderedDefs.Count; i++)
             MatrixGrid.Columns.Add(BuildMatrixProcessColumn(orderedDefs[i].ProcessName, i));
 
-        // 合計列: BuildLanesが工程レーンの末尾に追加した合計レーンを、そのままインデックスorderedDefs.Countで参照する
-        MatrixGrid.Columns.Add(BuildMatrixProcessColumn("合計", orderedDefs.Count, isTotal: true));
+        // 合計列: ResultGroup.TotalLaneを名前で直接参照する（インデックスに依存しない）
+        MatrixGrid.Columns.Add(BuildMatrixProcessColumn("合計", isTotal: true));
 
         MatrixGrid.ItemsSource = _lastGroups;
     }
@@ -350,7 +350,7 @@ public partial class ProductPerformanceWindow : Window {
     // 表側に収める（文字はレーン表示と同じフォントサイズのまま、スケールによるにじみもない）
     // 実績が標準の200%まで超過した場合、オーバーレイバーは(LaneBarMaxSize×2)×0.5=200pxまで伸びうるため、
     // それが列内に収まるよう列幅を確保する（収まらないとDataGridは既定でクリップしないため隣列に重なって見えてしまう）
-    private DataGridTemplateColumn BuildMatrixProcessColumn(string header, int laneIndex, bool isTotal = false) {
+    private DataGridTemplateColumn BuildMatrixProcessColumn(string header, int laneIndex = -1, bool isTotal = false) {
         // ラベルに%表記が付いた分(例: " (112%)")、以前の+10幅では収まらずDataGridの既定動作で隣列に重なるため広げてある
         var column = new DataGridTemplateColumn { Header = header, Width = LaneBarMaxSize + 60 };
         var template = new DataTemplate();
@@ -362,16 +362,18 @@ public partial class ProductPerformanceWindow : Window {
             rootFactory.SetValue(Border.BorderThicknessProperty, new Thickness(1, 0, 0, 0));
             rootFactory.SetValue(Border.PaddingProperty, new Thickness(6, 0, 0, 0));
 
-            var headerStyle = new Style(typeof(DataGridColumnHeader));
+            // BasedOnを指定しないとテーマの既定スタイル(Template)を引き継げず、ヘッダーが空白になるため明示的に継承する
+            var baseHeaderStyle = (Style)Application.Current.FindResource(typeof(DataGridColumnHeader));
+            var headerStyle = new Style(typeof(DataGridColumnHeader), baseHeaderStyle);
             headerStyle.Setters.Add(new Setter(Control.FontWeightProperty, FontWeights.Bold));
             column.HeaderStyle = headerStyle;
         }
 
         var containerFactory = new FrameworkElementFactory(typeof(Grid));
-        containerFactory.SetBinding(FrameworkElement.DataContextProperty, new Binding(nameof(ResultGroup.Lanes)) {
-            Converter = new LaneByIndexConverter(),
-            ConverterParameter = laneIndex
-        });
+        // 合計列はResultGroup.TotalLaneを直接参照する。工程列はLanesをインデックスで参照する
+        containerFactory.SetBinding(FrameworkElement.DataContextProperty, isTotal
+            ? new Binding(nameof(ResultGroup.TotalLane))
+            : new Binding(nameof(ResultGroup.Lanes)) { Converter = new LaneByIndexConverter(), ConverterParameter = laneIndex });
 
         var backgroundFactory = new FrameworkElementFactory(typeof(Border));
         backgroundFactory.SetValue(FrameworkElement.WidthProperty, LaneBarMaxSize / 2);
@@ -456,10 +458,16 @@ public partial class ProductPerformanceWindow : Window {
         // 標準・実績バー共通の全幅（分）。検索結果全体を通した最大値（BtnSearch_Clickで計算）を全行で共有することで、
         // 注文をまたいでも「1時間」「1日」の幅が揃う
         public double ScaleMinutes { get; init; }
+        // Lanesは実在する工程のみを保持する。合計はTotalLaneとして別枠に持たせ、
+        // 「Lanesを列挙・集計する処理」が合計を実工程と取り違えて二重集計しないようにする
         public IReadOnlyList<ProcessLane> Lanes { get; init; } = [];
+        public ProcessLane TotalLane { get; init; } = new("合計", 0, 0, 0, 0, "", IsTotal: true);
 
-        public string StandardTotalText => $"{StandardProcesses.Sum(p => p.RequiredMinutes) / 60.0:F1}h";
-        public string ActualTotalText => $"{ActualProcesses.Sum(p => p.ActualWorkMinutes) / 60.0:F1}h";
+        // 工程別レーン表示用。表示上は合計を工程レーンの末尾に並べたいだけなので、ここでのみ結合する
+        public IEnumerable<ProcessLane> LanesWithTotal => [.. Lanes, TotalLane];
+
+        public string StandardTotalText => $"{TotalLane.StandardMinutes / 60.0:F1}h";
+        public string ActualTotalText => $"{TotalLane.ActualMinutes / 60.0:F1}h";
 
         // 順序999（最終受入）が品目に定義されているのに、まだ実績が無い場合は作業途中とみなす
         public bool IsInProgress => StandardProcesses.Any(p => p.SortOrder == 999) && !ActualProcesses.Any(p => p.SortOrder == 999);

@@ -128,7 +128,7 @@
                             </MultiBinding>
                         </TextBlock.Text>
                     </TextBlock>
-                    <ItemsControl ItemsSource="{Binding Lanes}">
+                    <ItemsControl ItemsSource="{Binding LanesWithTotal}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <!--  合計レーンは通常の工程レーンと区別するため、上に区切り線を入れて余白を広げる  -->
