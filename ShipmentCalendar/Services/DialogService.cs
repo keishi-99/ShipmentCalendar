@@ -23,6 +23,9 @@ public class DialogService : IDialogService {
     public void ShowProductPerformance(AppSettings settings) =>
         new ProductPerformanceWindow(settings) { Owner = Owner }.ShowDialog();
 
+    public void ShowDepartmentLoad(IEnumerable<Order> orders, AppSettings settings) =>
+        new DepartmentLoadWindow(orders, settings) { Owner = Owner }.ShowDialog();
+
     public bool? ShowDisplaySettings(MainViewModel viewModel, IDisplaySettingsPreviewTarget previewTarget) {
         var window = new DisplaySettingsWindow(viewModel, previewTarget) { Owner = Owner };
         window.ShowDialog();

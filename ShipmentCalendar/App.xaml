@@ -34,6 +34,11 @@
         <!--  日付バーのゼブラ柄背景  -->
         <SolidColorBrush x:Key="DateBarBackgroundBrushA" Color="#FFFFFF" />
         <SolidColorBrush x:Key="DateBarBackgroundBrushB" Color="#DCE6F1" />
+
+        <!--  部署別締切集中度カレンダーの色定義  -->
+        <SolidColorBrush x:Key="CongestionNormal" Color="#FFFFFF" />
+        <SolidColorBrush x:Key="CongestionCaution" Color="#FFE082" />
+        <SolidColorBrush x:Key="CongestionConcentrated" Color="#EF5350" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

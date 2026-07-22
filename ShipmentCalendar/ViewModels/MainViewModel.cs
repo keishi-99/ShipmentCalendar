@@ -24,12 +24,9 @@ public partial class MainViewModel : ObservableObject {
 
     // 全件キャッシュ（フィルター用）
     private List<Order> _allOrders = [];
-    // 機種コード登録マスタで「製品」に区分された機種コード一覧（フィルター用）
-    private HashSet<string> _productModelCodes = new(StringComparer.OrdinalIgnoreCase);
-    // 機種コード登録マスタで「半製品」に区分された機種コード一覧（フィルター用）
-    private HashSet<string> _semiProductModelCodes = new(StringComparer.OrdinalIgnoreCase);
-    // 工程設定（ProcessDefinitions）に登録済みの品目番号セット（フィルター用）
-    private HashSet<string> _registeredItemNumbers = new(StringComparer.OrdinalIgnoreCase);
+    // 製品/半製品区分の判定（フィルター・部署別締切集中度で共有）
+    private ProductCategoryClassifier _categoryClassifier = new([], [], []);
+    public ProductCategoryClassifier CategoryClassifier => _categoryClassifier;
     // 最終更新日時
     private DateTime? _lastLoaded;
 
@@ -194,6 +191,9 @@ public partial class MainViewModel : ObservableObject {
     private void OpenProductPerformance() => _dialogService.ShowProductPerformance(Settings);
 
     [RelayCommand]
+    private void OpenDepartmentLoad() => _dialogService.ShowDepartmentLoad(Orders, Settings);
+
+    [RelayCommand]
     private void OpenDisplaySettings() {
         if (PreviewTarget is null) return;
         _dialogService.ShowDisplaySettings(this, PreviewTarget);
@@ -271,13 +271,13 @@ public partial class MainViewModel : ObservableObject {
 
         // 製品/半製品/どちらでもないフィルター（機種コード登録マスタの区分で判定）
         if (FilterProductCategory == "製品")
-            result = result.Where(o => _productModelCodes.Contains(o.ModelCode));
+            result = result.Where(o => _categoryClassifier.Classify(o) == ProductCategoryClassifier.Product);
         else if (FilterProductCategory == "半製品")
-            result = result.Where(o => _semiProductModelCodes.Contains(o.ModelCode));
+            result = result.Where(o => _categoryClassifier.Classify(o) == ProductCategoryClassifier.SemiProduct);
         else if (FilterProductCategory == "半製品（工程未登録）")
-            result = result.Where(o => _semiProductModelCodes.Contains(o.ModelCode) && !_registeredItemNumbers.Contains(o.ItemNumber));
+            result = result.Where(o => _categoryClassifier.IsUnregisteredSemiProduct(o));
         else if (FilterProductCategory == "どちらでもない")
-            result = result.Where(o => !_productModelCodes.Contains(o.ModelCode) && !_semiProductModelCodes.Contains(o.ModelCode));
+            result = result.Where(o => _categoryClassifier.Classify(o) == ProductCategoryClassifier.Other);
 
         // 担当部署フィルター：未完了工程のうち SortOrder 最小のものが選択部署の行のみ表示
         if (FilterDepartmentId > 0) {
@@ -507,13 +507,11 @@ public partial class MainViewModel : ObservableObject {
             _allOrders = orders.OrderBy(o => o.DeliveryDate).ToList();
 
             var modelCodes = await _modelCodeRepository.GetAllAsync();
-            _productModelCodes = new HashSet<string>(
-                modelCodes.Where(m => m.Category == "製品").Select(m => m.ModelCode), StringComparer.OrdinalIgnoreCase);
-            _semiProductModelCodes = new HashSet<string>(
-                modelCodes.Where(m => m.Category == "半製品").Select(m => m.ModelCode), StringComparer.OrdinalIgnoreCase);
-
             var registeredNumbers = await _processDefinitionRepository.GetItemNumbersAsync();
-            _registeredItemNumbers = new HashSet<string>(registeredNumbers, StringComparer.OrdinalIgnoreCase);
+            _categoryClassifier = new ProductCategoryClassifier(
+                modelCodes.Where(m => m.Category == "製品").Select(m => m.ModelCode),
+                modelCodes.Where(m => m.Category == "半製品").Select(m => m.ModelCode),
+                registeredNumbers);
 
             // 部署フィルターボタンリストを更新
             await RefreshDepartmentFiltersAsync();

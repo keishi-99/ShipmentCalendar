@@ -1,4 +1,4 @@
+language: ja-JP
 reviews:
-  language: ja-JP
   auto_review:
     enabled: false

@@ -64,6 +64,11 @@ public class AppSettings
 
     /// <summary>ODBC接続設定が入力済みか</summary>
     public bool IsOdbcConfigured => !string.IsNullOrEmpty(OdbcDsn);
+
+    /// <summary>部署別締切集中度カレンダーで「やや集中」と判定する合計必要時間（分）のしきい値</summary>
+    public double CongestionCautionMinutes { get; set; } = 500;
+    /// <summary>部署別締切集中度カレンダーで「集中」と判定する合計必要時間（分）のしきい値</summary>
+    public double CongestionConcentratedMinutes { get; set; } = 1000;
 }
 
 /// <summary>注文一覧の並び順</summary>
