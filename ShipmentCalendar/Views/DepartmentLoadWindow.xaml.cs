@@ -31,6 +31,7 @@ public partial class DepartmentLoadWindow : Window {
     private void BtnApplyThreshold_Click(object sender, RoutedEventArgs e) {
         if (!double.TryParse(TxtCautionMinutes.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out var caution)
             || !double.TryParse(TxtConcentratedMinutes.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out var concentrated)
+            || !double.IsFinite(caution) || !double.IsFinite(concentrated)
             || caution < 0 || concentrated <= caution) {
             MessageBox.Show("集中の分数は、やや集中の分数より大きい0以上の数値で入力してください。", "入力エラー", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;

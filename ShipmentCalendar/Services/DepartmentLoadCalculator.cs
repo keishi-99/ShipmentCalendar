@@ -49,6 +49,7 @@ public static class DepartmentLoadCalculator {
     /// 部署のキャパシティ（人員・稼働時間）は流動的で固定値を持てないため、絶対的な「稼働率」ではなく
     /// 相対的な閾値で「やや集中／集中」を判定する。閾値はウィンドウ上で現場の肌感覚に合わせて調整できる</summary>
     private static CongestionLevel DetermineCongestionLevel(double totalMinutes, double cautionMinutes, double concentratedMinutes) {
+        if (totalMinutes <= 0) return CongestionLevel.Normal;
         if (totalMinutes >= concentratedMinutes) return CongestionLevel.Concentrated;
         if (totalMinutes >= cautionMinutes) return CongestionLevel.Caution;
         return CongestionLevel.Normal;

@@ -31,5 +31,5 @@ public class ProductCategoryClassifier {
     }
 
     public bool IsUnregisteredSemiProduct(Order order) =>
-        _semiProductModelCodes.Contains(order.ModelCode) && !_registeredItemNumbers.Contains(order.ItemNumber);
+        Classify(order) == SemiProduct && !_registeredItemNumbers.Contains(order.ItemNumber);
 }
