@@ -295,6 +295,12 @@
                                 <iconPacks:PackIconMaterial Kind="ChartLine" />
                             </Fluent:Button.Icon>
                         </Fluent:Button>
+                        <Fluent:Button Command="{Binding OpenDepartmentLoadCommand}" Header="締切集中度" SizeDefinition="Middle,Middle,Small" Style="{StaticResource RibbonWhiteForegroundButtonStyle}"
+                                       ToolTip="部署別・日別の締切集中度を表示する（前倒し着手をしなければその日に締切を迎える作業の目安）">
+                            <Fluent:Button.Icon>
+                                <iconPacks:PackIconMaterial Kind="ChartTimelineVariant" />
+                            </Fluent:Button.Icon>
+                        </Fluent:Button>
                     </Fluent:RibbonGroupBox>
                 </Fluent:RibbonTabItem>
             </Fluent:Ribbon>
