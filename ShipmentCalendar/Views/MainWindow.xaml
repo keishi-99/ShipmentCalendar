@@ -360,12 +360,25 @@
                     BorderThickness="0"
                     Command="{Binding ClearDeliveryDateRangeFilterCommand}"
                     ToolTip="出荷日の範囲をクリア">
-                    <Button.Visibility>
-                        <MultiBinding Converter="{StaticResource AnyValueSetToVisibility}">
-                            <Binding Path="FilterDeliveryFrom" />
-                            <Binding Path="FilterDeliveryTo" />
-                        </MultiBinding>
-                    </Button.Visibility>
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Visibility">
+                                <Setter.Value>
+                                    <MultiBinding Converter="{StaticResource AnyValueSetToVisibility}">
+                                        <Binding Path="FilterDeliveryFrom" />
+                                        <Binding Path="FilterDeliveryTo" />
+                                    </MultiBinding>
+                                </Setter.Value>
+                            </Setter>
+                            <Style.Triggers>
+                                <!--  本日のみ選択中はDatePickerがロックされているため、クリアボタンも操作対象から外す。
+                                      Collapsedだと横並びの他コントロールが詰まって左にずれるため、幅を保持するHiddenにする  -->
+                                <DataTrigger Binding="{Binding FilterTodayOnly}" Value="True">
+                                    <Setter Property="Visibility" Value="Hidden" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
                     <iconPacks:PackIconMaterial
                         Width="12"
                         Height="12"
