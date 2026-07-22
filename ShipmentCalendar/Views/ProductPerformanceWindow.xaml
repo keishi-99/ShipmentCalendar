@@ -131,7 +131,20 @@
                     <ItemsControl ItemsSource="{Binding Lanes}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Grid Margin="0,0,0,6">
+                                <!--  合計レーンは通常の工程レーンと区別するため、上に区切り線を入れて余白を広げる  -->
+                                <Border Margin="0,0,0,6">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsTotal}" Value="True">
+                                                    <Setter Property="BorderBrush" Value="#CCCCCC" />
+                                                    <Setter Property="BorderThickness" Value="0,1,0,0" />
+                                                    <Setter Property="Padding" Value="0,6,0,0" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="90" />
                                         <ColumnDefinition Width="*" />
@@ -142,7 +155,17 @@
                                         FontSize="11"
                                         Text="{Binding ProcessName}"
                                         TextTrimming="CharacterEllipsis"
-                                        ToolTip="{Binding ProcessName}" />
+                                        ToolTip="{Binding ProcessName}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsTotal}" Value="True">
+                                                        <Setter Property="FontWeight" Value="Bold" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                     <!--  標準を固定長の背景バーとして表現し、実績をその上に重ねる（標準以内は通常色、超過分は警告色）。
                                           ラベルはバーと同じセルに重ね、固定オフセットで配置することで、実績が標準を超えて
                                           バーが伸びてもラベルの位置がズレないようにする  -->
@@ -182,6 +205,7 @@
                                         </StackPanel>
                                     </Grid>
                                 </Grid>
+                                </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
