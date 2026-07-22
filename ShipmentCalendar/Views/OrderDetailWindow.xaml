@@ -126,7 +126,7 @@
                     Grid.Row="2"
                     Grid.Column="3"
                     Style="{StaticResource HeaderLabel}"
-                    Text="出荷日 / 完了日" />
+                    Text="出荷日 / 完了期限日" />
                 <TextBlock Grid.Row="3" Grid.Column="3" Style="{StaticResource ValueLabel}">
                     <TextBlock.Text>
                         <MultiBinding StringFormat="{}{0:yyyy/MM/dd} / {1:yyyy/MM/dd}">
@@ -268,7 +268,7 @@
                 <DataGridTextColumn
                     Width="90"
                     Binding="{Binding ActualDate, StringFormat=yyyy/MM/dd}"
-                    Header="実完了日" />
+                    Header="受入日" />
                 <DataGridTextColumn
                     Width="90"
                     Binding="{Binding WorkerName}"

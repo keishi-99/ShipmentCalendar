@@ -118,9 +118,9 @@ public partial class MainViewModel : ObservableObject {
 
     /// <summary>並び順コンボボックスの選択肢（ItemsSource用）</summary>
     public ObservableCollection<MenuOption<SortMode>> SortModeItems { get; } = [
-        new("出荷日",   SortMode.DeliveryDate),
-        new("完了日",   SortMode.CompletionDate),
-        new("工程期限", SortMode.ProcessDeadline),
+        new("出荷日",     SortMode.DeliveryDate),
+        new("完了期限日", SortMode.CompletionDate),
+        new("工程期限",   SortMode.ProcessDeadline),
     ];
 
     public SortMode SelectedSortMode {

@@ -30,7 +30,7 @@ public class AppSettings
 
     /// <summary>メイン画面の「出荷日」列を表示するか</summary>
     public bool ShowColumnDeliveryDate { get; set; } = true;
-    /// <summary>メイン画面の「完了日」列を表示するか</summary>
+    /// <summary>メイン画面の「完了期限日」列を表示するか</summary>
     public bool ShowColumnCompletionDate { get; set; } = true;
     /// <summary>メイン画面の「品目番号」列を表示するか</summary>
     public bool ShowColumnItemNumber { get; set; } = true;

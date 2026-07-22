@@ -610,7 +610,7 @@
                         Width="100"
                         Binding="{Binding CompletionDate, StringFormat=yyyy/MM/dd}"
                         ElementStyle="{StaticResource FixedColumnCellStyle}"
-                        Header="完了日" />
+                        Header="完了期限日" />
                     <DataGridTextColumn
                         x:Name="ColItemNumber"
                         Width="150"
