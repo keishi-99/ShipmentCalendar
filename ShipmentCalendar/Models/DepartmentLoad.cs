@@ -9,11 +9,25 @@ public class DepartmentLoadCell
     /// <summary>上記工程の必要時間（分）合計</summary>
     public double TotalMinutes { get; init; }
     public CongestionLevel Level { get; init; }
+    /// <summary>このセルの集計元になった注文・工程（ドリルダウン表示用）</summary>
+    public List<DepartmentLoadCellItem> Items { get; init; } = [];
 
     public string DisplayText => ProcessCount == 0 ? string.Empty : $"{ProcessCount}件\n{TotalMinutes / 60.0:F1}h";
     public string Tooltip => ProcessCount == 0
         ? string.Empty
-        : $"{Date:M/d} 件数:{ProcessCount}　合計必要時間:{TotalMinutes / 60.0:F1}h";
+        : $"{Date:M/d} 件数:{ProcessCount}　合計必要時間:{TotalMinutes / 60.0:F1}h（ダブルクリックで詳細）";
+}
+
+/// <summary>締切集中度セルの集計元になった注文・工程（ドリルダウン一覧の1行分）</summary>
+public class DepartmentLoadCellItem
+{
+    public required Order Order { get; init; }
+    public required OrderProcess Process { get; init; }
+
+    public string ManufactureNumber => Order.ManufactureNumber;
+    public string ProductName => Order.ProductName;
+    public string ProcessName => Process.ProcessName;
+    public string RequiredTimeText => $"{Process.RequiredMinutes / 60.0:F1}h";
 }
 
 /// <summary>部署別締切集中度カレンダーの1部署分の行（同一Windowで表示する全行はCellsのインデックスを共有する）</summary>
