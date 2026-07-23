@@ -11,10 +11,13 @@ public static class DepartmentLoadCalculator {
         IEnumerable<Order> orders, IEnumerable<Department> departments,
         double cautionMinutes, double concentratedMinutes) {
         var grouped = orders
-            .SelectMany(o => o.Processes)
-            .Where(p => p.Status != ProcessStatus.Completed)
-            .GroupBy(p => (p.DepartmentId, p.DueDate))
-            .ToDictionary(g => g.Key, g => (Count: g.Count(), Minutes: g.Sum(p => p.RequiredMinutes)));
+            .SelectMany(o => o.Processes.Select(p => (Order: o, Process: p)))
+            .Where(x => x.Process.Status != ProcessStatus.Completed)
+            .GroupBy(x => (x.Process.DepartmentId, x.Process.DueDate))
+            .ToDictionary(g => g.Key, g => (
+                Count: g.Count(),
+                Minutes: g.Sum(x => x.Process.RequiredMinutes),
+                Items: g.Select(x => new DepartmentLoadCellItem { Order = x.Order, Process = x.Process }).ToList()));
 
         if (grouped.Count == 0) return [];
 
@@ -37,6 +40,7 @@ public static class DepartmentLoadCalculator {
                     Date = date,
                     ProcessCount = agg.Count,
                     TotalMinutes = agg.Minutes,
+                    Items = agg.Items ?? [],
                     Level = DetermineCongestionLevel(agg.Minutes, cautionMinutes, concentratedMinutes)
                 };
             }).ToList();

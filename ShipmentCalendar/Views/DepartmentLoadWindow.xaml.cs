@@ -4,8 +4,11 @@ using ShipmentCalendar.Services;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Media;
+using Media3D = System.Windows.Media.Media3D;
 
 namespace ShipmentCalendar.Views;
 
@@ -61,12 +64,25 @@ public partial class DepartmentLoadWindow : Window {
         LoadGrid.ItemsSource = rows;
     }
 
-    private static DataGridTemplateColumn BuildDateColumn(DateOnly date, int index) {
+    private DataGridTemplateColumn BuildDateColumn(DateOnly date, int index) {
+        var isToday = date == DateOnly.FromDateTime(DateTime.Today);
         var column = new DataGridTemplateColumn { Header = date.ToString("M/d"), Width = 64 };
 
+        if (isToday) {
+            // BasedOnを指定しないとテーマの既定スタイル(Template)を引き継げず、ヘッダーが空白になるため明示的に継承する
+            var baseHeaderStyle = (Style)Application.Current.FindResource(typeof(DataGridColumnHeader));
+            var headerStyle = new Style(typeof(DataGridColumnHeader), baseHeaderStyle);
+            headerStyle.Setters.Add(new Setter(Control.BackgroundProperty, (Brush)Application.Current.Resources["AccentColor"]));
+            headerStyle.Setters.Add(new Setter(Control.ForegroundProperty, Brushes.White));
+            headerStyle.Setters.Add(new Setter(Control.FontWeightProperty, FontWeights.Bold));
+            column.HeaderStyle = headerStyle;
+        }
+
         var borderFactory = new FrameworkElementFactory(typeof(Border));
-        borderFactory.SetValue(Border.BorderBrushProperty, new SolidColorBrush(Color.FromRgb(0xDD, 0xDD, 0xDD)));
-        borderFactory.SetValue(Border.BorderThicknessProperty, new Thickness(0, 0, 1, 0));
+        borderFactory.SetValue(Border.BorderBrushProperty, isToday
+            ? (Brush)Application.Current.Resources["AccentColor"]
+            : new SolidColorBrush(Color.FromRgb(0xDD, 0xDD, 0xDD)));
+        borderFactory.SetValue(Border.BorderThicknessProperty, isToday ? new Thickness(2, 0, 2, 0) : new Thickness(0, 0, 1, 0));
         borderFactory.SetBinding(Border.BackgroundProperty, new Binding($"Cells[{index}].Level") { Converter = new CongestionLevelToBrushConverter() });
         borderFactory.SetBinding(FrameworkElement.ToolTipProperty, new Binding($"Cells[{index}].Tooltip"));
 
@@ -79,9 +95,50 @@ public partial class DepartmentLoadWindow : Window {
         textFactory.SetBinding(TextBlock.TextProperty, new Binding($"Cells[{index}].DisplayText"));
         borderFactory.AppendChild(textFactory);
 
+        // ダブルクリックで、このセルの集計元になった注文一覧をポップアップ表示する
+        borderFactory.AddHandler(MouseLeftButtonDownEvent, new MouseButtonEventHandler((sender, e) => {
+            if (e.ClickCount != 2) return;
+            if (sender is not FrameworkElement { DataContext: DepartmentLoadRow row } target) return;
+            ShowCellDetail(row.Cells[index], target);
+        }));
+
         var template = new DataTemplate { VisualTree = borderFactory };
         column.CellTemplate = template;
         return column;
+    }
+
+    private void ShowCellDetail(DepartmentLoadCell cell, FrameworkElement target) {
+        if (cell.Items.Count == 0) return;
+        TxtPopupTitle.Text = $"{cell.Date:M/d}　{cell.ProcessCount}件";
+        CellDetailList.ItemsSource = cell.Items;
+        CellDetailPopup.PlacementTarget = target;
+        CellDetailPopup.IsOpen = true;
+    }
+
+    // StaysOpen=Falseだと、ポップアップを開いたダブルクリック自身のMouseUpが「外側クリック」と
+    // 誤認されて即閉じてしまうため、StaysOpen=Trueにして次の新しいMouseDownでのみ閉じるようにする
+    private void Window_PreviewMouseDown(object sender, MouseButtonEventArgs e) {
+        if (!CellDetailPopup.IsOpen) return;
+        if (CellDetailPopup.Child is FrameworkElement content && e.OriginalSource is DependencyObject source && IsDescendant(source, content)) return;
+        CellDetailPopup.IsOpen = false;
+    }
+
+    private static bool IsDescendant(DependencyObject? element, DependencyObject ancestor) {
+        while (element != null) {
+            if (ReferenceEquals(element, ancestor)) return true;
+            // Run等のTextElementはVisualTreeHelperの対象外（Visual/Visual3Dではない）で渡すと例外になるため、
+            // 論理ツリー経由で辿ってからVisualTreeHelperに戻す
+            element = element is Visual or Media3D.Visual3D
+                ? VisualTreeHelper.GetParent(element)
+                : LogicalTreeHelper.GetParent(element);
+        }
+        return false;
+    }
+
+    private void CellDetailList_MouseDoubleClick(object sender, MouseButtonEventArgs e) {
+        if (CellDetailList.SelectedItem is not DepartmentLoadCellItem item) return;
+        CellDetailPopup.IsOpen = false;
+        new OrderDetailWindow(item.Order, _settings.ShowRequiredTimeInMinutes, _settings.DayMinutes) { Owner = this }.ShowDialog();
     }
 }
 
