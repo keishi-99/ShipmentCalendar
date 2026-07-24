@@ -690,7 +690,7 @@
                         Header="品目番号" />
                     <DataGridTextColumn
                         x:Name="ColModelCode"
-                        Width="100"
+                        Width="60"
                         Binding="{Binding ModelCode}"
                         ElementStyle="{StaticResource FixedColumnCellStyle}"
                         Header="機種コード" />
@@ -708,7 +708,7 @@
                         Header="製番" />
                     <DataGridTextColumn
                         x:Name="ColPlannedQuantity"
-                        Width="70"
+                        Width="45"
                         Binding="{Binding PlannedQuantity}"
                         ElementStyle="{StaticResource FixedColumnCellStyle}"
                         Header="計画数" />
