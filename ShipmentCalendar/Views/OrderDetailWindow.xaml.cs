@@ -20,6 +20,13 @@ public partial class OrderDetailWindow : Window {
         DetailProcessBar.ShowRequiredTimeInMinutes = showRequiredTimeInMinutes;
         DetailProcessBar.DayMinutes = dayMinutes;
         LaneList.ItemsSource = BuildLanes(order.Processes);
+
+        // レーン表示の各工程・合計は作業時間ベース（滞留・外注待ちを含まない）だが、
+        // ここでは工程バーが視覚的に示している実際のリードタイム（滞留・外注込み）を数値でも確認できるようにする
+        var totalLeadMinutes = order.Processes.Sum(p => p.RequiredMinutes + p.DwellTimeMinutes + p.OutsourceLeadDays * dayMinutes);
+        TxtTotalLeadTime.Text = showRequiredTimeInMinutes
+            ? $"合計所要時間（滞留・外注込み）: {totalLeadMinutes:F0}分"
+            : $"合計所要時間（滞留・外注込み）: {totalLeadMinutes / 60.0:F1}h";
         Loaded += async (_, _) => await LoadProcessRowsAsync();
     }
 
