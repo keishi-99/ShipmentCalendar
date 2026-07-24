@@ -175,6 +175,8 @@
                                             Height="16"
                                             HorizontalAlignment="Left"
                                             Background="#DCE3EC"
+                                            BorderBrush="#9AB0CC"
+                                            BorderThickness="1"
                                             ToolTip="{Binding StandardMinutes, StringFormat='標準 {0:F1}分'}" />
                                         <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
                                             <Border
@@ -194,14 +196,43 @@
                                             VerticalAlignment="Center"
                                             Orientation="Horizontal">
                                             <TextBlock
+                                                Width="48"
                                                 FontSize="10"
                                                 FontWeight="SemiBold"
                                                 Foreground="{Binding ActualTextBrush}"
-                                                Text="{Binding ActualMinutesText}" />
+                                                Text="{Binding ActualMinutesText}"
+                                                TextAlignment="Right" />
                                             <TextBlock
                                                 FontSize="10"
                                                 Foreground="#666666"
-                                                Text="{Binding StandardComparisonText}" />
+                                                Text=" / " />
+                                            <TextBlock
+                                                Width="48"
+                                                FontSize="10"
+                                                Foreground="#666666"
+                                                Text="{Binding StandardMinutesText}"
+                                                TextAlignment="Right" />
+                                            <TextBlock
+                                                Width="60"
+                                                Margin="4,0,0,0"
+                                                FontSize="10"
+                                                Foreground="{Binding ActualTextBrush}"
+                                                Text="{Binding DifferenceText}"
+                                                TextAlignment="Right" />
+                                            <TextBlock
+                                                FontSize="10"
+                                                Foreground="{Binding ActualTextBrush}"
+                                                Text="{Binding PercentageSeparatorText}" />
+                                            <TextBlock
+                                                Width="40"
+                                                FontSize="10"
+                                                Foreground="{Binding ActualTextBrush}"
+                                                Text="{Binding PercentageText}"
+                                                TextAlignment="Right" />
+                                            <TextBlock
+                                                FontSize="10"
+                                                Foreground="{Binding ActualTextBrush}"
+                                                Text=")" />
                                         </StackPanel>
                                     </Grid>
                                 </Grid>
@@ -370,7 +401,7 @@
                 HeadersVisibility="Column"
                 IsReadOnly="True"
                 MouseDoubleClick="MatrixGrid_MouseDoubleClick"
-                RowHeight="24"
+                RowHeight="28"
                 SelectionMode="Single"
                 ToolTip="ダブルクリックで注文詳細を表示"
                 Visibility="Collapsed" />
