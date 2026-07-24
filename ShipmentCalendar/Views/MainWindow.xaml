@@ -2,10 +2,10 @@
     x:Class="ShipmentCalendar.Views.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:models="clr-namespace:ShipmentCalendar.Models"
-    xmlns:views="clr-namespace:ShipmentCalendar.Views"
     xmlns:Fluent="clr-namespace:Fluent;assembly=Fluent"
     xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
+    xmlns:models="clr-namespace:ShipmentCalendar.Models"
+    xmlns:views="clr-namespace:ShipmentCalendar.Views"
     Title="出荷カレンダー"
     Width="1500"
     Height="700"
@@ -17,7 +17,10 @@
             スタイルのホバー時トリガーより優先されてしまい、ホバー時に背景が明るくなっても文字が白のまま
             残り視認性が落ちるため、Setterで指定してトリガーが上書きできるようにする
         -->
-        <Style x:Key="RibbonWhiteForegroundButtonStyle" BasedOn="{StaticResource {x:Type Fluent:Button}}" TargetType="{x:Type Fluent:Button}">
+        <Style
+            x:Key="RibbonWhiteForegroundButtonStyle"
+            BasedOn="{StaticResource {x:Type Fluent:Button}}"
+            TargetType="{x:Type Fluent:Button}">
             <Setter Property="Foreground" Value="White" />
             <!--  リボンを折りたたんだ状態から一時表示している時、クリックでリボンごと閉じてしまわないようにする  -->
             <Setter Property="IsDefinitive" Value="False" />
@@ -33,13 +36,30 @@
         <views:InverseBooleanConverter x:Key="InverseBool" />
         <views:StringEmptyToVisibilityConverter x:Key="StringEmptyToVisibility" />
         <views:AnyValueSetToVisibilityConverter x:Key="AnyValueSetToVisibility" />
-        <!--  固定列のセル内テキストを縦中央に揃えるスタイル  -->
+        <!--  固定列のセル内テキストを縦中央に揃え、はみ出した場合は「...」で省略するスタイル  -->
         <Style x:Key="FixedColumnCellStyle" TargetType="TextBlock">
             <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+
+        <!--
+            品目名列は他の固定列より内容が長くなりやすいため、省略時にツールチップで全文を確認できるようにする。
+            GridLinesVisibility="Horizontal"で縦罫線がなく、文字列が列幅いっぱいになると次の列との境目が
+            分かりにくくなるため、右側にPaddingで余白を設ける
+        -->
+        <Style
+            x:Key="ProductNameCellStyle"
+            BasedOn="{StaticResource FixedColumnCellStyle}"
+            TargetType="TextBlock">
+            <Setter Property="ToolTip" Value="{Binding ProductName}" />
+            <Setter Property="Padding" Value="0,0,12,0" />
         </Style>
 
         <!--  表示列ドロップダウンを他のコンボボックスと同じ白背景・枠線の見た目に揃えるスタイル  -->
-        <Style x:Key="ColumnVisibilityDropDownStyle" BasedOn="{StaticResource Fluent.Ribbon.Styles.RibbonDropDownButton}" TargetType="{x:Type Fluent:DropDownButton}">
+        <Style
+            x:Key="ColumnVisibilityDropDownStyle"
+            BasedOn="{StaticResource Fluent.Ribbon.Styles.RibbonDropDownButton}"
+            TargetType="{x:Type Fluent:DropDownButton}">
             <Setter Property="Background" Value="{DynamicResource Fluent.Ribbon.Brushes.TextBox.Background}" />
             <Setter Property="BorderBrush" Value="{DynamicResource Fluent.Ribbon.Brushes.TextBox.Border}" />
             <Setter Property="BorderThickness" Value="1" />
@@ -51,7 +71,10 @@
             DynamicResourceで固定しておりBackgroundプロパティを無視するため、Tagに設定した色をトリガーで反映する
             独自テンプレートに差し替える（Tag=各ボタンごとの強調色、TemplatedParent経由で参照）
         -->
-        <Style x:Key="QuickFilterToggleButtonStyle" BasedOn="{StaticResource Fluent.Ribbon.Styles.RibbonToggleButton}" TargetType="{x:Type Fluent:ToggleButton}">
+        <Style
+            x:Key="QuickFilterToggleButtonStyle"
+            BasedOn="{StaticResource Fluent.Ribbon.Styles.RibbonToggleButton}"
+            TargetType="{x:Type Fluent:ToggleButton}">
             <Setter Property="Background" Value="#F0F0F0" />
             <Setter Property="BorderBrush" Value="#D0D0D0" />
             <Setter Property="BorderThickness" Value="1" />
@@ -70,7 +93,11 @@
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="4">
-                            <StackPanel x:Name="stackPanel" Margin="{TemplateBinding Padding}" Orientation="Vertical" VerticalAlignment="Center">
+                            <StackPanel
+                                x:Name="stackPanel"
+                                Margin="{TemplateBinding Padding}"
+                                VerticalAlignment="Center"
+                                Orientation="Vertical">
                                 <Fluent:IconPresenter
                                     x:Name="iconImage"
                                     Margin="0,2,0,0"
@@ -133,14 +160,17 @@
     <Grid>
         <DockPanel>
             <!--  リボン  -->
-            <Fluent:Ribbon ContentHeight="48" DockPanel.Dock="Top" IsQuickAccessToolBarVisible="False">
+            <Fluent:Ribbon
+                ContentHeight="48"
+                DockPanel.Dock="Top"
+                IsQuickAccessToolBarVisible="False">
                 <!--  ホームタブ：並び替え・期限表示・工程表示・フィルター系  -->
                 <Fluent:RibbonTabItem Header="ホーム">
                     <Fluent:RibbonGroupBox Header="並べ替え">
                         <Fluent:ComboBox
-                            Foreground="Black"
-                            DisplayMemberPath="Label"
                             Fluent:InputControlProperties.InputWidth="70"
+                            DisplayMemberPath="Label"
+                            Foreground="Black"
                             IsEditable="False"
                             ItemsSource="{Binding SortModeItems}"
                             SelectedValue="{Binding SelectedSortMode}"
@@ -150,9 +180,9 @@
 
                     <Fluent:RibbonGroupBox Header="期限表示">
                         <Fluent:ComboBox
-                            Foreground="Black"
-                            DisplayMemberPath="Label"
                             Fluent:InputControlProperties.InputWidth="75"
+                            DisplayMemberPath="Label"
+                            Foreground="Black"
                             IsEditable="False"
                             ItemsSource="{Binding DueDateDisplayItems}"
                             SelectedValue="{Binding SelectedDueDateDisplay}"
@@ -162,9 +192,9 @@
 
                     <Fluent:RibbonGroupBox Header="工程表示">
                         <Fluent:ComboBox
-                            Foreground="Black"
-                            DisplayMemberPath="Label"
                             Fluent:InputControlProperties.InputWidth="50"
+                            DisplayMemberPath="Label"
+                            Foreground="Black"
                             IsEditable="False"
                             ItemsSource="{Binding ProcessModeItems}"
                             SelectedValue="{Binding SelectedProcessMode}"
@@ -174,9 +204,9 @@
 
                     <Fluent:RibbonGroupBox Header="次工程部署">
                         <Fluent:ComboBox
-                            Foreground="Black"
-                            DisplayMemberPath="Name"
                             Fluent:InputControlProperties.InputWidth="90"
+                            DisplayMemberPath="Name"
+                            Foreground="Black"
                             IsEditable="False"
                             ItemsSource="{Binding DepartmentFilters}"
                             SelectedValue="{Binding FilterDepartmentId}"
@@ -187,8 +217,8 @@
 
                     <Fluent:RibbonGroupBox Header="区分">
                         <Fluent:ComboBox
-                            Foreground="Black"
                             Fluent:InputControlProperties.InputWidth="90"
+                            Foreground="Black"
                             IsEditable="False"
                             ItemsSource="{Binding ProductCategoryOptions}"
                             SelectedItem="{Binding FilterProductCategory}"
@@ -241,7 +271,12 @@
                     </Fluent:RibbonGroupBox>
 
                     <Fluent:RibbonGroupBox Header="表示列">
-                        <Fluent:DropDownButton Header="表示列" ItemsSource="{Binding ColumnVisibilityItems, RelativeSource={RelativeSource AncestorType=Window}}" SizeDefinition="Middle,Middle,Small" Style="{StaticResource ColumnVisibilityDropDownStyle}" UsesItemContainerTemplate="True">
+                        <Fluent:DropDownButton
+                            Header="表示列"
+                            ItemsSource="{Binding ColumnVisibilityItems, RelativeSource={RelativeSource AncestorType=Window}}"
+                            SizeDefinition="Middle,Middle,Small"
+                            Style="{StaticResource ColumnVisibilityDropDownStyle}"
+                            UsesItemContainerTemplate="True">
                             <Fluent:DropDownButton.Resources>
                                 <ItemContainerTemplate x:Key="{ItemContainerTemplateKey {x:Type views:ColumnVisibilityOption}}">
                                     <Fluent:MenuItem
@@ -259,17 +294,29 @@
                 <!--  設定タブ：各種マスタ・表示設定ダイアログ  -->
                 <Fluent:RibbonTabItem Header="設定">
                     <Fluent:RibbonGroupBox Header="基本">
-                        <Fluent:Button Command="{Binding OpenBasicSettingsCommand}" Header="基本" SizeDefinition="Middle,Middle,Small" Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
+                        <Fluent:Button
+                            Command="{Binding OpenBasicSettingsCommand}"
+                            Header="基本"
+                            SizeDefinition="Middle,Middle,Small"
+                            Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
                             <Fluent:Button.Icon>
                                 <iconPacks:PackIconMaterial Kind="CogOutline" />
                             </Fluent:Button.Icon>
                         </Fluent:Button>
-                        <Fluent:Button Command="{Binding OpenDepartmentSettingCommand}" Header="部署" SizeDefinition="Middle,Middle,Small" Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
+                        <Fluent:Button
+                            Command="{Binding OpenDepartmentSettingCommand}"
+                            Header="部署"
+                            SizeDefinition="Middle,Middle,Small"
+                            Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
                             <Fluent:Button.Icon>
                                 <iconPacks:PackIconMaterial Kind="OfficeBuildingOutline" />
                             </Fluent:Button.Icon>
                         </Fluent:Button>
-                        <Fluent:Button Command="{Binding OpenHolidaySettingCommand}" Header="休日" SizeDefinition="Middle,Middle,Small" Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
+                        <Fluent:Button
+                            Command="{Binding OpenHolidaySettingCommand}"
+                            Header="休日"
+                            SizeDefinition="Middle,Middle,Small"
+                            Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
                             <Fluent:Button.Icon>
                                 <iconPacks:PackIconMaterial Kind="CalendarRemoveOutline" />
                             </Fluent:Button.Icon>
@@ -277,12 +324,20 @@
                     </Fluent:RibbonGroupBox>
 
                     <Fluent:RibbonGroupBox Header="工程">
-                        <Fluent:Button Command="{Binding OpenProcessSettingCommand}" Header="工程" SizeDefinition="Middle,Middle,Small" Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
+                        <Fluent:Button
+                            Command="{Binding OpenProcessSettingCommand}"
+                            Header="工程"
+                            SizeDefinition="Middle,Middle,Small"
+                            Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
                             <Fluent:Button.Icon>
                                 <iconPacks:PackIconMaterial Kind="Routes" />
                             </Fluent:Button.Icon>
                         </Fluent:Button>
-                        <Fluent:Button Command="{Binding OpenDisplaySettingsCommand}" Header="表示" SizeDefinition="Middle,Middle,Small" Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
+                        <Fluent:Button
+                            Command="{Binding OpenDisplaySettingsCommand}"
+                            Header="表示"
+                            SizeDefinition="Middle,Middle,Small"
+                            Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
                             <Fluent:Button.Icon>
                                 <iconPacks:PackIconMaterial Kind="TuneVariant" />
                             </Fluent:Button.Icon>
@@ -290,13 +345,21 @@
                     </Fluent:RibbonGroupBox>
 
                     <Fluent:RibbonGroupBox Header="分析">
-                        <Fluent:Button Command="{Binding OpenProductPerformanceCommand}" Header="実績分析" SizeDefinition="Middle,Middle,Small" Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
+                        <Fluent:Button
+                            Command="{Binding OpenProductPerformanceCommand}"
+                            Header="実績分析"
+                            SizeDefinition="Middle,Middle,Small"
+                            Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
                             <Fluent:Button.Icon>
                                 <iconPacks:PackIconMaterial Kind="ChartLine" />
                             </Fluent:Button.Icon>
                         </Fluent:Button>
-                        <Fluent:Button Command="{Binding OpenDepartmentLoadCommand}" Header="締切集中度" SizeDefinition="Middle,Middle,Small" Style="{StaticResource RibbonWhiteForegroundButtonStyle}"
-                                       ToolTip="部署別・日別の締切集中度を表示する（前倒し着手をしなければその日に締切を迎える作業の目安）">
+                        <Fluent:Button
+                            Command="{Binding OpenDepartmentLoadCommand}"
+                            Header="締切集中度"
+                            SizeDefinition="Middle,Middle,Small"
+                            Style="{StaticResource RibbonWhiteForegroundButtonStyle}"
+                            ToolTip="部署別・日別の締切集中度を表示する（前倒し着手をしなければその日に締切を迎える作業の目安）">
                             <Fluent:Button.Icon>
                                 <iconPacks:PackIconMaterial Kind="ChartTimelineVariant" />
                             </Fluent:Button.Icon>
@@ -378,8 +441,10 @@
                                 </Setter.Value>
                             </Setter>
                             <Style.Triggers>
-                                <!--  本日のみ選択中はDatePickerがロックされているため、クリアボタンも操作対象から外す。
-                                      Collapsedだと横並びの他コントロールが詰まって左にずれるため、幅を保持するHiddenにする  -->
+                                <!--
+                                    本日のみ選択中はDatePickerがロックされているため、クリアボタンも操作対象から外す。
+                                    Collapsedだと横並びの他コントロールが詰まって左にずれるため、幅を保持するHiddenにする
+                                -->
                                 <DataTrigger Binding="{Binding FilterTodayOnly}" Value="True">
                                     <Setter Property="Visibility" Value="Hidden" />
                                 </DataTrigger>
@@ -634,7 +699,7 @@
                         x:Name="ColProductName"
                         Width="200"
                         Binding="{Binding ProductName}"
-                        ElementStyle="{StaticResource FixedColumnCellStyle}"
+                        ElementStyle="{StaticResource ProductNameCellStyle}"
                         Header="品目名" />
                     <DataGridTextColumn
                         x:Name="ColManufactureNumber"
