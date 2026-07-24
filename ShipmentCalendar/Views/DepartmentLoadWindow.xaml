@@ -14,9 +14,16 @@
                    Text="表示中の注文に未完了工程がありません。" Visibility="Collapsed"/>
 
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,12">
-            <TextBlock Text="やや集中：合計" VerticalAlignment="Center"/>
+            <Border Background="{StaticResource CongestionCaution}" CornerRadius="3" Padding="6,2" Margin="0,0,4,0" VerticalAlignment="Center">
+                <TextBlock Text="やや集中" Foreground="Black"/>
+            </Border>
+            <TextBlock Text="：合計" VerticalAlignment="Center"/>
             <TextBox Name="TxtCautionMinutes" Width="60" Margin="4,0" Padding="2" VerticalContentAlignment="Center"/>
-            <TextBlock Text="分以上　　集中：合計" VerticalAlignment="Center"/>
+            <TextBlock Text="分以上　　" VerticalAlignment="Center"/>
+            <Border Background="{StaticResource CongestionConcentrated}" CornerRadius="3" Padding="6,2" Margin="0,0,4,0" VerticalAlignment="Center">
+                <TextBlock Text="集中" Foreground="Black"/>
+            </Border>
+            <TextBlock Text="：合計" VerticalAlignment="Center"/>
             <TextBox Name="TxtConcentratedMinutes" Width="60" Margin="4,0" Padding="2" VerticalContentAlignment="Center"/>
             <TextBlock Text="分以上" VerticalAlignment="Center" Margin="0,0,12,0"/>
             <Button Content="適用" Padding="12,4" Click="BtnApplyThreshold_Click"/>
@@ -57,6 +64,17 @@
                   AutoGenerateColumns="False" CanUserAddRows="False"
                   IsReadOnly="True" HeadersVisibility="Column"
                   HorizontalScrollBarVisibility="Auto" FrozenColumnCount="1" SelectionUnit="Cell">
+            <!--  セル選択時も非選択時と同じ見た目のままにする（ハイライト無効化）  -->
+            <DataGrid.CellStyle>
+                <Style TargetType="DataGridCell">
+                    <Style.Triggers>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Setter Property="Foreground" Value="Black"/>
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.CellStyle>
             <DataGrid.Columns>
                 <DataGridTextColumn Header="部署" Binding="{Binding DepartmentName}" Width="120"/>
             </DataGrid.Columns>

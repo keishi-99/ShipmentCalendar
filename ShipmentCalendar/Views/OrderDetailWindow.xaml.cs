@@ -74,9 +74,15 @@ public partial class OrderDetailWindow : Window {
             ? $"実績 {ActualMinutes:F1}分 / 標準 {StandardMinutes:F1}分"
             : $"実績 {ActualMinutes:F1}分 / 標準 {StandardMinutes:F1}分\n担当: {WorkerName}";
 
+        // 「/」の位置を行間で揃えるため、数値部分（実績・標準・差分）は固定幅で右寄せにし、区切り文字は別テキストにしている
         public string ActualMinutesText => $"{ActualMinutes:F1}分";
-        public string StandardComparisonText => $" / {StandardMinutes:F1}分";
+        public string StandardMinutesText => $"{StandardMinutes:F1}分";
         public Brush ActualTextBrush => ActualOverflowSize > 0 ? new SolidColorBrush(Color.FromRgb(0x7A, 0x1A, 0x1A)) : Brushes.Black;
+        // 標準時間が長い工程ほどバーの%表示だけでは実質的な超過分（絶対時間）が分かりにくいため、差分・割合をまとめて併記する
+        public double DifferenceMinutes => ActualMinutes - StandardMinutes;
+        public string DifferenceText => $"({(DifferenceMinutes > 0 ? "+" : "")}{DifferenceMinutes:F1}分";
+        public string PercentageSeparatorText => StandardMinutes > 0 ? " / " : "";
+        public string PercentageText => StandardMinutes > 0 ? $"{ActualMinutes / StandardMinutes * 100:F0}%" : "";
     }
 
     // DataGrid行用のラッパー（表示用テキストを付加する）

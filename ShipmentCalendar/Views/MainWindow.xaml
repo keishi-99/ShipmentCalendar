@@ -558,7 +558,6 @@
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
                                 FontSize="11"
-                                Foreground="White"
                                 Text="超過" />
                         </Border>
                         <Border

@@ -384,9 +384,11 @@ public partial class ProductPerformanceWindow : Window {
 
         var backgroundFactory = new FrameworkElementFactory(typeof(Border));
         backgroundFactory.SetValue(FrameworkElement.WidthProperty, LaneBarMaxSize / 2);
-        backgroundFactory.SetValue(FrameworkElement.HeightProperty, 8.0);
+        backgroundFactory.SetValue(FrameworkElement.HeightProperty, 16.0);
         backgroundFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Left);
         backgroundFactory.SetValue(Border.BackgroundProperty, new SolidColorBrush(Color.FromRgb(0xDC, 0xE3, 0xEC)));
+        backgroundFactory.SetValue(Border.BorderBrushProperty, new SolidColorBrush(Color.FromRgb(0x9A, 0xB0, 0xCC)));
+        backgroundFactory.SetValue(Border.BorderThicknessProperty, new Thickness(1));
         backgroundFactory.SetBinding(FrameworkElement.ToolTipProperty, new Binding(nameof(ProcessLane.StandardMinutes)) { StringFormat = "標準 {0:F1}分" });
 
         var overlayFactory = new FrameworkElementFactory(typeof(StackPanel));
@@ -395,41 +397,80 @@ public partial class ProductPerformanceWindow : Window {
 
         var withinFactory = new FrameworkElementFactory(typeof(Border));
         withinFactory.SetBinding(FrameworkElement.WidthProperty, new Binding(nameof(ProcessLane.ActualWithinStandardSize)) { Converter = new HalfSizeConverter() });
-        withinFactory.SetValue(FrameworkElement.HeightProperty, 8.0);
+        withinFactory.SetValue(FrameworkElement.HeightProperty, 16.0);
         withinFactory.SetValue(Border.BackgroundProperty, new SolidColorBrush(Color.FromRgb(0x66, 0x99, 0xCC)));
         withinFactory.SetBinding(FrameworkElement.ToolTipProperty, new Binding(nameof(ProcessLane.ActualTooltip)));
 
         var overflowFactory = new FrameworkElementFactory(typeof(Border));
         overflowFactory.SetBinding(FrameworkElement.WidthProperty, new Binding(nameof(ProcessLane.ActualOverflowSize)) { Converter = new HalfSizeConverter() });
-        overflowFactory.SetValue(FrameworkElement.HeightProperty, 8.0);
+        overflowFactory.SetValue(FrameworkElement.HeightProperty, 16.0);
         overflowFactory.SetValue(Border.BackgroundProperty, new SolidColorBrush(Color.FromArgb(0xB3, 0xD9, 0x53, 0x4F)));
         overflowFactory.SetBinding(FrameworkElement.ToolTipProperty, new Binding(nameof(ProcessLane.ActualTooltip)));
 
         overlayFactory.AppendChild(withinFactory);
         overlayFactory.AppendChild(overflowFactory);
 
-        // ラベルはバーと同じ位置に固定オフセットで重ね、実績が超過してバーが伸びても位置がズレないようにする（レーン表示と同じ考え方）。
-        // オフセットもバーの半分幅（LaneBarMaxSize/2）に合わせて半分にしてある
+        // ラベルはバーの上に直接重ねて表示する（列幅が狭く、バーの右側に並べるとテキストが列からはみ出すため）。
+        // バー自体は薄い色・細い高さ（8px）なので、テキストと重なっても視認性への影響は小さい
         var labelFactory = new FrameworkElementFactory(typeof(StackPanel));
-        labelFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(LaneBarMaxSize / 2 + 5, 0, 0, 0));
+        labelFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(2, 0, 0, 0));
         labelFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Left);
         labelFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
         labelFactory.SetValue(StackPanel.OrientationProperty, Orientation.Horizontal);
 
         var actualTextFactory = new FrameworkElementFactory(typeof(TextBlock));
+        actualTextFactory.SetValue(TextBlock.WidthProperty, 48.0);
+        actualTextFactory.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Right);
         actualTextFactory.SetValue(TextBlock.FontSizeProperty, 10.0);
         actualTextFactory.SetValue(TextBlock.FontWeightProperty, isTotal ? FontWeights.Bold : FontWeights.SemiBold);
         actualTextFactory.SetBinding(TextBlock.ForegroundProperty, new Binding(nameof(ProcessLane.ActualTextBrush)));
         actualTextFactory.SetBinding(TextBlock.TextProperty, new Binding(nameof(ProcessLane.ActualMinutesText)));
 
+        var standardSeparatorFactory = new FrameworkElementFactory(typeof(TextBlock));
+        standardSeparatorFactory.SetValue(TextBlock.FontSizeProperty, 10.0);
+        standardSeparatorFactory.SetValue(TextBlock.ForegroundProperty, new SolidColorBrush(Color.FromRgb(0x66, 0x66, 0x66)));
+        standardSeparatorFactory.SetValue(TextBlock.TextProperty, " / ");
+
         var standardTextFactory = new FrameworkElementFactory(typeof(TextBlock));
+        standardTextFactory.SetValue(TextBlock.WidthProperty, 48.0);
+        standardTextFactory.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Right);
         standardTextFactory.SetValue(TextBlock.FontSizeProperty, 10.0);
         standardTextFactory.SetValue(TextBlock.FontWeightProperty, isTotal ? FontWeights.Bold : FontWeights.Normal);
         standardTextFactory.SetValue(TextBlock.ForegroundProperty, new SolidColorBrush(Color.FromRgb(0x66, 0x66, 0x66)));
-        standardTextFactory.SetBinding(TextBlock.TextProperty, new Binding(nameof(ProcessLane.StandardComparisonText)));
+        standardTextFactory.SetBinding(TextBlock.TextProperty, new Binding(nameof(ProcessLane.StandardMinutesText)));
+
+        var differenceTextFactory = new FrameworkElementFactory(typeof(TextBlock));
+        differenceTextFactory.SetValue(TextBlock.WidthProperty, 60.0);
+        differenceTextFactory.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Right);
+        differenceTextFactory.SetValue(TextBlock.FontSizeProperty, 10.0);
+        differenceTextFactory.SetValue(TextBlock.MarginProperty, new Thickness(4, 0, 0, 0));
+        differenceTextFactory.SetBinding(TextBlock.ForegroundProperty, new Binding(nameof(ProcessLane.ActualTextBrush)));
+        differenceTextFactory.SetBinding(TextBlock.TextProperty, new Binding(nameof(ProcessLane.DifferenceText)));
+
+        var percentageSeparatorFactory = new FrameworkElementFactory(typeof(TextBlock));
+        percentageSeparatorFactory.SetValue(TextBlock.FontSizeProperty, 10.0);
+        percentageSeparatorFactory.SetBinding(TextBlock.ForegroundProperty, new Binding(nameof(ProcessLane.ActualTextBrush)));
+        percentageSeparatorFactory.SetBinding(TextBlock.TextProperty, new Binding(nameof(ProcessLane.PercentageSeparatorText)));
+
+        var percentageTextFactory = new FrameworkElementFactory(typeof(TextBlock));
+        percentageTextFactory.SetValue(TextBlock.WidthProperty, 40.0);
+        percentageTextFactory.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Right);
+        percentageTextFactory.SetValue(TextBlock.FontSizeProperty, 10.0);
+        percentageTextFactory.SetBinding(TextBlock.ForegroundProperty, new Binding(nameof(ProcessLane.ActualTextBrush)));
+        percentageTextFactory.SetBinding(TextBlock.TextProperty, new Binding(nameof(ProcessLane.PercentageText)));
+
+        var percentageSuffixFactory = new FrameworkElementFactory(typeof(TextBlock));
+        percentageSuffixFactory.SetValue(TextBlock.FontSizeProperty, 10.0);
+        percentageSuffixFactory.SetBinding(TextBlock.ForegroundProperty, new Binding(nameof(ProcessLane.ActualTextBrush)));
+        percentageSuffixFactory.SetValue(TextBlock.TextProperty, ")");
 
         labelFactory.AppendChild(actualTextFactory);
+        labelFactory.AppendChild(standardSeparatorFactory);
         labelFactory.AppendChild(standardTextFactory);
+        labelFactory.AppendChild(differenceTextFactory);
+        labelFactory.AppendChild(percentageSeparatorFactory);
+        labelFactory.AppendChild(percentageTextFactory);
+        labelFactory.AppendChild(percentageSuffixFactory);
 
         containerFactory.AppendChild(backgroundFactory);
         containerFactory.AppendChild(overlayFactory);
@@ -486,13 +527,16 @@ public partial class ProductPerformanceWindow : Window {
             ? $"実績 {ActualMinutes:F1}分 / 標準 {StandardMinutes:F1}分"
             : $"実績 {ActualMinutes:F1}分 / 標準 {StandardMinutes:F1}分\n担当: {WorkerName}";
 
+        // 「/」の位置を行間で揃えるため、数値部分（実績・標準・差分）は固定幅で右寄せにし、区切り文字は別テキストにしている
         public string ActualMinutesText => $"{ActualMinutes:F1}分";
-        // 標準工数が0分の場合は比率が定義できないため%は付けない
-        public string StandardComparisonText => StandardMinutes > 0
-            ? $" / {StandardMinutes:F1}分 ({ActualMinutes / StandardMinutes * 100:F0}%)"
-            : $" / {StandardMinutes:F1}分";
+        public string StandardMinutesText => $"{StandardMinutes:F1}分";
         // 標準を超過している場合、実績分数の文字色もバーの超過色（赤系）に合わせる。
         // バー自体は半透明の赤（#B3D9534F）にしているため、文字はそれより濃い暗めの赤にしてコントラストを確保する
         public Brush ActualTextBrush => ActualOverflowSize > 0 ? new SolidColorBrush(Color.FromRgb(0x7A, 0x1A, 0x1A)) : Brushes.Black;
+        // 標準時間が長い工程ほどバーの%表示だけでは実質的な超過分（絶対時間）が分かりにくいため、差分・割合をまとめて併記する
+        public double DifferenceMinutes => ActualMinutes - StandardMinutes;
+        public string DifferenceText => $"({(DifferenceMinutes > 0 ? "+" : "")}{DifferenceMinutes:F1}分";
+        public string PercentageSeparatorText => StandardMinutes > 0 ? " / " : "";
+        public string PercentageText => StandardMinutes > 0 ? $"{ActualMinutes / StandardMinutes * 100:F0}%" : "";
     }
 }
