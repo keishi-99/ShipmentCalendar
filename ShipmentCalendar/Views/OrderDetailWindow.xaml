@@ -153,6 +153,15 @@
                 Checked="ToggleLaneView_Checked"
                 Content="工程別レーン表示"
                 Unchecked="ToggleLaneView_Unchecked" />
+            <!--  レーン表示（滞留・外注を含まない作業時間ベース）とは別の指標として、
+                  滞留時間・外注待ち時間を含めた実際のリードタイムをここに表示する  -->
+            <TextBlock
+                Name="TxtTotalLeadTime"
+                Margin="0,0,12,0"
+                VerticalAlignment="Center"
+                DockPanel.Dock="Right"
+                FontSize="12"
+                Foreground="#666666" />
         </DockPanel>
         <views:ProcessBarControl
             x:Name="DetailProcessBar"
