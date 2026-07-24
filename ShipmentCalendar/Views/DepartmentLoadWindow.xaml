@@ -22,16 +22,9 @@
             <Button Content="適用" Padding="12,4" Click="BtnApplyThreshold_Click"/>
         </StackPanel>
 
-        <DataGrid Name="LoadGrid"
-                  AutoGenerateColumns="False" CanUserAddRows="False"
-                  IsReadOnly="True" HeadersVisibility="Column"
-                  HorizontalScrollBarVisibility="Auto" FrozenColumnCount="1" SelectionUnit="Cell">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="部署" Binding="{Binding DepartmentName}" Width="120"/>
-            </DataGrid.Columns>
-        </DataGrid>
-
         <!--  セルダブルクリック時に該当注文一覧を表示するポップアップ  -->
+        <!--  DockPanelはLastChildFill既定でTrueのため、Popupより後ろにDataGridを置いて
+              DataGridが実質的な最後の子要素（残りスペースを埋める要素）になるようにする  -->
         <Popup Name="CellDetailPopup" StaysOpen="True" AllowsTransparency="True" Placement="Bottom">
             <Border Background="White" BorderBrush="#999999" BorderThickness="1" CornerRadius="4" Padding="8" MaxWidth="320">
                 <Border.Effect>
@@ -59,5 +52,14 @@
                 </StackPanel>
             </Border>
         </Popup>
+
+        <DataGrid Name="LoadGrid"
+                  AutoGenerateColumns="False" CanUserAddRows="False"
+                  IsReadOnly="True" HeadersVisibility="Column"
+                  HorizontalScrollBarVisibility="Auto" FrozenColumnCount="1" SelectionUnit="Cell">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="部署" Binding="{Binding DepartmentName}" Width="120"/>
+            </DataGrid.Columns>
+        </DataGrid>
     </DockPanel>
 </Window>
