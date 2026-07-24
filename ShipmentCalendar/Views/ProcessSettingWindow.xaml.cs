@@ -5,7 +5,9 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Media;
 
 namespace ShipmentCalendar.Views;
 
@@ -41,6 +43,56 @@ public partial class ProcessSettingWindow : Window
     {
         ProcessGrid.Items.SortDescriptions.Clear();
         ProcessGrid.Items.SortDescriptions.Add(new SortDescription(nameof(ProcessDefinition.SortOrder), ListSortDirection.Ascending));
+    }
+
+    /// <summary>保存前に、編集中のセルに不正な値がある場合は保存を中断する
+    /// （不正な入力はモデルに書き込まれないため、気づかず古い値のまま保存されるのを防ぐ）。
+    /// まず確定を試み（有効な入力は保存される）、それでも赤枠（バリデーションエラー）が残っていれば
+    /// ステータスにメッセージを出してtrueを返す（呼び出し側はreturnで中断する）。
+    /// DataGrid.CommitEditの戻り値だけでは判定できない場合があるため、
+    /// 実際に画面上でエラー表示中の要素が残っていないかをビジュアルツリーを辿って直接確認する</summary>
+    private bool HasInvalidPendingEdit()
+    {
+        ProcessGrid.CommitEdit(DataGridEditingUnit.Row, true);
+        if (!HasValidationError(ProcessGrid)) return false;
+
+        const string message = "編集中のセルに不正な値があります。修正するかEscでキャンセルしてください。";
+        TxtStatus.Text = message;
+        MessageBox.Show(message, "入力エラー", MessageBoxButton.OK, MessageBoxImage.Warning);
+        return true;
+    }
+
+    /// <summary>品目切り替え前に、編集中のセルの状態を閉じる。
+    /// ItemsSourceを差し替える前にこれを呼ばないと、編集トランザクションが残ったままとなり
+    /// DataGridが例外を投げるため必須（切り替え先はどのみち別データなので、確定できない入力は破棄してよい）。
+    /// DataGrid.CommitEdit/CancelEditはDataGrid自身の編集状態管理しか閉じないため、
+    /// ItemsSourceの背後にあるICollectionViewの編集/追加トランザクションが残ったままになることがある。
+    /// この状態でItemsSourceを差し替えると、DataGrid内部のSortDescriptionsクリア処理
+    /// （ItemsSource変更時に自動実行される）が例外を投げるため、ICollectionView側も直接閉じておく</summary>
+    private void FinishPendingEdit()
+    {
+        ProcessGrid.CommitEdit(DataGridEditingUnit.Row, true);
+        if (HasValidationError(ProcessGrid))
+            ProcessGrid.CancelEdit(DataGridEditingUnit.Row);
+
+        if (CollectionViewSource.GetDefaultView(ProcessGrid.ItemsSource) is IEditableCollectionView view)
+        {
+            if (view.IsEditingItem) view.CommitEdit();
+            if (view.IsAddingNew) view.CommitNew();
+        }
+    }
+
+    /// <summary>指定した要素以下のビジュアルツリーに、バリデーションエラー状態（赤枠）の要素が含まれるか判定する</summary>
+    private static bool HasValidationError(DependencyObject element)
+    {
+        if (element is FrameworkElement fe && Validation.GetHasError(fe)) return true;
+
+        var childCount = VisualTreeHelper.GetChildrenCount(element);
+        for (var i = 0; i < childCount; i++)
+        {
+            if (HasValidationError(VisualTreeHelper.GetChild(element, i))) return true;
+        }
+        return false;
     }
 
     public ProcessSettingWindow()
@@ -151,6 +203,8 @@ public partial class ProcessSettingWindow : Window
     /// <summary>「一覧から選択」ボタン。検索ボックス付きの一覧から品目番号を選択する</summary>
     private async void BtnSelectItem_Click(object sender, RoutedEventArgs e)
     {
+        FinishPendingEdit();
+
         if (_refreshTask != null)
             await _refreshTask;
 
@@ -294,6 +348,8 @@ public partial class ProcessSettingWindow : Window
     /// </summary>
     private async void BtnImport_Click(object sender, RoutedEventArgs e)
     {
+        FinishPendingEdit();
+
         var itemNumber = TxtItemNumber.Text.Trim();
         if (string.IsNullOrEmpty(itemNumber))
         {
@@ -392,6 +448,8 @@ public partial class ProcessSettingWindow : Window
     /// </summary>
     private async void BtnBulkImport_Click(object sender, RoutedEventArgs e)
     {
+        FinishPendingEdit();
+
         var settings = AppSettingsService.Load();
         if (!settings.IsOdbcConfigured)
         {
@@ -454,6 +512,8 @@ public partial class ProcessSettingWindow : Window
     /// </summary>
     private async void BtnSave_Click(object sender, RoutedEventArgs e)
     {
+        if (HasInvalidPendingEdit()) return;
+
         var itemNumber = TxtItemNumber.Text.Trim();
         if (string.IsNullOrEmpty(itemNumber))
         {
