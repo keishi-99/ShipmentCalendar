@@ -49,7 +49,8 @@ public class SqliteHolidayRepository : IHolidayRepository
         deleteCommand.Parameters.AddWithValue("$year", $"{year}%");
         await deleteCommand.ExecuteNonQueryAsync();
 
-        foreach (var date in dates)
+        // Date列にUNIQUE制約があるため、同一日付が複数渡されると2件目以降の挿入で例外になる
+        foreach (var date in dates.Distinct())
         {
             var insertCommand = connection.CreateCommand();
             insertCommand.Transaction = transaction;

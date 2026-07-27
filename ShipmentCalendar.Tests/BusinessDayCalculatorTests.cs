@@ -37,6 +37,20 @@ public class BusinessDayCalculatorTests
     private static readonly List<Holiday> JuneWeekends2026 = WeekendHolidays(new DateOnly(2026, 6, 1), new DateOnly(2026, 6, 30));
 
     /// <summary>
+    /// IsBusinessDayが土日を特別扱いせず、Holidays集合の有無だけで判定していることを確認する。
+    /// Holidayに登録されていない日曜は営業日、Holidayに登録された平日は非営業日になるべき。
+    /// </summary>
+    [Fact]
+    public void IsBusinessDay_ShouldUseHolidaySetOnly() {
+        var sunday = new DateOnly(2026, 6, 28);
+        var weekdayHoliday = new DateOnly(2026, 6, 29);
+        var calculator = new BusinessDayCalculator(holidays: [new Holiday { Date = weekdayHoliday }], dayMinutes: 480);
+
+        Assert.True(calculator.IsBusinessDay(sunday));
+        Assert.False(calculator.IsBusinessDay(weekdayHoliday));
+    }
+
+    /// <summary>
     /// 外注待ちが工程Bにある場合、Bの所要時間(200分)は分単位で正確に計算され、
     /// 480分に満たない余り(280分)は前工程Aが同じ日を使えるようになる。
     /// そのため、AのDueDateとBのDueDateは同じ日になり、Aだけが1日前から着手する。

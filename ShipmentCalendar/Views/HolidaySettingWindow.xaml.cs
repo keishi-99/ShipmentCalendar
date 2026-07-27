@@ -10,6 +10,7 @@ public partial class HolidaySettingWindow : Window
 {
     private readonly SqliteHolidayRepository _repository = new();
     private List<Holiday> _holidays = [];
+    private bool _isFetching;
 
     public HolidaySettingWindow()
     {
@@ -51,6 +52,8 @@ public partial class HolidaySettingWindow : Window
 
         BtnRefetch.IsEnabled = false;
         BtnClose.IsEnabled = false;
+        CmbYear.IsEnabled = false;
+        _isFetching = true;
         TxtStatus.Text = "休日データを再取得中...";
 
         try
@@ -61,14 +64,27 @@ public partial class HolidaySettingWindow : Window
         }
         catch (Exception ex)
         {
+            // 当年は成功・翌年は失敗のような部分失敗でもDB更新済みの内容をグリッドへ反映する
+            await LoadHolidaysAsync();
             TxtStatus.Text = $"再取得失敗：{ex.Message}";
         }
         finally
         {
             BtnRefetch.IsEnabled = true;
             BtnClose.IsEnabled = true;
+            CmbYear.IsEnabled = true;
+            _isFetching = false;
         }
     }
 
     private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();
+
+    private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (_isFetching)
+        {
+            e.Cancel = true;
+            TxtStatus.Text = "休日データの再取得が完了するまで閉じることができません";
+        }
+    }
 }

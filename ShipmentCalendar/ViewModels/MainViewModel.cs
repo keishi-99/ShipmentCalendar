@@ -413,9 +413,12 @@ public partial class MainViewModel : ObservableObject {
                 }
             }
 
+            var holidaySyncFailed = false;
             if (!_holidaysSynced) {
-                _holidaysSynced = true;
-                await SyncHolidaysFromOdbcAsync(settings);
+                // 同期成功時のみtrueにする。失敗時はfalseのままにして、次回のLoadOrdersAsync呼び出し
+                // （自動更新タイマー等）で再試行できるようにする
+                _holidaysSynced = await SyncHolidaysFromOdbcAsync(settings);
+                holidaySyncFailed = !_holidaysSynced;
             }
 
             var holidays = await _holidayRepository.GetAllAsync();
@@ -525,6 +528,8 @@ public partial class MainViewModel : ObservableObject {
 
             _lastLoaded = DateTime.Now;
             ApplyFilter();
+            if (holidaySyncFailed)
+                StatusMessage += "（休日データの自動同期に失敗したため、既存の休日データで計算しています）";
 
         } catch (Exception ex) {
             StatusMessage = $"読み込みエラー：{ex.Message}";
@@ -548,12 +553,18 @@ public partial class MainViewModel : ObservableObject {
     }
 
     /// <summary>起動時に一度だけ、当年・翌年の休日をVP_カレンダ情報_YDから取得しHolidaysへ反映する。
-    /// ODBC未設定・接続失敗時は既存のHolidaysデータのまま続行する</summary>
-    private async Task SyncHolidaysFromOdbcAsync(AppSettings settings) {
+    /// ODBC未設定・接続失敗時は既存のHolidaysデータのまま続行する。戻り値は同期成功可否</summary>
+    private async Task<bool> SyncHolidaysFromOdbcAsync(AppSettings settings) {
+        // 工場番号が未設定の間は「まだ準備が整っていない」状態として扱い、
+        // 設定後の次回LoadOrdersAsync呼び出しで再試行できるようにする
+        if (string.IsNullOrEmpty(settings.OdbcFactoryNumber)) return false;
+
         try {
             await OdbcCalendarRepository.SyncCurrentAndNextYearAsync(settings, _holidayRepository);
+            return true;
         } catch {
             // 休日データの同期に失敗しても、既存のHolidaysデータで計算を続行する
+            return false;
         }
     }
 
