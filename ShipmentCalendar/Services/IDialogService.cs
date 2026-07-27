@@ -11,6 +11,7 @@ public interface IDialogService {
     void ShowDepartmentSetting();
     void ShowProductPerformance(AppSettings settings);
     void ShowDepartmentLoad(IEnumerable<Order> orders, AppSettings settings);
+    void ShowProcessBottleneck(AppSettings settings);
 
     /// <summary>表示設定ダイアログを表示する。保存されたか（DialogResult）を返す</summary>
     bool? ShowDisplaySettings(MainViewModel viewModel, IDisplaySettingsPreviewTarget previewTarget);

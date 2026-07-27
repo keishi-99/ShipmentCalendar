@@ -1,0 +1,75 @@
+<Window
+    x:Class="ShipmentCalendar.Views.ProcessBottleneckWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="工程別ボトルネック分析"
+    Width="1000"
+    Height="520"
+    WindowStartupLocation="CenterOwner"
+    PreviewMouseDown="Window_PreviewMouseDown">
+    <DockPanel Margin="16">
+        <TextBlock DockPanel.Dock="Top" FontSize="16" FontWeight="Bold"
+                   Text="工程別ボトルネック分析" Margin="0,0,0,4"/>
+        <TextBlock DockPanel.Dock="Top" Foreground="#666666" TextWrapping="Wrap" Margin="0,0,0,12"
+                   Text="指定期間内に完了した実績（受入実績）を品目×工程別に集計し、標準時間（段取時間＋作業時間）を超えて作業時間がかかった割合を表示します。品目を横断して集計するため、対象期間が長いと検索に時間がかかる場合があります。行をダブルクリックすると、集計元の個別注文を表示します。列見出しクリックで並べ替え、Shiftキーを押しながら複数の列見出しをクリックすると第2・第3条件を追加できます。"/>
+
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,12">
+            <TextBlock Text="開始日:" VerticalAlignment="Center" Width="50"/>
+            <DatePicker Name="StartDatePicker" Height="24" Width="120" Margin="0,0,16,0"/>
+            <TextBlock Text="終了日:" VerticalAlignment="Center" Width="50"/>
+            <DatePicker Name="EndDatePicker" Height="24" Width="120" Margin="0,0,16,0"/>
+            <Button Name="BtnSearch" Content="検索" Padding="16,4" Click="BtnSearch_Click"/>
+            <ProgressBar Name="SearchProgressBar" Width="80" Height="16" Margin="12,0,0,0"
+                         IsIndeterminate="True" Visibility="Collapsed"/>
+        </StackPanel>
+
+        <TextBlock DockPanel.Dock="Bottom" Name="TxtStatus" Margin="0,8,0,0" Foreground="#666666"/>
+
+        <!--  セルダブルクリック時に該当注文一覧を表示するポップアップ  -->
+        <!--  DockPanelはLastChildFill既定でTrueのため、Popupより後ろにDataGridを置いて
+              DataGridが実質的な最後の子要素（残りスペースを埋める要素）になるようにする  -->
+        <Popup Name="ItemDetailPopup" StaysOpen="True" AllowsTransparency="True" Placement="Bottom">
+            <Border Background="White" BorderBrush="#999999" BorderThickness="1" CornerRadius="4" Padding="8" MaxWidth="360">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.3"/>
+                </Border.Effect>
+                <StackPanel>
+                    <TextBlock Name="TxtPopupTitle" FontWeight="Bold" Margin="0,0,0,4"/>
+                    <ListBox Name="ItemDetailList" MaxHeight="260" BorderThickness="0"
+                             MouseDoubleClick="ItemDetailList_MouseDoubleClick">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="0,2" Cursor="Hand" ToolTip="ダブルクリックで注文詳細を表示">
+                                    <TextBlock FontSize="11" FontWeight="SemiBold" Text="{Binding Seiban}"/>
+                                    <TextBlock FontSize="10" Foreground="#666666">
+                                        <Run Text="標準"/>
+                                        <Run Text="{Binding RequiredMinutesText, Mode=OneWay}"/>
+                                        <Run Text="　実績"/>
+                                        <Run Text="{Binding ActualWorkMinutesText, Mode=OneWay}"/>
+                                        <Run Text="　超過"/>
+                                        <Run Text="{Binding OverMinutesText, Mode=OneWay}"/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </StackPanel>
+            </Border>
+        </Popup>
+
+        <DataGrid Name="ResultGrid"
+                  AutoGenerateColumns="False" CanUserAddRows="False"
+                  IsReadOnly="True" HeadersVisibility="Column"
+                  MouseDoubleClick="ResultGrid_MouseDoubleClick">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="品目番号" Binding="{Binding ItemNumber}" Width="130"/>
+                <DataGridTextColumn Header="品目名" Binding="{Binding ItemName}" Width="230"/>
+                <DataGridTextColumn Header="工程名" Binding="{Binding ProcessName}" Width="140"/>
+                <DataGridTextColumn Header="完了件数" Binding="{Binding CompletedCount}" Width="80"/>
+                <DataGridTextColumn Header="標準超過件数" Binding="{Binding OverStandardCount}" Width="90"/>
+                <DataGridTextColumn Header="標準超過率" Binding="{Binding OverStandardRateText}" SortMemberPath="OverStandardRate" Width="80"/>
+                <DataGridTextColumn Header="平均超過時間" Binding="{Binding AvgOverMinutesText}" SortMemberPath="AvgOverMinutes" Width="90"/>
+            </DataGrid.Columns>
+        </DataGrid>
+    </DockPanel>
+</Window>

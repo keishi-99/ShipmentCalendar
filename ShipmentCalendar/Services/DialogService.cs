@@ -26,6 +26,9 @@ public class DialogService : IDialogService {
     public void ShowDepartmentLoad(IEnumerable<Order> orders, AppSettings settings) =>
         new DepartmentLoadWindow(orders, settings) { Owner = Owner }.ShowDialog();
 
+    public void ShowProcessBottleneck(AppSettings settings) =>
+        new ProcessBottleneckWindow(settings) { Owner = Owner }.ShowDialog();
+
     public bool? ShowDisplaySettings(MainViewModel viewModel, IDisplaySettingsPreviewTarget previewTarget) {
         var window = new DisplaySettingsWindow(viewModel, previewTarget) { Owner = Owner };
         window.ShowDialog();
