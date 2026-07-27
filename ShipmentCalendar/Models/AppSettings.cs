@@ -5,7 +5,7 @@ public class AppSettings
 {
     /// <summary>ODBC DSN名（例: DrSum_WORKDB_YD）</summary>
     public string OdbcDsn { get; set; } = string.Empty;
-    /// <summary>休日取得（VP_カレンダ情報_YD）の絞り込みに使う工場番号</summary>
+    /// <summary>ODBCから受注データ・休日データを取得する際の絞り込みに使う工場番号</summary>
     public string OdbcFactoryNumber { get; set; } = string.Empty;
     /// <summary>自動更新間隔（分）。0=自動更新なし</summary>
     public int AutoRefreshMinutes { get; set; } = 5;

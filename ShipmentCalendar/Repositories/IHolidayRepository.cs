@@ -6,6 +6,6 @@ public interface IHolidayRepository
 {
     Task<IEnumerable<Holiday>> GetAllAsync();
     Task<IEnumerable<Holiday>> GetByYearAsync(int year);
-    Task AddAsync(Holiday holiday);
-    Task DeleteAsync(int id);
+    /// <summary>指定年の休日を、指定した日付一覧で丸ごと置き換える</summary>
+    Task ReplaceYearAsync(int year, IEnumerable<DateOnly> dates);
 }

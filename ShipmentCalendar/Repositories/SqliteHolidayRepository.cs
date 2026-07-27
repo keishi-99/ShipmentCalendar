@@ -37,27 +37,29 @@ public class SqliteHolidayRepository : IHolidayRepository
         return holidays;
     }
 
-    public async Task AddAsync(Holiday holiday)
+    public async Task ReplaceYearAsync(int year, IEnumerable<DateOnly> dates)
     {
         using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
+        using var transaction = connection.BeginTransaction();
 
-        var command = connection.CreateCommand();
-        command.CommandText = "INSERT OR IGNORE INTO Holidays (Date, Description) VALUES ($date, $desc)";
-        command.Parameters.AddWithValue("$date", holiday.Date.ToString("yyyy-MM-dd"));
-        command.Parameters.AddWithValue("$desc", holiday.Description);
-        await command.ExecuteNonQueryAsync();
-    }
+        var deleteCommand = connection.CreateCommand();
+        deleteCommand.Transaction = transaction;
+        deleteCommand.CommandText = "DELETE FROM Holidays WHERE Date LIKE $year";
+        deleteCommand.Parameters.AddWithValue("$year", $"{year}%");
+        await deleteCommand.ExecuteNonQueryAsync();
 
-    public async Task DeleteAsync(int id)
-    {
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
-        await connection.OpenAsync();
+        // Date列にUNIQUE制約があるため、同一日付が複数渡されると2件目以降の挿入で例外になる
+        foreach (var date in dates.Distinct())
+        {
+            var insertCommand = connection.CreateCommand();
+            insertCommand.Transaction = transaction;
+            insertCommand.CommandText = "INSERT INTO Holidays (Date, Description) VALUES ($date, '')";
+            insertCommand.Parameters.AddWithValue("$date", date.ToString("yyyy-MM-dd"));
+            await insertCommand.ExecuteNonQueryAsync();
+        }
 
-        var command = connection.CreateCommand();
-        command.CommandText = "DELETE FROM Holidays WHERE Id = $id";
-        command.Parameters.AddWithValue("$id", id);
-        await command.ExecuteNonQueryAsync();
+        await transaction.CommitAsync();
     }
 
     private static Holiday ReadHoliday(SqliteDataReader reader) => new()

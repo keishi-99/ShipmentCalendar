@@ -16,22 +16,12 @@ public partial class HolidaySettingWindow : Window
     {
         InitializeComponent();
 
-        // 年リストを現在年±2年で初期化
+        // 年リストは自動同期・再取得の対象範囲と合わせて当年・翌年のみ
         var currentYear = DateTime.Today.Year;
-        CmbYear.ItemsSource = Enumerable.Range(currentYear - 1, 4).ToList();
+        CmbYear.ItemsSource = new[] { currentYear, currentYear + 1 };
         CmbYear.SelectedItem = currentYear;
 
-        TxtFactoryNumber.Text = AppSettingsService.Load().OdbcFactoryNumber;
-
         Loaded += async (_, _) => await LoadHolidaysAsync();
-    }
-
-    /// <summary>工場番号の入力欄からフォーカスが外れたタイミングで設定を保存する</summary>
-    private void TxtFactoryNumber_LostFocus(object sender, RoutedEventArgs e)
-    {
-        var settings = AppSettingsService.Load();
-        settings.OdbcFactoryNumber = TxtFactoryNumber.Text.Trim();
-        AppSettingsService.Save(settings);
     }
 
     private async Task LoadHolidaysAsync()
@@ -45,111 +35,56 @@ public partial class HolidaySettingWindow : Window
     private async void CmbYear_SelectionChanged(object sender, SelectionChangedEventArgs e)
         => await LoadHolidaysAsync();
 
-    private async void BtnAdd_Click(object sender, RoutedEventArgs e)
-    {
-        if (DpHoliday.SelectedDate is null)
-        {
-            TxtStatus.Text = "日付を選択してください";
-            return;
-        }
-
-        var date = DateOnly.FromDateTime(DpHoliday.SelectedDate.Value);
-        var holiday = new Holiday
-        {
-            Date = date,
-            Description = TxtDescription.Text.Trim()
-        };
-
-        await _repository.AddAsync(holiday);
-        TxtDescription.Text = string.Empty;
-        DpHoliday.SelectedDate = null;
-
-        // 追加した休日の年が現在表示中の年と異なる場合は、表示中の年を切り替えて一覧に反映する
-        var years = (List<int>)CmbYear.ItemsSource;
-        if (CmbYear.SelectedItem is int selectedYear && selectedYear != date.Year && years.Contains(date.Year))
-            CmbYear.SelectedItem = date.Year;
-        else
-            await LoadHolidaysAsync();
-    }
-
-    private async void BtnDelete_Click(object sender, RoutedEventArgs e)
-    {
-        if (HolidayGrid.SelectedItem is not Holiday selected) return;
-        await _repository.DeleteAsync(selected.Id);
-        await LoadHolidaysAsync();
-    }
-
-    /// <summary>VP_カレンダ情報_YD（稼働区分='01'）から選択中の年の休日を取得してDBに登録する</summary>
-    private async void BtnFetchHolidays_Click(object sender, RoutedEventArgs e)
+    /// <summary>VP_カレンダ情報_YD（稼働区分='01'）から当年・翌年の休日を再取得し、Holidaysへ反映する</summary>
+    private async void BtnRefetch_Click(object sender, RoutedEventArgs e)
     {
         var settings = AppSettingsService.Load();
-        settings.OdbcFactoryNumber = TxtFactoryNumber.Text.Trim();
         if (!settings.IsOdbcConfigured)
         {
-            TxtStatus.Text = "設定からODBC接続情報を入力してください";
+            TxtStatus.Text = "設定 > 基本設定 からODBC接続情報を入力してください";
             return;
         }
         if (string.IsNullOrEmpty(settings.OdbcFactoryNumber))
         {
-            TxtStatus.Text = "設定から工場番号を入力してください";
+            TxtStatus.Text = "設定 > 基本設定 から工場番号を入力してください";
             return;
         }
 
-        AppSettingsService.Save(settings);
-
-        var year = (int)(CmbYear.SelectedItem ?? DateTime.Today.Year);
-        TxtStatus.Text = "休日データを取得中...";
-        BtnFetchHolidays.IsEnabled = false;
-        LoadingOverlay.Visibility = Visibility.Visible;
+        BtnRefetch.IsEnabled = false;
+        BtnClose.IsEnabled = false;
+        CmbYear.IsEnabled = false;
         _isFetching = true;
+        TxtStatus.Text = "休日データを再取得中...";
 
         try
         {
-            var calendarRepo = new OdbcCalendarRepository(settings);
-            var dates = await Task.Run(() => calendarRepo.GetHolidays(year));
-
-            var added = 0;
-            var skipped = 0;
-            var existing = (await _repository.GetAllAsync())
-                .Select(h => h.Date)
-                .ToHashSet();
-
-            foreach (var date in dates)
-            {
-                if (existing.Contains(date)) { skipped++; continue; }
-
-                await _repository.AddAsync(new Holiday
-                {
-                    Date = date,
-                    Description = string.Empty
-                });
-                existing.Add(date);
-                added++;
-            }
-
+            await OdbcCalendarRepository.SyncCurrentAndNextYearAsync(settings, _repository);
             await LoadHolidaysAsync();
-            TxtStatus.Text = $"取得完了：{added} 件追加、{skipped} 件スキップ（登録済み）";
+            TxtStatus.Text = $"再取得完了：{_holidays.Count} 件の休日";
         }
         catch (Exception ex)
         {
-            TxtStatus.Text = $"取得失敗：{ex.Message}";
+            // 当年は成功・翌年は失敗のような部分失敗でもDB更新済みの内容をグリッドへ反映する
+            await LoadHolidaysAsync();
+            TxtStatus.Text = $"再取得失敗：{ex.Message}";
         }
         finally
         {
-            BtnFetchHolidays.IsEnabled = true;
-            LoadingOverlay.Visibility = Visibility.Collapsed;
+            BtnRefetch.IsEnabled = true;
+            BtnClose.IsEnabled = true;
+            CmbYear.IsEnabled = true;
             _isFetching = false;
         }
     }
+
+    private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();
 
     private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
     {
         if (_isFetching)
         {
             e.Cancel = true;
-            TxtStatus.Text = "休日データの取得が完了するまで閉じることができません";
+            TxtStatus.Text = "休日データの再取得が完了するまで閉じることができません";
         }
     }
-
-    private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();
 }

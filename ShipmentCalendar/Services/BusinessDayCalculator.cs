@@ -20,12 +20,8 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays, double dayMinu
         return current;
     }
 
-    /// <summary>指定日が営業日かどうかを判定</summary>
-    public bool IsBusinessDay(DateOnly date) {
-        if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
-            return false;
-        return !_holidays.Contains(date);
-    }
+    /// <summary>指定日が営業日かどうかを判定。休日区分は稼働区分テーブル（Holidays）のみで判定し、土日の別扱いはしない</summary>
+    public bool IsBusinessDay(DateOnly date) => !_holidays.Contains(date);
 
     /// <summary>
     /// 工程定義から期限日を計算する。

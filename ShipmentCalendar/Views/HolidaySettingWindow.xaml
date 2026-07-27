@@ -4,44 +4,24 @@
         Title="休日設定" Height="500" Width="500"
         WindowStartupLocation="CenterOwner"
         Closing="Window_Closing">
-    <Grid>
     <DockPanel Margin="16">
         <!-- ボタン・ステータスを先に宣言しないと高さ不足で隠れる -->
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-            <Button Name="BtnFetchHolidays" Content="DBから休日を取得" Padding="12,6" Click="BtnFetchHolidays_Click" Margin="0,0,8,0"/>
-            <Button Content="選択を削除" Padding="12,6" Click="BtnDelete_Click" Margin="0,0,8,0"/>
-            <Button Content="閉じる" Padding="12,6" Click="BtnClose_Click"/>
+            <Button Name="BtnRefetch" Content="DBから再取得" Padding="12,6" Click="BtnRefetch_Click" Margin="0,0,8,0"/>
+            <Button Name="BtnClose" Content="閉じる" Padding="12,6" Click="BtnClose_Click"/>
         </StackPanel>
         <TextBlock Name="TxtStatus" DockPanel.Dock="Bottom" Margin="0,4,0,0" Foreground="#666666"/>
 
         <TextBlock DockPanel.Dock="Top" FontSize="16" FontWeight="Bold"
                    Text="会社休日カレンダー設定" Margin="0,0,0,12"/>
+        <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Foreground="#666666" Margin="0,0,0,12"
+                   Text="休日はVP_カレンダ情報_YD（稼働区分）から起動時に自動反映されます。最新の状態を今すぐ確認したい場合は「DBから再取得」を押してください（当年・翌年が対象）。"/>
 
         <!-- 年フィルター -->
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
             <TextBlock Text="年：" VerticalAlignment="Center"/>
             <ComboBox Name="CmbYear" Width="80" SelectionChanged="CmbYear_SelectionChanged" Margin="4,0"/>
         </StackPanel>
-
-        <!-- 工場番号（DBからの休日取得 VP_カレンダ情報_YD の絞り込みに使用） -->
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-            <TextBlock Text="工場番号：" VerticalAlignment="Center"/>
-            <TextBox Name="TxtFactoryNumber" Width="100" Margin="4,0" Padding="4,2"
-                     VerticalContentAlignment="Center" LostFocus="TxtFactoryNumber_LostFocus"
-                     ToolTip="DBから休日を取得する際の絞り込みに使用する工場番号"/>
-        </StackPanel>
-
-        <!-- 休日追加 -->
-        <Grid DockPanel.Dock="Bottom" Margin="0,8,0,0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="140"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <DatePicker Name="DpHoliday" Grid.Column="0" Margin="0,0,4,0"/>
-            <TextBox Name="TxtDescription" Grid.Column="1" Margin="0,0,4,0" VerticalContentAlignment="Center"/>
-            <Button Grid.Column="2" Content="追加" Padding="8,4" Click="BtnAdd_Click"/>
-        </Grid>
 
         <!-- 休日リスト（残りのスペースを自動で使用） -->
         <DataGrid Name="HolidayGrid"
@@ -52,52 +32,5 @@
                 <DataGridTextColumn Header="説明" Binding="{Binding Description}" Width="*"/>
             </DataGrid.Columns>
         </DataGrid>
-
     </DockPanel>
-
-    <!--  ローディングオーバーレイ（休日取得中に表示）  -->
-    <Grid Name="LoadingOverlay" Visibility="Collapsed" IsHitTestVisible="True">
-        <!--  半透明の暗幕  -->
-        <Rectangle Fill="#88000000"/>
-
-        <!--  スピナーカード  -->
-        <Border Background="White" CornerRadius="10"
-                Width="140" Height="110"
-                HorizontalAlignment="Center" VerticalAlignment="Center">
-            <Border.Effect>
-                <DropShadowEffect BlurRadius="16" ShadowDepth="0" Opacity="0.3"/>
-            </Border.Effect>
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                <!--  回転する破線の楕円でスピナーを表現  -->
-                <Ellipse Width="40" Height="40"
-                         StrokeThickness="4"
-                         StrokeDashArray="6 3"
-                         Stroke="#1976D2"
-                         RenderTransformOrigin="0.5,0.5">
-                    <Ellipse.RenderTransform>
-                        <RotateTransform x:Name="SpinnerRotate"/>
-                    </Ellipse.RenderTransform>
-                    <Ellipse.Triggers>
-                        <EventTrigger RoutedEvent="Loaded">
-                            <BeginStoryboard>
-                                <Storyboard RepeatBehavior="Forever">
-                                    <DoubleAnimation
-                                        Storyboard.TargetName="SpinnerRotate"
-                                        Storyboard.TargetProperty="Angle"
-                                        From="0" To="360"
-                                        Duration="0:0:0.8"/>
-                                </Storyboard>
-                            </BeginStoryboard>
-                        </EventTrigger>
-                    </Ellipse.Triggers>
-                </Ellipse>
-                <TextBlock Text="取得中..."
-                           Margin="0,10,0,0"
-                           HorizontalAlignment="Center"
-                           Foreground="#444444"
-                           FontSize="13"/>
-            </StackPanel>
-        </Border>
-    </Grid>
-    </Grid>
 </Window>

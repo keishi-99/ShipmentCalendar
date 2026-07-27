@@ -16,6 +16,7 @@ public partial class SettingsWindow : Window
 
         var settings = viewModel.Settings;
         TxtOdbcDsn.Text = settings.OdbcDsn;
+        TxtFactoryNumber.Text = settings.OdbcFactoryNumber;
         TxtRefreshMinutes.Text = settings.AutoRefreshMinutes.ToString();
         TxtPastDays.Text = settings.DeliveryDatePastDays.ToString();
         TxtRangeDays.Text = settings.DeliveryDateRangeDays.ToString();
@@ -25,7 +26,8 @@ public partial class SettingsWindow : Window
 
     private AppSettings BuildSettingsFromInputs() => new()
     {
-        OdbcDsn = TxtOdbcDsn.Text.Trim()
+        OdbcDsn = TxtOdbcDsn.Text.Trim(),
+        OdbcFactoryNumber = TxtFactoryNumber.Text.Trim()
     };
 
     private async void BtnTestConnection_Click(object sender, RoutedEventArgs e)
@@ -68,6 +70,7 @@ public partial class SettingsWindow : Window
         }
 
         _viewModel.Settings.OdbcDsn = TxtOdbcDsn.Text.Trim();
+        _viewModel.Settings.OdbcFactoryNumber = TxtFactoryNumber.Text.Trim();
         _viewModel.Settings.AutoRefreshMinutes = refreshMinutes;
         _viewModel.Settings.DeliveryDatePastDays = pastDays;
         _viewModel.Settings.DeliveryDateRangeDays = rangeDays;
