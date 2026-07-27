@@ -21,13 +21,29 @@ public class BusinessDayCalculatorTests
     };
 
     /// <summary>
+    /// IsBusinessDayは稼働区分テーブル（Holidays）のみで判定するため、
+    /// 従来の土日ハードコード判定と同じ挙動をテストで再現するには、対象期間の土日を
+    /// Holidayとして明示的に渡す必要がある。
+    /// </summary>
+    private static List<Holiday> WeekendHolidays(DateOnly from, DateOnly to) {
+        List<Holiday> result = [];
+        for (var d = from; d <= to; d = d.AddDays(1)) {
+            if (d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+                result.Add(new Holiday { Date = d });
+        }
+        return result;
+    }
+
+    private static readonly List<Holiday> JuneWeekends2026 = WeekendHolidays(new DateOnly(2026, 6, 1), new DateOnly(2026, 6, 30));
+
+    /// <summary>
     /// 外注待ちが工程Bにある場合、Bの所要時間(200分)は分単位で正確に計算され、
     /// 480分に満たない余り(280分)は前工程Aが同じ日を使えるようになる。
     /// そのため、AのDueDateとBのDueDateは同じ日になり、Aだけが1日前から着手する。
     /// </summary>
     [Fact]
     public void BuildProcesses_OutsourceWaitOnMiddleProcess_ShouldShareRemainingCapacityWithPrecedingProcess() {
-        var calculator = new BusinessDayCalculator(holidays: [], dayMinutes: 480);
+        var calculator = new BusinessDayCalculator(holidays: JuneWeekends2026, dayMinutes: 480);
         var order = MakeOrder(new DateOnly(2026, 6, 30)); // 火曜日
 
         var defs = new[] {
@@ -61,7 +77,7 @@ public class BusinessDayCalculatorTests
     /// </summary>
     [Fact]
     public void BuildProcesses_NoOutsourceWait_ShouldPackProcessesTightly() {
-        var calculator = new BusinessDayCalculator(holidays: [], dayMinutes: 480);
+        var calculator = new BusinessDayCalculator(holidays: JuneWeekends2026, dayMinutes: 480);
         var order = MakeOrder(new DateOnly(2026, 6, 30));
 
         var defs = new[] {
@@ -89,7 +105,7 @@ public class BusinessDayCalculatorTests
     /// </summary>
     [Fact]
     public void BuildProcesses_TwoConsecutiveOutsourceWaits_ShouldCarryOverRoundingToEarlierGate() {
-        var calculator = new BusinessDayCalculator(holidays: [], dayMinutes: 480);
+        var calculator = new BusinessDayCalculator(holidays: JuneWeekends2026, dayMinutes: 480);
         var order = MakeOrder(new DateOnly(2026, 6, 30));
 
         var defs = new[] {
@@ -120,7 +136,7 @@ public class BusinessDayCalculatorTests
     /// </summary>
     [Fact]
     public void BuildProcesses_ZeroLeadTimeProcessWithOutsourceWait_ShouldNotOverestimateBuffer() {
-        var calculator = new BusinessDayCalculator(holidays: [], dayMinutes: 480);
+        var calculator = new BusinessDayCalculator(holidays: JuneWeekends2026, dayMinutes: 480);
         var order = MakeOrder(new DateOnly(2026, 6, 30));
 
         var defs = new[] {
@@ -144,7 +160,7 @@ public class BusinessDayCalculatorTests
     /// </summary>
     [Fact]
     public void BuildProcesses_PlannedQuantityGreaterThanOne_ShouldScaleMinutesBeforeGateCalculation() {
-        var calculator = new BusinessDayCalculator(holidays: [], dayMinutes: 480);
+        var calculator = new BusinessDayCalculator(holidays: JuneWeekends2026, dayMinutes: 480);
         var order = MakeOrder(new DateOnly(2026, 6, 30), plannedQuantity: 10);
 
         var defs = new[] {
@@ -171,7 +187,7 @@ public class BusinessDayCalculatorTests
     /// </summary>
     [Fact]
     public void BuildProcesses_DwellTimeOnly_ShouldCarryOverBusinessDayWithoutOutsource() {
-        var calculator = new BusinessDayCalculator(holidays: [], dayMinutes: 480);
+        var calculator = new BusinessDayCalculator(holidays: JuneWeekends2026, dayMinutes: 480);
         var order = MakeOrder(new DateOnly(2026, 6, 30));
 
         var defs = new[] {

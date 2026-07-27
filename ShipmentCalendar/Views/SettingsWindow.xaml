@@ -43,6 +43,7 @@
         <Grid DockPanel.Dock="Top">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="16" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -79,19 +80,35 @@
                 Click="BtnTestConnection_Click"
                 Content="接続テスト" />
 
-            <Separator
+            <!--  工場番号（受注データ・休日データ取得の絞り込みに使用）  -->
+            <TextBlock
                 Grid.Row="1"
+                Grid.Column="0"
+                Margin="0,0,0,12"
+                VerticalAlignment="Center"
+                Text="工場番号：" />
+            <TextBox
+                Name="TxtFactoryNumber"
+                Grid.Row="1"
+                Grid.Column="1"
+                Margin="0,0,4,12"
+                Padding="4"
+                VerticalContentAlignment="Center"
+                ToolTip="ODBCから受注データ・休日データを取得する際の絞り込みに使用する工場番号" />
+
+            <Separator
+                Grid.Row="2"
                 Grid.ColumnSpan="3"
                 Margin="0,4" />
 
             <TextBlock
-                Grid.Row="2"
+                Grid.Row="3"
                 Grid.Column="0"
                 Margin="0,0,0,12"
                 VerticalAlignment="Center"
                 Text="自動更新間隔（分）：" />
             <StackPanel
-                Grid.Row="2"
+                Grid.Row="3"
                 Grid.Column="1"
                 Margin="0,0,0,12"
                 Orientation="Horizontal">
@@ -108,13 +125,13 @@
             </StackPanel>
 
             <TextBlock
-                Grid.Row="3"
+                Grid.Row="4"
                 Grid.Column="0"
                 Margin="0,0,0,12"
                 VerticalAlignment="Center"
                 Text="納期日の表示範囲：&#x0a;（過去側）" />
             <StackPanel
-                Grid.Row="3"
+                Grid.Row="4"
                 Grid.Column="1"
                 Margin="0,0,0,12"
                 Orientation="Horizontal">
@@ -131,13 +148,13 @@
             </StackPanel>
 
             <TextBlock
-                Grid.Row="4"
+                Grid.Row="5"
                 Grid.Column="0"
                 Margin="0,0,0,12"
                 VerticalAlignment="Center"
                 Text="納期日の表示範囲：&#x0a;（未来側）" />
             <StackPanel
-                Grid.Row="4"
+                Grid.Row="5"
                 Grid.Column="1"
                 Margin="0,0,0,12"
                 Orientation="Horizontal">
@@ -154,13 +171,13 @@
             </StackPanel>
 
             <TextBlock
-                Grid.Row="5"
+                Grid.Row="6"
                 Grid.Column="0"
                 Margin="0,0,0,12"
                 VerticalAlignment="Center"
                 Text="完了日までの営業日数：&#x0a;（既定値）" />
             <StackPanel
-                Grid.Row="5"
+                Grid.Row="6"
                 Grid.Column="1"
                 Grid.ColumnSpan="2"
                 Margin="0,0,0,12"
@@ -178,12 +195,12 @@
             </StackPanel>
 
             <TextBlock
-                Grid.Row="6"
+                Grid.Row="7"
                 Grid.Column="0"
                 VerticalAlignment="Center"
                 Text="1日の稼働時間（分）：" />
             <StackPanel
-                Grid.Row="6"
+                Grid.Row="7"
                 Grid.Column="1"
                 Grid.ColumnSpan="2"
                 Orientation="Horizontal">

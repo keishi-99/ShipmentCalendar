@@ -32,4 +32,18 @@ public class OdbcCalendarRepository(AppSettings settings)
 
         return dates;
     }
+
+    /// <summary>当年・翌年の休日をDBから取得し、Holidaysへ反映する（工場番号未設定時は何もしない）</summary>
+    public static async Task SyncCurrentAndNextYearAsync(AppSettings settings, IHolidayRepository holidayRepository)
+    {
+        if (string.IsNullOrEmpty(settings.OdbcFactoryNumber)) return;
+
+        var calendarRepo = new OdbcCalendarRepository(settings);
+        var currentYear = DateTime.Today.Year;
+        foreach (var year in new[] { currentYear, currentYear + 1 })
+        {
+            var dates = await Task.Run(() => calendarRepo.GetHolidays(year));
+            await holidayRepository.ReplaceYearAsync(year, dates);
+        }
+    }
 }

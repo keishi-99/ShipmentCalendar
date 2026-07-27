@@ -339,6 +339,8 @@ public partial class MainViewModel : ObservableObject {
     [ObservableProperty]
     private AppSettings _settings;
 
+    private bool _holidaysSynced;
+
     public MainViewModel(IHolidayRepository holidayRepository, IProcessDefinitionRepository processDefinitionRepository, IModelCodeRepository modelCodeRepository, IDialogService dialogService) {
         _holidayRepository = holidayRepository;
         _processDefinitionRepository = processDefinitionRepository;
@@ -409,6 +411,11 @@ public partial class MainViewModel : ObservableObject {
                     StatusMessage = "読み込みを中止しました。";
                     return;
                 }
+            }
+
+            if (!_holidaysSynced) {
+                _holidaysSynced = true;
+                await SyncHolidaysFromOdbcAsync(settings);
             }
 
             var holidays = await _holidayRepository.GetAllAsync();
@@ -538,6 +545,16 @@ public partial class MainViewModel : ObservableObject {
             var defs = processRepo.GetAll().ToList();
             return (orders, defs);
         });
+    }
+
+    /// <summary>起動時に一度だけ、当年・翌年の休日をVP_カレンダ情報_YDから取得しHolidaysへ反映する。
+    /// ODBC未設定・接続失敗時は既存のHolidaysデータのまま続行する</summary>
+    private async Task SyncHolidaysFromOdbcAsync(AppSettings settings) {
+        try {
+            await OdbcCalendarRepository.SyncCurrentAndNextYearAsync(settings, _holidayRepository);
+        } catch {
+            // 休日データの同期に失敗しても、既存のHolidaysデータで計算を続行する
+        }
     }
 
     public void SaveSettings() {
