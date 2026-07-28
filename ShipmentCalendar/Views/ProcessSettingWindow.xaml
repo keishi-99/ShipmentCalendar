@@ -14,6 +14,10 @@
             <sys:String>製品</sys:String>
             <sys:String>半製品</sys:String>
         </x:Array>
+        <!--  数値列は桁を揃えて比較しやすいよう右揃えにする  -->
+        <Style x:Key="NumericColumnCellStyle" TargetType="TextBlock">
+            <Setter Property="TextAlignment" Value="Right" />
+        </Style>
     </Window.Resources>
     <Grid>
     <TabControl Margin="16">
@@ -211,18 +215,22 @@
                 <DataGridTextColumn
                     Width="90"
                     Binding="{Binding SetupTimeMinutes, UpdateSourceTrigger=PropertyChanged}"
+                    ElementStyle="{StaticResource NumericColumnCellStyle}"
                     Header="段取時間（分）" />
                 <DataGridTextColumn
                     Width="90"
                     Binding="{Binding WorkTimeMinutes, UpdateSourceTrigger=PropertyChanged}"
+                    ElementStyle="{StaticResource NumericColumnCellStyle}"
                     Header="作業時間（分）" />
                 <DataGridTextColumn
                     Width="90"
                     Binding="{Binding DwellTimeMinutes, UpdateSourceTrigger=PropertyChanged}"
+                    ElementStyle="{StaticResource NumericColumnCellStyle}"
                     Header="滞留時間（分）" />
                 <DataGridTextColumn
                     Width="90"
                     Binding="{Binding OutsourceLeadDays, UpdateSourceTrigger=PropertyChanged}"
+                    ElementStyle="{StaticResource NumericColumnCellStyle}"
                     Header="外注待ち（営業日）" />
                 <DataGridCheckBoxColumn
                     Width="45"
@@ -231,6 +239,7 @@
                 <DataGridTextColumn
                     Width="80"
                     Binding="{Binding WarningDaysBeforeDeadline, UpdateSourceTrigger=PropertyChanged}"
+                    ElementStyle="{StaticResource NumericColumnCellStyle}"
                     Header="警告（日前）" />
                 <!--  担当部署コンボボックス列  -->
                 <DataGridTemplateColumn Width="110" Header="担当部署">

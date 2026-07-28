@@ -194,6 +194,9 @@ public partial class MainViewModel : ObservableObject {
     private void OpenDepartmentLoad() => _dialogService.ShowDepartmentLoad(Orders, Settings);
 
     [RelayCommand]
+    private void OpenProcessBottleneck() => _dialogService.ShowProcessBottleneck(Settings);
+
+    [RelayCommand]
     private void OpenDisplaySettings() {
         if (PreviewTarget is null) return;
         _dialogService.ShowDisplaySettings(this, PreviewTarget);

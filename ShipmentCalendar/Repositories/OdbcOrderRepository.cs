@@ -107,6 +107,52 @@ public class OdbcOrderRepository(AppSettings settings) {
         return results;
     }
 
+    /// <summary>VP_受入実績情報_YD と VP_生産計画情報_YD を製番でJOINし、品目を限定せず指定した受入日範囲の完了工程実績を取得する。
+    /// 工程別ボトルネック分析のように品目横断で集計する用途向け。DeliveryDate・ModelCode・WorkerNameは
+    /// 集計自体には使わないが、ドリルダウンでOrderDetailWindowを開く際にOrderを再構築するために必要</summary>
+    public IEnumerable<(string Seiban, string ItemNumber, string ItemName, string ModelCode, string DestinationCode, DateOnly ActualDate, string WorkerName, double ActualWorkMinutes, int PlannedQuantity, DateOnly? DeliveryDate)>
+        GetCompletedProcessesByDateRange(DateOnly from, DateOnly to) {
+        using var conn = OdbcConnectionFactory.Create(settings);
+        conn.Open();
+
+        var results = new List<(string, string, string, string, string, DateOnly, string, double, int, DateOnly?)>();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"SELECT t1.製番 AS 製番, t2.品目番号 AS 品目番号, t2.品目名 AS 品目名, t2.機種コード AS 機種コード, t2.計画数 AS 計画数, t1.指示先番号 AS 指示先番号, t1.受入日 AS 受入日, t1.作業時間 AS 作業時間, t3.担当者名 AS 担当者名, t2.納期 AS 納期
+            FROM VP_受入実績情報_YD t1
+            JOIN VP_生産計画情報_YD t2 ON t1.製番 = t2.製番
+            LEFT JOIN VP_ユーザ情報_YD t3 ON t1.手配担当者 = t3.ユーザID
+            WHERE t2.工場番号 = ?
+              AND t1.受入日 >= ? AND t1.受入日 <= ?
+              AND t1.指示先番号 IS NOT NULL
+              AND t1.指示先番号 <> '< NULL >'";
+        cmd.Parameters.Add("@FactoryNumber", OdbcType.VarChar).Value = settings.OdbcFactoryNumber;
+        cmd.Parameters.Add("@FromDate", OdbcType.VarChar).Value = from.ToString("yyyy-MM-dd");
+        cmd.Parameters.Add("@ToDate", OdbcType.VarChar).Value = to.ToString("yyyy-MM-dd");
+
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read()) {
+            var seiban = reader["製番"]?.ToString()?.Trim() ?? string.Empty;
+            var itemNumber = reader["品目番号"]?.ToString()?.Trim() ?? string.Empty;
+            var destinationCode = reader["指示先番号"]?.ToString()?.Trim() ?? string.Empty;
+            if (string.IsNullOrEmpty(seiban) || string.IsNullOrEmpty(itemNumber) || string.IsNullOrEmpty(destinationCode)) continue;
+
+            var actualDate = ToDateOnly(reader["受入日"]);
+            if (actualDate == null) continue;
+
+            var itemName = reader["品目名"]?.ToString()?.Trim() ?? string.Empty;
+            var modelCode = reader["機種コード"]?.ToString()?.Trim() ?? string.Empty;
+            var workerName = reader["担当者名"]?.ToString()?.Trim() ?? string.Empty;
+            _ = double.TryParse(reader["計画数"]?.ToString()?.Trim() ?? string.Empty, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double plannedQtyRaw);
+            var plannedQuantity = (int)plannedQtyRaw;
+            _ = double.TryParse(reader["作業時間"]?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double workMinutes);
+            var deliveryDate = ToDateOnly(reader["納期"]);
+
+            results.Add((seiban, itemNumber, itemName, modelCode, destinationCode, actualDate.Value, workerName, workMinutes, plannedQuantity, deliveryDate));
+        }
+
+        return results;
+    }
+
     public IEnumerable<Order> GetAll() {
         var today = DateOnly.FromDateTime(DateTime.Today);
         var rangeStart = today.AddDays(-settings.DeliveryDatePastDays);

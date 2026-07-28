@@ -55,6 +55,14 @@
             <Setter Property="Padding" Value="0,0,12,0" />
         </Style>
 
+        <!--  数値列は桁を揃えて比較しやすいよう右揃えにする  -->
+        <Style
+            x:Key="NumericColumnCellStyle"
+            BasedOn="{StaticResource FixedColumnCellStyle}"
+            TargetType="TextBlock">
+            <Setter Property="TextAlignment" Value="Right" />
+        </Style>
+
         <!--  表示列ドロップダウンを他のコンボボックスと同じ白背景・枠線の見た目に揃えるスタイル  -->
         <Style
             x:Key="ColumnVisibilityDropDownStyle"
@@ -291,6 +299,41 @@
                     </Fluent:RibbonGroupBox>
                 </Fluent:RibbonTabItem>
 
+                <!--  分析タブ：実績・締切集中度などの分析系ダイアログ  -->
+                <Fluent:RibbonTabItem Header="分析">
+                    <Fluent:RibbonGroupBox Header="分析">
+                        <Fluent:Button
+                            Command="{Binding OpenDepartmentLoadCommand}"
+                            Header="締切集中度"
+                            SizeDefinition="Middle,Middle,Small"
+                            Style="{StaticResource RibbonWhiteForegroundButtonStyle}"
+                            ToolTip="部署別・日別の締切集中度を表示する（前倒し着手をしなければその日に締切を迎える作業の目安）">
+                            <Fluent:Button.Icon>
+                                <iconPacks:PackIconMaterial Kind="ChartTimelineVariant" />
+                            </Fluent:Button.Icon>
+                        </Fluent:Button>
+                        <Fluent:Button
+                            Command="{Binding OpenProductPerformanceCommand}"
+                            Header="実績分析"
+                            SizeDefinition="Middle,Middle,Small"
+                            Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
+                            <Fluent:Button.Icon>
+                                <iconPacks:PackIconMaterial Kind="ChartLine" />
+                            </Fluent:Button.Icon>
+                        </Fluent:Button>
+                        <Fluent:Button
+                            Command="{Binding OpenProcessBottleneckCommand}"
+                            Header="工程別ボトルネック"
+                            SizeDefinition="Middle,Middle,Small"
+                            Style="{StaticResource RibbonWhiteForegroundButtonStyle}"
+                            ToolTip="期間内の完了実績を品目×工程別に集計し、標準時間超過の傾向を表示する">
+                            <Fluent:Button.Icon>
+                                <iconPacks:PackIconMaterial Kind="ChartBar" />
+                            </Fluent:Button.Icon>
+                        </Fluent:Button>
+                    </Fluent:RibbonGroupBox>
+                </Fluent:RibbonTabItem>
+
                 <!--  設定タブ：各種マスタ・表示設定ダイアログ  -->
                 <Fluent:RibbonTabItem Header="設定">
                     <Fluent:RibbonGroupBox Header="基本">
@@ -340,28 +383,6 @@
                             Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
                             <Fluent:Button.Icon>
                                 <iconPacks:PackIconMaterial Kind="TuneVariant" />
-                            </Fluent:Button.Icon>
-                        </Fluent:Button>
-                    </Fluent:RibbonGroupBox>
-
-                    <Fluent:RibbonGroupBox Header="分析">
-                        <Fluent:Button
-                            Command="{Binding OpenProductPerformanceCommand}"
-                            Header="実績分析"
-                            SizeDefinition="Middle,Middle,Small"
-                            Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
-                            <Fluent:Button.Icon>
-                                <iconPacks:PackIconMaterial Kind="ChartLine" />
-                            </Fluent:Button.Icon>
-                        </Fluent:Button>
-                        <Fluent:Button
-                            Command="{Binding OpenDepartmentLoadCommand}"
-                            Header="締切集中度"
-                            SizeDefinition="Middle,Middle,Small"
-                            Style="{StaticResource RibbonWhiteForegroundButtonStyle}"
-                            ToolTip="部署別・日別の締切集中度を表示する（前倒し着手をしなければその日に締切を迎える作業の目安）">
-                            <Fluent:Button.Icon>
-                                <iconPacks:PackIconMaterial Kind="ChartTimelineVariant" />
                             </Fluent:Button.Icon>
                         </Fluent:Button>
                     </Fluent:RibbonGroupBox>
@@ -710,7 +731,7 @@
                         x:Name="ColPlannedQuantity"
                         Width="45"
                         Binding="{Binding PlannedQuantity}"
-                        ElementStyle="{StaticResource FixedColumnCellStyle}"
+                        ElementStyle="{StaticResource NumericColumnCellStyle}"
                         Header="計画数" />
                     <!--  工程列はコードビハインドで動的生成  -->
                 </DataGrid.Columns>
