@@ -57,18 +57,42 @@
             </Border>
         </Popup>
 
-        <DataGrid Name="ResultGrid"
+        <DataGrid Name="ResultGrid" AlternatingRowBackground="#F5F5F5"
                   AutoGenerateColumns="False" CanUserAddRows="False"
-                  IsReadOnly="True" HeadersVisibility="Column"
+                  IsReadOnly="True" HeadersVisibility="Column" RowHeight="32"
+                  GridLinesVisibility="Horizontal"
                   MouseDoubleClick="ResultGrid_MouseDoubleClick">
+            <DataGrid.Resources>
+                <Style TargetType="DataGridCell">
+                    <Setter Property="Padding" Value="6,0"/>
+                    <Setter Property="VerticalContentAlignment" Value="Center"/>
+                </Style>
+                <!--  既定のDataGridCellテンプレートはContentPresenterのVerticalAlignmentがCenter固定のため、
+                      VerticalContentAlignmentのSetterではなく、セル内容自体（TextBlock）に直接指定する  -->
+                <Style x:Key="CenterCellText" TargetType="TextBlock">
+                    <Setter Property="VerticalAlignment" Value="Center"/>
+                    <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                </Style>
+                <!--  品目名・工程名は列幅に収まらないことがあるため、省略時に全文をツールチップで確認できるようにする  -->
+                <Style x:Key="ItemNameCellText" BasedOn="{StaticResource CenterCellText}" TargetType="TextBlock">
+                    <Setter Property="ToolTip" Value="{Binding ItemName}"/>
+                </Style>
+                <Style x:Key="ProcessNameCellText" BasedOn="{StaticResource CenterCellText}" TargetType="TextBlock">
+                    <Setter Property="ToolTip" Value="{Binding ProcessName}"/>
+                </Style>
+                <!--  数値列は桁を揃えて比較しやすいよう右揃えにする  -->
+                <Style x:Key="RightCellText" BasedOn="{StaticResource CenterCellText}" TargetType="TextBlock">
+                    <Setter Property="TextAlignment" Value="Right"/>
+                </Style>
+            </DataGrid.Resources>
             <DataGrid.Columns>
-                <DataGridTextColumn Header="品目番号" Binding="{Binding ItemNumber}" Width="130"/>
-                <DataGridTextColumn Header="品目名" Binding="{Binding ItemName}" Width="230"/>
-                <DataGridTextColumn Header="工程名" Binding="{Binding ProcessName}" Width="140"/>
-                <DataGridTextColumn Header="完了件数" Binding="{Binding CompletedCount}" Width="80"/>
-                <DataGridTextColumn Header="標準超過件数" Binding="{Binding OverStandardCount}" Width="90"/>
-                <DataGridTextColumn Header="標準超過率" Binding="{Binding OverStandardRateText}" SortMemberPath="OverStandardRate" Width="80"/>
-                <DataGridTextColumn Header="平均超過時間" Binding="{Binding AvgOverMinutesText}" SortMemberPath="AvgOverMinutes" Width="90"/>
+                <DataGridTextColumn Header="品目番号" Binding="{Binding ItemNumber}" Width="130" ElementStyle="{StaticResource CenterCellText}"/>
+                <DataGridTextColumn Header="品目名" Binding="{Binding ItemName}" Width="230" ElementStyle="{StaticResource ItemNameCellText}"/>
+                <DataGridTextColumn Header="工程名" Binding="{Binding ProcessName}" Width="140" ElementStyle="{StaticResource ProcessNameCellText}"/>
+                <DataGridTextColumn Header="完了件数" Binding="{Binding CompletedCount}" Width="80" ElementStyle="{StaticResource RightCellText}"/>
+                <DataGridTextColumn Header="標準超過件数" Binding="{Binding OverStandardCount}" Width="90" ElementStyle="{StaticResource RightCellText}"/>
+                <DataGridTextColumn Header="標準超過率" Binding="{Binding OverStandardRateText}" SortMemberPath="OverStandardRate" Width="80" ElementStyle="{StaticResource RightCellText}"/>
+                <DataGridTextColumn Header="平均超過時間" Binding="{Binding AvgOverMinutesText}" SortMemberPath="AvgOverMinutes" Width="90" ElementStyle="{StaticResource RightCellText}"/>
             </DataGrid.Columns>
         </DataGrid>
     </DockPanel>

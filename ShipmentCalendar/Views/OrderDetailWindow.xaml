@@ -21,6 +21,10 @@
             <Setter Property="FontSize" Value="13" />
             <Setter Property="Margin" Value="0,0,0,10" />
         </Style>
+        <!--  数値列は桁を揃えて比較しやすいよう右揃えにする  -->
+        <Style x:Key="NumericColumnCellStyle" TargetType="TextBlock">
+            <Setter Property="TextAlignment" Value="Right" />
+        </Style>
     </Window.Resources>
 
     <DockPanel Margin="16">
@@ -285,6 +289,7 @@
                 <DataGridTextColumn
                     Width="40"
                     Binding="{Binding SortOrder}"
+                    ElementStyle="{StaticResource NumericColumnCellStyle}"
                     Header="#" />
                 <DataGridTextColumn
                     Width="250"
@@ -317,10 +322,12 @@
                 <DataGridTextColumn
                     Width="80"
                     Binding="{Binding RequiredHoursText}"
+                    ElementStyle="{StaticResource NumericColumnCellStyle}"
                     Header="必要時間" />
                 <DataGridTextColumn
                     Width="80"
                     Binding="{Binding ActualWorkHoursText}"
+                    ElementStyle="{StaticResource NumericColumnCellStyle}"
                     Header="実績工数" />
                 <DataGridTemplateColumn Width="70" Header="ステータス">
                     <DataGridTemplateColumn.CellTemplate>
@@ -341,14 +348,17 @@
                 <DataGridTextColumn
                     Width="60"
                     Binding="{Binding OutsourceLeadDaysText}"
+                    ElementStyle="{StaticResource NumericColumnCellStyle}"
                     Header="外注待ち" />
                 <DataGridTextColumn
                     Width="70"
                     Binding="{Binding DwellTimeText}"
+                    ElementStyle="{StaticResource NumericColumnCellStyle}"
                     Header="滞留時間" />
                 <DataGridTextColumn
                     Width="70"
                     Binding="{Binding WarningDaysText}"
+                    ElementStyle="{StaticResource NumericColumnCellStyle}"
                     Header="警告日数" />
             </DataGrid.Columns>
         </DataGrid>

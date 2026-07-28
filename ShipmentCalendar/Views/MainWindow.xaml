@@ -55,6 +55,14 @@
             <Setter Property="Padding" Value="0,0,12,0" />
         </Style>
 
+        <!--  数値列は桁を揃えて比較しやすいよう右揃えにする  -->
+        <Style
+            x:Key="NumericColumnCellStyle"
+            BasedOn="{StaticResource FixedColumnCellStyle}"
+            TargetType="TextBlock">
+            <Setter Property="TextAlignment" Value="Right" />
+        </Style>
+
         <!--  表示列ドロップダウンを他のコンボボックスと同じ白背景・枠線の見た目に揃えるスタイル  -->
         <Style
             x:Key="ColumnVisibilityDropDownStyle"
@@ -723,7 +731,7 @@
                         x:Name="ColPlannedQuantity"
                         Width="45"
                         Binding="{Binding PlannedQuantity}"
-                        ElementStyle="{StaticResource FixedColumnCellStyle}"
+                        ElementStyle="{StaticResource NumericColumnCellStyle}"
                         Header="計画数" />
                     <!--  工程列はコードビハインドで動的生成  -->
                 </DataGrid.Columns>
