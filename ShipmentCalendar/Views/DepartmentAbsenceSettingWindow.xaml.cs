@@ -68,6 +68,7 @@ public partial class DepartmentAbsenceSettingWindow : Window {
 
     /// <summary>基本人数列・日付列（欠員数）の編集完了時、DBへ保存する</summary>
     private async void AbsenceGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e) {
+        if (e.EditAction == DataGridEditAction.Cancel) return;
         if (e.Row.Item is not DepartmentAbsenceSettingRow row) return;
         if (e.EditingElement is not TextBox textBox) return;
 
@@ -80,6 +81,9 @@ public partial class DepartmentAbsenceSettingWindow : Window {
         var columnIndex = AbsenceGrid.Columns.IndexOf(e.Column);
         if (columnIndex == 1) {
             await SqliteDepartmentRepository.UpdateHeadcountAsync(row.DepartmentId, value);
+            row.Headcount = value;
+            var department = _departments.FirstOrDefault(d => d.Id == row.DepartmentId);
+            if (department != null) department.Headcount = value;
             return;
         }
 

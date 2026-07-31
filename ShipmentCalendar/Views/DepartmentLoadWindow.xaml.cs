@@ -28,8 +28,11 @@ public partial class DepartmentLoadWindow : Window {
 
     private async Task LoadAsync(IEnumerable<Order> orders) {
         _orders = orders;
-        _departments = await SqliteDepartmentRepository.GetAllAsync();
-        _absences = await SqliteDepartmentAbsenceRepository.GetAllAsync();
+        var departmentsTask = SqliteDepartmentRepository.GetAllAsync();
+        var absencesTask = SqliteDepartmentAbsenceRepository.GetAllAsync();
+        await Task.WhenAll(departmentsTask, absencesTask);
+        _departments = await departmentsTask;
+        _absences = await absencesTask;
         RebuildGrid();
     }
 
@@ -53,11 +56,13 @@ public partial class DepartmentLoadWindow : Window {
 
         if (rows.Count == 0 || rows[0].Cells.Count == 0) {
             TxtEmpty.Visibility = Visibility.Visible;
+            TxtHeadcountWarning.Visibility = Visibility.Collapsed;
             LoadGrid.ItemsSource = null;
             return;
         }
 
         TxtEmpty.Visibility = Visibility.Collapsed;
+        TxtHeadcountWarning.Visibility = rows.Any(r => r.DepartmentId != 0 && r.Headcount <= 0) ? Visibility.Visible : Visibility.Collapsed;
         if (LoadGrid.Columns.Count <= 1) {
             for (int i = 0; i < rows[0].Cells.Count; i++)
                 LoadGrid.Columns.Add(BuildDateColumn(rows[0].Cells[i].Date, i));

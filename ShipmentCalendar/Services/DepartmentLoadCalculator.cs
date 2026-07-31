@@ -18,7 +18,10 @@ public static class DepartmentLoadCalculator {
         var grouped = orders
             .SelectMany(o => o.Processes.Select(p => (Order: o, Process: p)))
             .Where(x => x.Process.Status != ProcessStatus.Completed)
-            .SelectMany(x => x.Process.DailyMinutes.Select(dm => (x.Order, x.Process, Date: dm.Key, DayMinutes: dm.Value)))
+            // RequiredMinutesが0（未設定）の工程はDailyMinutesが空になるため、DueDateに0分として計上し集計から漏れないようにする
+            .SelectMany(x => x.Process.DailyMinutes.Count > 0
+                ? x.Process.DailyMinutes.Select(dm => (x.Order, x.Process, Date: dm.Key, DayMinutes: dm.Value))
+                : [(x.Order, x.Process, Date: x.Process.DueDate, DayMinutes: 0.0)])
             .GroupBy(x => (x.Process.DepartmentId, x.Date))
             .ToDictionary(g => g.Key, g => (
                 Count: g.Select(x => x.Process).Distinct().Count(),

@@ -73,5 +73,28 @@ public static class DatabaseInitializer {
 
         ";
         command.ExecuteNonQuery();
+
+        // CREATE TABLE IF NOT EXISTSは既存テーブルには列を追加しないため、既存DBへの列追加はALTER TABLEで個別に行う
+        MigrateAddColumnIfMissing(connection, "Departments", "Headcount", "INTEGER NOT NULL DEFAULT 0");
+    }
+
+    private static void MigrateAddColumnIfMissing(SqliteConnection connection, string table, string column, string columnDefinition) {
+        bool exists;
+        using (var checkCommand = connection.CreateCommand()) {
+            checkCommand.CommandText = $"PRAGMA table_info({table})";
+            using var reader = checkCommand.ExecuteReader();
+            exists = false;
+            while (reader.Read()) {
+                if (string.Equals(reader.GetString(1), column, StringComparison.OrdinalIgnoreCase)) {
+                    exists = true;
+                    break;
+                }
+            }
+        }
+        if (exists) return;
+
+        using var alterCommand = connection.CreateCommand();
+        alterCommand.CommandText = $"ALTER TABLE {table} ADD COLUMN {column} {columnDefinition}";
+        alterCommand.ExecuteNonQuery();
     }
 }

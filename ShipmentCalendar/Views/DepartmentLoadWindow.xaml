@@ -13,6 +13,9 @@
         <TextBlock DockPanel.Dock="Bottom" Name="TxtEmpty" Margin="0,8,0,0" Foreground="#666666"
                    Text="表示中の注文に未完了工程がありません。" Visibility="Collapsed"/>
 
+        <TextBlock DockPanel.Dock="Top" Name="TxtHeadcountWarning" Margin="0,0,0,8" Foreground="#B00020" TextWrapping="Wrap"
+                   Text="基本人数が未設定の部署があります。「欠員」画面で基本人数を設定すると、その部署の充足率による集中度判定が有効になります。" Visibility="Collapsed"/>
+
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,12">
             <Border Background="{StaticResource CongestionCaution}" CornerRadius="3" Padding="6,2" Margin="0,0,4,0" VerticalAlignment="Center">
                 <TextBlock Text="やや集中" Foreground="Black"/>

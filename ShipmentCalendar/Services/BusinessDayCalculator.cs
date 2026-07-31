@@ -105,7 +105,7 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays, double dayMinu
                 SortOrder = def.SortOrder,
                 DepartmentId = def.DepartmentId,
                 RequiredMinutes = requiredMinutes,
-                DailyMinutes = DistributeMinutesAcrossBuckets(adjustedStart[i], requiredMinutes, order.CompletionDate),
+                DailyMinutes = DistributeMinutesAcrossBuckets(adjustedStart[i], requiredMinutes, order.CompletionDate, finishBucket[i] - 1),
                 OutsourceLeadDays = def.OutsourceLeadDays,
                 DwellTimeMinutes = def.DwellTimeMinutes,
                 WorkerName = isCompleted ? completed.WorkerName : string.Empty,
@@ -115,16 +115,30 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays, double dayMinu
         return results;
     }
 
+    /// <summary>最終受入工程が完了している場合、その注文の全工程を完了扱いにする（MainViewModel/ProductPerformanceWindow/ProcessBottleneckWindowで共通の救済ルール）。
+    /// 最終受入工程がIsVisible=falseで非表示でも判定できるよう、フィルタ前のdefinitionsと完了済み指示先番号セットから直接判定する</summary>
+    public static void MarkAllCompletedIfFinalReceiptDone(
+        List<OrderProcess> processes, IEnumerable<ProcessDefinition> definitions,
+        Dictionary<string, (DateOnly? ActualDate, string WorkerName, double ActualWorkMinutes)> completedByDestNumber) {
+        var def999 = definitions.FirstOrDefault(d => d.SortOrder == ProcessDefinition.FinalReceiptSortOrder);
+        if (def999 == null || !completedByDestNumber.ContainsKey(def999.DestinationCode)) return;
+        foreach (var process in processes)
+            process.Status = ProcessStatus.Completed;
+    }
+
     /// <summary>工程が占める時間区間 [start, start + minutes) を_dayMinutes単位のバケット
     /// （1=完了日当日、2=その前営業日…）に分解し、各バケットに対応する日付ごとの占有時間（分）を返す。
     /// 返り値のValueの合計はminutesと一致する。</summary>
-    private Dictionary<DateOnly, double> DistributeMinutesAcrossBuckets(double start, double minutes, DateOnly completionDate) {
+    /// <summary>firstBucketIndexはfinishBucket[i]-1（完了必須日の算出に使うバケット番号）をそのまま渡す。
+    /// startから独立に再計算すると、finishBucketの丸めルールを変更した際にDailyMinutesだけ追従し忘れる恐れがあるため、
+    /// 呼び出し元が既に算出済みの値を共有する</summary>
+    private Dictionary<DateOnly, double> DistributeMinutesAcrossBuckets(double start, double minutes, DateOnly completionDate, int firstBucketIndex) {
         var result = new Dictionary<DateOnly, double>();
         if (minutes <= 0) return result;
 
         // 最初のバケットだけ、startの端数分だけ容量が少ない（残りは_dayMinutesまるごと）
         double remainingMinutes = minutes;
-        int bucketIndex = (int)(start / _dayMinutes);
+        int bucketIndex = firstBucketIndex;
         double capacity = _dayMinutes - (start % _dayMinutes);
         while (remainingMinutes > 0) {
             double bucketMinutes = Math.Min(capacity, remainingMinutes);
