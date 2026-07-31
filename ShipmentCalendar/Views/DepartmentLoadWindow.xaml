@@ -8,7 +8,7 @@
         <TextBlock DockPanel.Dock="Top" FontSize="16" FontWeight="Bold"
                    Text="部署別 締切集中度" Margin="0,0,0,4"/>
         <TextBlock DockPanel.Dock="Top" Foreground="#666666" TextWrapping="Wrap" Margin="0,0,0,12"
-                   Text="表示中の注文の未完了工程について、完了必須日（DueDate）ごとの件数を部署別に集計したものです。実際の着手日ではなく「前倒し着手をしなければこの日に締切を迎える」という目安のため、実際の負荷や稼働率とは異なります。人数列に基本人数を設定すると、充足率（合計必要時間÷(人数×1日の稼働時間)）による判定になります。"/>
+                   Text="表示中の注文の未完了工程について、必要時間を営業日に按分し、日別・部署別に集計しています。充足率は、合計必要時間÷(実働人数×1日の稼働時間)で算出します。実働人数は基本人数から日別欠員数を差し引いた人数です。"/>
 
         <TextBlock DockPanel.Dock="Bottom" Name="TxtEmpty" Margin="0,8,0,0" Foreground="#666666"
                    Text="表示中の注文に未完了工程がありません。" Visibility="Collapsed"/>

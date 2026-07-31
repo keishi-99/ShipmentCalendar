@@ -35,7 +35,7 @@ public partial class DepartmentAbsenceSettingWindow : Window {
         if (CmbYear.SelectedItem is not int year || CmbMonth.SelectedItem is not int month) return;
 
         var daysInMonth = DateTime.DaysInMonth(year, month);
-        _currentDates = Enumerable.Range(1, daysInMonth).Select(d => new DateOnly(year, month, d)).ToList();
+        var dates = Enumerable.Range(1, daysInMonth).Select(d => new DateOnly(year, month, d)).ToList();
 
         var absences = await SqliteDepartmentAbsenceRepository.GetByMonthAsync(year, month);
         var absenceMap = absences.ToDictionary(a => (a.DepartmentId, a.Date), a => a.AbsentCount);
@@ -44,11 +44,15 @@ public partial class DepartmentAbsenceSettingWindow : Window {
             DepartmentId = d.Id,
             DepartmentName = d.Name,
             Headcount = d.Headcount,
-            Cells = _currentDates.Select(date => new DepartmentAbsenceSettingCell {
+            Cells = dates.Select(date => new DepartmentAbsenceSettingCell {
                 Date = date,
                 AbsentCount = absenceMap.GetValueOrDefault((d.Id, date), 0)
             }).ToList()
         }).ToList();
+
+        // awaitを挟む間に年・月が連続変更されても、行データと列数がずれないよう、
+        // ここまでローカル変数で計算してから最後にまとめてフィールド・UIへ反映する
+        _currentDates = dates;
 
         // 月替わりで日数が変わるため、日付列は毎回作り直す
         while (AbsenceGrid.Columns.Count > 2)
@@ -79,17 +83,21 @@ public partial class DepartmentAbsenceSettingWindow : Window {
         }
 
         var columnIndex = AbsenceGrid.Columns.IndexOf(e.Column);
-        if (columnIndex == 1) {
-            await SqliteDepartmentRepository.UpdateHeadcountAsync(row.DepartmentId, value);
-            row.Headcount = value;
-            var department = _departments.FirstOrDefault(d => d.Id == row.DepartmentId);
-            if (department != null) department.Headcount = value;
-            return;
-        }
+        try {
+            if (columnIndex == 1) {
+                await SqliteDepartmentRepository.UpdateHeadcountAsync(row.DepartmentId, value);
+                row.Headcount = value;
+                var department = _departments.FirstOrDefault(d => d.Id == row.DepartmentId);
+                if (department != null) department.Headcount = value;
+                return;
+            }
 
-        var dateIndex = columnIndex - 2;
-        if (dateIndex < 0 || dateIndex >= _currentDates.Count) return;
-        await SqliteDepartmentAbsenceRepository.UpsertAsync(row.DepartmentId, _currentDates[dateIndex], value);
+            var dateIndex = columnIndex - 2;
+            if (dateIndex < 0 || dateIndex >= _currentDates.Count) return;
+            await SqliteDepartmentAbsenceRepository.UpsertAsync(row.DepartmentId, _currentDates[dateIndex], value);
+        } catch (Exception ex) {
+            MessageBox.Show($"保存に失敗しました: {ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();

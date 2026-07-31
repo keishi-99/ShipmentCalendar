@@ -75,6 +75,12 @@ public static class SqliteDepartmentRepository
             updateCmd.Parameters.AddWithValue("$id", id);
             await updateCmd.ExecuteNonQueryAsync();
 
+            var deleteAbsencesCmd = connection.CreateCommand();
+            deleteAbsencesCmd.Transaction = transaction as SqliteTransaction;
+            deleteAbsencesCmd.CommandText = "DELETE FROM DepartmentAbsences WHERE DepartmentId = $id";
+            deleteAbsencesCmd.Parameters.AddWithValue("$id", id);
+            await deleteAbsencesCmd.ExecuteNonQueryAsync();
+
             await transaction.CommitAsync();
         }
         catch
