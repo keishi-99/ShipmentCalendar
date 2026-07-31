@@ -13,6 +13,11 @@ using Media3D = System.Windows.Media.Media3D;
 namespace ShipmentCalendar.Views;
 
 public partial class DepartmentLoadWindow : Window {
+    // 日付セルの文字サイズ・最大行数（件数/時間/充足率/欠員の4行）。RowHeightをこの値から算出することで、
+    // フォントサイズを変更してもDataGridの行高さが自動的に追従し、部署によって行高さがばらつくのを防ぐ
+    private const double CellFontSize = 10.0;
+    private const int MaxCellLines = 4;
+
     private readonly AppSettings _settings;
     private IEnumerable<Order> _orders = [];
     private IEnumerable<Department> _departments = [];
@@ -23,6 +28,8 @@ public partial class DepartmentLoadWindow : Window {
         _settings = settings;
         TxtCautionPercent.Text = settings.CongestionCautionPercent.ToString(CultureInfo.InvariantCulture);
         TxtConcentratedPercent.Text = settings.CongestionConcentratedPercent.ToString(CultureInfo.InvariantCulture);
+        // 行の上下余白（DataGridCellの既定Padding相当）を含め、4行分の高さを確保する
+        LoadGrid.RowHeight = CellFontSize * 1.3 * MaxCellLines + 8;
         Loaded += async (_, _) => await LoadAsync(orders);
     }
 
@@ -96,7 +103,7 @@ public partial class DepartmentLoadWindow : Window {
         var textFactory = new FrameworkElementFactory(typeof(TextBlock));
         textFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
         textFactory.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
-        textFactory.SetValue(TextBlock.FontSizeProperty, 10.0);
+        textFactory.SetValue(TextBlock.FontSizeProperty, CellFontSize);
         // 行選択時にDataGridの既定スタイルで文字色が白に切り替わり、白背景（通常）セルで見えなくなるため固定色にする
         textFactory.SetValue(TextBlock.ForegroundProperty, Brushes.Black);
         textFactory.SetBinding(TextBlock.TextProperty, new Binding($"Cells[{index}].DisplayText"));
