@@ -20,6 +20,9 @@ public class DialogService : IDialogService {
     public void ShowDepartmentSetting() =>
         new DepartmentSettingWindow() { Owner = Owner }.ShowDialog();
 
+    public void ShowDepartmentAbsenceSetting() =>
+        new DepartmentAbsenceSettingWindow() { Owner = Owner }.ShowDialog();
+
     public void ShowProductPerformance(AppSettings settings) =>
         new ProductPerformanceWindow(settings) { Owner = Owner }.ShowDialog();
 

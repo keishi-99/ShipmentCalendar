@@ -37,16 +37,21 @@ public partial class ProcessBottleneckWindow : Window {
         ResultGrid.ItemsSource = null;
 
         try {
-            // ドリルダウンでOrderDetailWindowを開く際にOrderを再構築するために必要（検索のたびに1回だけ取得してキャッシュする）
-            _holidays = (await new SqliteHolidayRepository().GetAllAsync()).ToList();
-            _leadDaysByItem = await SqliteProductDisplayNameRepository.GetAllCompletionDateLeadDaysAsync();
-
-            var (completedRows, defsByItem) = await Task.Run(() => {
+            // ドリルダウンでOrderDetailWindowを開く際にOrderを再構築するために必要（検索のたびに1回だけ取得してキャッシュする）。
+            // ODBC問い合わせと依存関係がないため、並行して実行し検索開始を遅らせないようにする
+            var holidaysTask = new SqliteHolidayRepository().GetAllAsync();
+            var leadDaysTask = SqliteProductDisplayNameRepository.GetAllCompletionDateLeadDaysAsync();
+            var odbcTask = Task.Run(() => {
                 var rows = new OdbcOrderRepository(_settings).GetCompletedProcessesByDateRange(from, to).ToList();
                 var itemNumbers = rows.Select(r => r.ItemNumber).Distinct(StringComparer.OrdinalIgnoreCase);
                 var defs = new OdbcProcessDefinitionRepository(_settings).GetByItemNumbers(itemNumbers);
                 return (rows, defs);
             });
+
+            await Task.WhenAll(holidaysTask, leadDaysTask, odbcTask);
+            _holidays = (await holidaysTask).ToList();
+            _leadDaysByItem = await leadDaysTask;
+            var (completedRows, defsByItem) = await odbcTask;
             _completedRows = completedRows;
             _defsByItem = defsByItem;
 
@@ -102,12 +107,7 @@ public partial class ProcessBottleneckWindow : Window {
 
         order.Processes = calculator.BuildProcesses(order, defs.Where(d => d.IsVisible), completedByDestNumber);
 
-        // 最終受入工程が完了している場合、前工程すべてを完了扱いにする（MainViewModel/ProductPerformanceWindowと同じ規則）
-        var def999 = defs.FirstOrDefault(d => d.SortOrder == ProcessDefinition.FinalReceiptSortOrder);
-        if (def999 != null && completedByDestNumber.ContainsKey(def999.DestinationCode)) {
-            foreach (var process in order.Processes)
-                process.Status = ProcessStatus.Completed;
-        }
+        BusinessDayCalculator.MarkAllCompletedIfFinalReceiptDone(order.Processes, defs, completedByDestNumber);
 
         new OrderDetailWindow(order, _settings.ShowRequiredTimeInMinutes, _settings.DayMinutes) { Owner = this }.ShowDialog();
     }

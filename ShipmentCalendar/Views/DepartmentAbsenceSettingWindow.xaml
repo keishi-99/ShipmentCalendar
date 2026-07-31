@@ -1,0 +1,37 @@
+<Window x:Class="ShipmentCalendar.Views.DepartmentAbsenceSettingWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="欠員設定" Height="500" Width="900"
+        WindowStartupLocation="CenterOwner">
+    <DockPanel Margin="16">
+        <!-- ボタンを先に宣言して高さ不足で隠れないようにする -->
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+            <Button Content="閉じる" Padding="16,6" Click="BtnClose_Click"/>
+        </StackPanel>
+        <TextBlock Name="TxtStatus" DockPanel.Dock="Bottom" Margin="0,4,0,0" Foreground="#666666"/>
+
+        <TextBlock DockPanel.Dock="Top" FontSize="16" FontWeight="Bold"
+                   Text="欠員設定" Margin="0,0,0,4"/>
+        <TextBlock DockPanel.Dock="Top" Foreground="#666666" TextWrapping="Wrap" Margin="0,0,0,12"
+                   Text="部署の基本人数と、日別の欠員数（休暇・応援配置等）を設定します。締切集中度の充足率判定は「基本人数−その日の欠員数」を実働人数として計算します。"/>
+
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,12">
+            <TextBlock Text="対象月：" VerticalAlignment="Center"/>
+            <ComboBox Name="CmbYear" Width="80" Margin="4,0" SelectionChanged="CmbYearOrMonth_SelectionChanged"/>
+            <TextBlock Text="年" VerticalAlignment="Center"/>
+            <ComboBox Name="CmbMonth" Width="60" Margin="4,0" SelectionChanged="CmbYearOrMonth_SelectionChanged"/>
+            <TextBlock Text="月" VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <DataGrid Name="AbsenceGrid"
+                  AutoGenerateColumns="False" CanUserAddRows="False"
+                  IsReadOnly="False" HeadersVisibility="Column"
+                  HorizontalScrollBarVisibility="Auto" FrozenColumnCount="2" SelectionUnit="Cell"
+                  CellEditEnding="AbsenceGrid_CellEditEnding">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="部署" Binding="{Binding DepartmentName}" Width="90" IsReadOnly="True"/>
+                <DataGridTextColumn Header="基本人数" Binding="{Binding Headcount}" Width="70"/>
+            </DataGrid.Columns>
+        </DataGrid>
+    </DockPanel>
+</Window>

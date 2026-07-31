@@ -65,10 +65,10 @@ public class AppSettings
     /// <summary>ODBC接続設定が入力済みか</summary>
     public bool IsOdbcConfigured => !string.IsNullOrEmpty(OdbcDsn);
 
-    /// <summary>部署別締切集中度カレンダーで「やや集中」と判定する合計必要時間（分）のしきい値</summary>
-    public double CongestionCautionMinutes { get; set; } = 500;
-    /// <summary>部署別締切集中度カレンダーで「集中」と判定する合計必要時間（分）のしきい値</summary>
-    public double CongestionConcentratedMinutes { get; set; } = 1000;
+    /// <summary>部署別締切集中度カレンダーで「やや集中」と判定する充足率（%）＝合計必要時間÷(基本人数×1日の稼働時間)のしきい値</summary>
+    public double CongestionCautionPercent { get; set; } = 80;
+    /// <summary>部署別締切集中度カレンダーで「集中」と判定する充足率（%）のしきい値</summary>
+    public double CongestionConcentratedPercent { get; set; } = 100;
 }
 
 /// <summary>注文一覧の並び順</summary>

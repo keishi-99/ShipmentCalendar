@@ -51,7 +51,16 @@ public static class DatabaseInitializer {
             CREATE TABLE IF NOT EXISTS Departments (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 Name TEXT NOT NULL UNIQUE,
-                SortOrder INTEGER NOT NULL DEFAULT 0
+                SortOrder INTEGER NOT NULL DEFAULT 0,
+                Headcount INTEGER NOT NULL DEFAULT 0
+            );
+
+            CREATE TABLE IF NOT EXISTS DepartmentAbsences (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                DepartmentId INTEGER NOT NULL,
+                Date TEXT NOT NULL,
+                AbsentCount INTEGER NOT NULL DEFAULT 0,
+                UNIQUE(DepartmentId, Date)
             );
 
             CREATE TABLE IF NOT EXISTS ModelCodeDefinitions (
@@ -64,5 +73,28 @@ public static class DatabaseInitializer {
 
         ";
         command.ExecuteNonQuery();
+
+        // CREATE TABLE IF NOT EXISTSは既存テーブルには列を追加しないため、既存DBへの列追加はALTER TABLEで個別に行う
+        MigrateAddColumnIfMissing(connection, "Departments", "Headcount", "INTEGER NOT NULL DEFAULT 0");
+    }
+
+    private static void MigrateAddColumnIfMissing(SqliteConnection connection, string table, string column, string columnDefinition) {
+        bool exists;
+        using (var checkCommand = connection.CreateCommand()) {
+            checkCommand.CommandText = $"PRAGMA table_info({table})";
+            using var reader = checkCommand.ExecuteReader();
+            exists = false;
+            while (reader.Read()) {
+                if (string.Equals(reader.GetString(1), column, StringComparison.OrdinalIgnoreCase)) {
+                    exists = true;
+                    break;
+                }
+            }
+        }
+        if (exists) return;
+
+        using var alterCommand = connection.CreateCommand();
+        alterCommand.CommandText = $"ALTER TABLE {table} ADD COLUMN {column} {columnDefinition}";
+        alterCommand.ExecuteNonQuery();
     }
 }

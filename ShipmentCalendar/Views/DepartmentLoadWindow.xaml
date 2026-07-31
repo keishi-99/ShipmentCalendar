@@ -8,24 +8,27 @@
         <TextBlock DockPanel.Dock="Top" FontSize="16" FontWeight="Bold"
                    Text="部署別 締切集中度" Margin="0,0,0,4"/>
         <TextBlock DockPanel.Dock="Top" Foreground="#666666" TextWrapping="Wrap" Margin="0,0,0,12"
-                   Text="表示中の注文の未完了工程について、完了必須日（DueDate）ごとの件数を部署別に集計したものです。実際の着手日ではなく「前倒し着手をしなければこの日に締切を迎える」という目安のため、実際の負荷や稼働率とは異なります。"/>
+                   Text="表示中の注文の未完了工程について、必要時間を営業日に按分し、日別・部署別に集計しています。充足率は、合計必要時間÷(実働人数×1日の稼働時間)で算出します。実働人数は基本人数から日別欠員数を差し引いた人数です。"/>
 
         <TextBlock DockPanel.Dock="Bottom" Name="TxtEmpty" Margin="0,8,0,0" Foreground="#666666"
                    Text="表示中の注文に未完了工程がありません。" Visibility="Collapsed"/>
+
+        <TextBlock DockPanel.Dock="Top" Name="TxtHeadcountWarning" Margin="0,0,0,8" Foreground="#B00020" TextWrapping="Wrap"
+                   Text="基本人数が未設定の部署があります。「欠員」画面で基本人数を設定すると、その部署の充足率による集中度判定が有効になります。" Visibility="Collapsed"/>
 
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,12">
             <Border Background="{StaticResource CongestionCaution}" CornerRadius="3" Padding="6,2" Margin="0,0,4,0" VerticalAlignment="Center">
                 <TextBlock Text="やや集中" Foreground="Black"/>
             </Border>
-            <TextBlock Text="：合計" VerticalAlignment="Center"/>
-            <TextBox Name="TxtCautionMinutes" Width="60" Margin="4,0" Padding="2" VerticalContentAlignment="Center"/>
-            <TextBlock Text="分以上　　" VerticalAlignment="Center"/>
+            <TextBlock Text="：充足率" VerticalAlignment="Center"/>
+            <TextBox Name="TxtCautionPercent" Width="60" Margin="4,0" Padding="2" VerticalContentAlignment="Center"/>
+            <TextBlock Text="%以上　　" VerticalAlignment="Center"/>
             <Border Background="{StaticResource CongestionConcentrated}" CornerRadius="3" Padding="6,2" Margin="0,0,4,0" VerticalAlignment="Center">
                 <TextBlock Text="集中" Foreground="Black"/>
             </Border>
-            <TextBlock Text="：合計" VerticalAlignment="Center"/>
-            <TextBox Name="TxtConcentratedMinutes" Width="60" Margin="4,0" Padding="2" VerticalContentAlignment="Center"/>
-            <TextBlock Text="分以上" VerticalAlignment="Center" Margin="0,0,12,0"/>
+            <TextBlock Text="：充足率" VerticalAlignment="Center"/>
+            <TextBox Name="TxtConcentratedPercent" Width="60" Margin="4,0" Padding="2" VerticalContentAlignment="Center"/>
+            <TextBlock Text="%以上" VerticalAlignment="Center" Margin="0,0,12,0"/>
             <Button Content="適用" Padding="12,4" Click="BtnApplyThreshold_Click"/>
         </StackPanel>
 
@@ -76,7 +79,14 @@
                 </Style>
             </DataGrid.CellStyle>
             <DataGrid.Columns>
-                <DataGridTextColumn Header="部署" Binding="{Binding DepartmentName}" Width="120"/>
+                <DataGridTextColumn Header="部署" Binding="{Binding DepartmentDisplayText}" Width="90">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Setter Property="TextAlignment" Value="Center"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
             </DataGrid.Columns>
         </DataGrid>
     </DockPanel>

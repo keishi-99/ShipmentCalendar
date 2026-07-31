@@ -212,12 +212,7 @@ public partial class ProductPerformanceWindow : Window {
 
         order.Processes = calculator.BuildProcesses(order, _lastDefs.Where(d => d.IsVisible), completedByDestNumber);
 
-        // 最終受入工程が完了している場合、前工程すべてを完了扱いにする（MainViewModelと同じ規則）
-        var def999 = _lastDefs.FirstOrDefault(d => d.SortOrder == ProcessDefinition.FinalReceiptSortOrder);
-        if (def999 != null && completedByDestNumber.ContainsKey(def999.DestinationCode)) {
-            foreach (var process in order.Processes)
-                process.Status = ProcessStatus.Completed;
-        }
+        BusinessDayCalculator.MarkAllCompletedIfFinalReceiptDone(order.Processes, _lastDefs, completedByDestNumber);
 
         new OrderDetailWindow(order, _settings.ShowRequiredTimeInMinutes, _settings.DayMinutes) { Owner = this }.ShowDialog();
     }

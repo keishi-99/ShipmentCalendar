@@ -46,6 +46,8 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays, double dayMinu
         double runningIn = 0;
         var startBucket = new int[sorted.Count];
         var finishBucket = new int[sorted.Count];
+        // 各工程が消費を始める時点の累積値（完了日を0とした軸上の位置）。DailyMinutesの算出に使う
+        var adjustedStart = new double[sorted.Count];
         for (int i = sorted.Count - 1; i >= 0; i--) {
             var def = sorted[i];
             double minutes = def.LeadTimeMinutes * order.PlannedQuantity;
@@ -78,6 +80,7 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays, double dayMinu
             // 分単位で正確に積む。所要時間が_dayMinutes未満で余りがある場合、その余りは
             // 前工程（より着手が早い工程）が同じ日の枠として使えるようにする
             finishBucket[i] = (int)(adjusted / _dayMinutes) + 1;
+            adjustedStart[i] = adjusted;
             runningIn = adjusted + minutes;
             // (runningIn - 1) / _dayMinutes は小数の場合に丸め誤差で1日不足することがあるため、Ceilingで判定する
             startBucket[i] = runningIn > 0 ? (int)Math.Ceiling(runningIn / _dayMinutes) : 1;
@@ -102,6 +105,7 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays, double dayMinu
                 SortOrder = def.SortOrder,
                 DepartmentId = def.DepartmentId,
                 RequiredMinutes = requiredMinutes,
+                DailyMinutes = DistributeMinutesAcrossBuckets(adjustedStart[i], requiredMinutes, order.CompletionDate, finishBucket[i] - 1),
                 OutsourceLeadDays = def.OutsourceLeadDays,
                 DwellTimeMinutes = def.DwellTimeMinutes,
                 WorkerName = isCompleted ? completed.WorkerName : string.Empty,
@@ -109,6 +113,43 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays, double dayMinu
             });
         }
         return results;
+    }
+
+    /// <summary>最終受入工程が完了している場合、その注文の全工程を完了扱いにする（MainViewModel/ProductPerformanceWindow/ProcessBottleneckWindowで共通の救済ルール）。
+    /// 最終受入工程がIsVisible=falseで非表示でも判定できるよう、フィルタ前のdefinitionsと完了済み指示先番号セットから直接判定する</summary>
+    public static void MarkAllCompletedIfFinalReceiptDone(
+        List<OrderProcess> processes, IEnumerable<ProcessDefinition> definitions,
+        Dictionary<string, (DateOnly? ActualDate, string WorkerName, double ActualWorkMinutes)> completedByDestNumber) {
+        var def999 = definitions.FirstOrDefault(d => d.SortOrder == ProcessDefinition.FinalReceiptSortOrder);
+        if (def999 == null || !completedByDestNumber.ContainsKey(def999.DestinationCode)) return;
+        foreach (var process in processes)
+            process.Status = ProcessStatus.Completed;
+    }
+
+    /// <summary>工程が占める時間区間 [start, start + minutes) を_dayMinutes単位のバケット
+    /// （1=完了日当日、2=その前営業日…）に分解し、各バケットに対応する日付ごとの占有時間（分）を返す。
+    /// 返り値のValueの合計はminutesと一致する。</summary>
+    /// <summary>firstBucketIndexはfinishBucket[i]-1（完了必須日の算出に使うバケット番号）をそのまま渡す。
+    /// startから独立に再計算すると、finishBucketの丸めルールを変更した際にDailyMinutesだけ追従し忘れる恐れがあるため、
+    /// 呼び出し元が既に算出済みの値を共有する</summary>
+    private Dictionary<DateOnly, double> DistributeMinutesAcrossBuckets(double start, double minutes, DateOnly completionDate, int firstBucketIndex) {
+        var result = new Dictionary<DateOnly, double>();
+        if (minutes <= 0) return result;
+
+        // 最初のバケットだけ、startの端数分だけ容量が少ない（残りは_dayMinutesまるごと）
+        double remainingMinutes = minutes;
+        int bucketIndex = firstBucketIndex;
+        double capacity = _dayMinutes - (start % _dayMinutes);
+        while (remainingMinutes > 0) {
+            double bucketMinutes = Math.Min(capacity, remainingMinutes);
+            var bucketDate = SubtractBusinessDays(completionDate, bucketIndex);
+            result[bucketDate] = bucketMinutes;
+            remainingMinutes -= bucketMinutes;
+            bucketIndex++;
+            capacity = _dayMinutes;
+        }
+
+        return result;
     }
 
     /// <summary>完了実績データ（製番横断）から、製番ごとの実績工程バー用OrderProcessリストを組み立てる。
