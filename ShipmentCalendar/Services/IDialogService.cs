@@ -9,6 +9,7 @@ public interface IDialogService {
     void ShowProcessSetting();
     void ShowHolidaySetting();
     void ShowDepartmentSetting();
+    void ShowDepartmentAbsenceSetting();
     void ShowProductPerformance(AppSettings settings);
     void ShowDepartmentLoad(IEnumerable<Order> orders, AppSettings settings);
     void ShowProcessBottleneck(AppSettings settings);

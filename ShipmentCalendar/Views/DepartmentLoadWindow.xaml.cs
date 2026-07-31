@@ -16,38 +16,40 @@ public partial class DepartmentLoadWindow : Window {
     private readonly AppSettings _settings;
     private IEnumerable<Order> _orders = [];
     private IEnumerable<Department> _departments = [];
+    private IEnumerable<DepartmentAbsence> _absences = [];
 
     public DepartmentLoadWindow(IEnumerable<Order> orders, AppSettings settings) {
         InitializeComponent();
         _settings = settings;
-        TxtCautionMinutes.Text = settings.CongestionCautionMinutes.ToString(CultureInfo.InvariantCulture);
-        TxtConcentratedMinutes.Text = settings.CongestionConcentratedMinutes.ToString(CultureInfo.InvariantCulture);
+        TxtCautionPercent.Text = settings.CongestionCautionPercent.ToString(CultureInfo.InvariantCulture);
+        TxtConcentratedPercent.Text = settings.CongestionConcentratedPercent.ToString(CultureInfo.InvariantCulture);
         Loaded += async (_, _) => await LoadAsync(orders);
     }
 
     private async Task LoadAsync(IEnumerable<Order> orders) {
         _orders = orders;
         _departments = await SqliteDepartmentRepository.GetAllAsync();
+        _absences = await SqliteDepartmentAbsenceRepository.GetAllAsync();
         RebuildGrid();
     }
 
     private void BtnApplyThreshold_Click(object sender, RoutedEventArgs e) {
-        if (!double.TryParse(TxtCautionMinutes.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out var caution)
-            || !double.TryParse(TxtConcentratedMinutes.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out var concentrated)
+        if (!double.TryParse(TxtCautionPercent.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out var caution)
+            || !double.TryParse(TxtConcentratedPercent.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out var concentrated)
             || !double.IsFinite(caution) || !double.IsFinite(concentrated)
             || caution < 0 || concentrated <= caution) {
-            MessageBox.Show("集中の分数は、やや集中の分数より大きい0以上の数値で入力してください。", "入力エラー", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show("集中の充足率は、やや集中の充足率より大きい0以上の数値で入力してください。", "入力エラー", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        _settings.CongestionCautionMinutes = caution;
-        _settings.CongestionConcentratedMinutes = concentrated;
+        _settings.CongestionCautionPercent = caution;
+        _settings.CongestionConcentratedPercent = concentrated;
         AppSettingsService.Save(_settings);
         RebuildGrid();
     }
 
     private void RebuildGrid() {
-        var rows = DepartmentLoadCalculator.Aggregate(_orders, _departments, _settings.CongestionCautionMinutes, _settings.CongestionConcentratedMinutes);
+        var rows = DepartmentLoadCalculator.Aggregate(_orders, _departments, _absences, _settings.DayMinutes, _settings.CongestionCautionPercent, _settings.CongestionConcentratedPercent);
 
         if (rows.Count == 0 || rows[0].Cells.Count == 0) {
             TxtEmpty.Visibility = Visibility.Visible;

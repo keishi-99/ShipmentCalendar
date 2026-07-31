@@ -51,7 +51,16 @@ public static class DatabaseInitializer {
             CREATE TABLE IF NOT EXISTS Departments (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 Name TEXT NOT NULL UNIQUE,
-                SortOrder INTEGER NOT NULL DEFAULT 0
+                SortOrder INTEGER NOT NULL DEFAULT 0,
+                Headcount INTEGER NOT NULL DEFAULT 0
+            );
+
+            CREATE TABLE IF NOT EXISTS DepartmentAbsences (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                DepartmentId INTEGER NOT NULL,
+                Date TEXT NOT NULL,
+                AbsentCount INTEGER NOT NULL DEFAULT 0,
+                UNIQUE(DepartmentId, Date)
             );
 
             CREATE TABLE IF NOT EXISTS ModelCodeDefinitions (

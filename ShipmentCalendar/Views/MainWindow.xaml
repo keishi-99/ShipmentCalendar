@@ -356,6 +356,15 @@
                             </Fluent:Button.Icon>
                         </Fluent:Button>
                         <Fluent:Button
+                            Command="{Binding OpenDepartmentAbsenceSettingCommand}"
+                            Header="欠員"
+                            SizeDefinition="Middle,Middle,Small"
+                            Style="{StaticResource RibbonWhiteForegroundButtonStyle}">
+                            <Fluent:Button.Icon>
+                                <iconPacks:PackIconMaterial Kind="AccountMinusOutline" />
+                            </Fluent:Button.Icon>
+                        </Fluent:Button>
+                        <Fluent:Button
                             Command="{Binding OpenHolidaySettingCommand}"
                             Header="休日"
                             SizeDefinition="Middle,Middle,Small"

@@ -21,6 +21,9 @@ public class OrderProcess
     public int DepartmentId { get; set; } = 0;
     /// <summary>必要時間（分）= (段取時間 + 作業時間) × 計画数。0=未設定</summary>
     public double RequiredMinutes { get; set; } = 0;
+    /// <summary>RequiredMinutesを着手日〜完了日の営業日ごとに割り振った内訳（日付→その日の必要時間・分）。
+    /// 合計はRequiredMinutesと一致する</summary>
+    public Dictionary<DateOnly, double> DailyMinutes { get; set; } = [];
     /// <summary>この工程の後に発生する外注待ち日数（営業日）。0=外注待ちなし</summary>
     public int OutsourceLeadDays { get; set; } = 0;
     /// <summary>この工程の後に発生する固定待機時間（分）。0=滞留時間なし</summary>

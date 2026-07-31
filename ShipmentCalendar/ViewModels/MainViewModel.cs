@@ -188,6 +188,9 @@ public partial class MainViewModel : ObservableObject {
     }
 
     [RelayCommand]
+    private void OpenDepartmentAbsenceSetting() => _dialogService.ShowDepartmentAbsenceSetting();
+
+    [RelayCommand]
     private void OpenProductPerformance() => _dialogService.ShowProductPerformance(Settings);
 
     [RelayCommand]

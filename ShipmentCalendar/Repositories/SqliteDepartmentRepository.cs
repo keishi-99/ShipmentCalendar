@@ -14,17 +14,31 @@ public static class SqliteDepartmentRepository
         await connection.OpenAsync();
 
         var command = connection.CreateCommand();
-        command.CommandText = "SELECT Id, Name, SortOrder FROM Departments ORDER BY SortOrder, Id";
+        command.CommandText = "SELECT Id, Name, SortOrder, Headcount FROM Departments ORDER BY SortOrder, Id";
         using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
             list.Add(new Department
             {
                 Id = reader.GetInt32(0),
                 Name = reader.GetString(1),
-                SortOrder = reader.GetInt32(2)
+                SortOrder = reader.GetInt32(2),
+                Headcount = reader.GetInt32(3)
             });
 
         return list;
+    }
+
+    /// <summary>部署の基本人数を更新する</summary>
+    public static async Task UpdateHeadcountAsync(int id, int headcount)
+    {
+        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        await connection.OpenAsync();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "UPDATE Departments SET Headcount = $headcount WHERE Id = $id";
+        command.Parameters.AddWithValue("$headcount", headcount);
+        command.Parameters.AddWithValue("$id", id);
+        await command.ExecuteNonQueryAsync();
     }
 
     /// <summary>部署を追加する。名前が既存と重複していてINSERTされなかった場合はfalseを返す</summary>

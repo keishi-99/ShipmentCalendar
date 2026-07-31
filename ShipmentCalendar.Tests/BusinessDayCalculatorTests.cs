@@ -82,7 +82,16 @@ public class BusinessDayCalculatorTests
 
         // AはBと同じ日に完了でき（Bの余り280分を使う）、着手はその1営業日前
         Assert.Equal(expectedBDay, a.DueDate);
-        Assert.Equal(calculator.SubtractBusinessDays(order.CompletionDate, 4), a.StartDate);
+        var expectedAStartDay = calculator.SubtractBusinessDays(order.CompletionDate, 4);
+        Assert.Equal(expectedAStartDay, a.StartDate);
+
+        // Aの所要時間300分は、DueDate側(Bと同じ日)に280分、StartDate側(1営業日前)に20分で按分される
+        Assert.Equal(280, a.DailyMinutes[expectedBDay]);
+        Assert.Equal(20, a.DailyMinutes[expectedAStartDay]);
+        Assert.Equal(a.RequiredMinutes, a.DailyMinutes.Values.Sum());
+
+        // Bは1日に収まるため、DailyMinutesは所要時間200分がその日1件だけになる
+        Assert.Equal(200, b.DailyMinutes[expectedBDay]);
     }
 
     /// <summary>
@@ -109,6 +118,11 @@ public class BusinessDayCalculatorTests
         Assert.Equal(order.CompletionDate, b.DueDate);
         Assert.Equal(order.CompletionDate, a.DueDate);
         Assert.Equal(calculator.SubtractBusinessDays(order.CompletionDate, 1), a.StartDate);
+
+        // Cは完了日当日1日で完結するため、DailyMinutesはその日1件だけになる
+        var singleDay = Assert.Single(c.DailyMinutes);
+        Assert.Equal(order.CompletionDate, singleDay.Key);
+        Assert.Equal(100, singleDay.Value);
     }
 
     /// <summary>
