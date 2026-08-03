@@ -242,6 +242,7 @@ public partial class MainWindow : Fluent.RibbonWindow, IDisplaySettingsPreviewTa
         barFactory.SetValue(ProcessBarControl.BarFontSizeProperty, settings.ProcessBarFontSize);
         barFactory.SetValue(ProcessBarControl.ShowRequiredTimeInMinutesProperty, settings.ShowRequiredTimeInMinutes);
         barFactory.SetValue(ProcessBarControl.DayMinutesProperty, (double)settings.DayMinutes);
+        barFactory.SetValue(ProcessBarControl.HolidaysProperty, _viewModel.Holidays);
         barTemplate.VisualTree = barFactory;
         barColumn.CellTemplate = barTemplate;
         // 工程バー列はフォーカス枠を出さず、選択状態になっても背景の青いハイライトを表示しない

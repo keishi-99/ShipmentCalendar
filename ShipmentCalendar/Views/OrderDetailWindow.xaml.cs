@@ -28,6 +28,16 @@ public partial class OrderDetailWindow : Window {
             ? $"合計所要時間（滞留・外注込み）: {totalLeadMinutes:F0}分"
             : $"合計所要時間（滞留・外注込み）: {totalLeadMinutes / 60.0:F1}h";
         Loaded += async (_, _) => await LoadProcessRowsAsync();
+        Loaded += async (_, _) => await LoadHolidaysAsync();
+    }
+
+    // 工程バーの日付バーで営業日判定に使う休日一覧を取得する。取得に失敗しても表示自体は継続する
+    private async Task LoadHolidaysAsync() {
+        try {
+            DetailProcessBar.Holidays = await new SqliteHolidayRepository().GetAllAsync();
+        } catch (Exception ex) {
+            System.Diagnostics.Debug.WriteLine($"休日情報の取得に失敗しました: {ex.Message}");
+        }
     }
 
     // 部署マスタをDBから取得し、工程一覧に担当部署名を付加して表示する

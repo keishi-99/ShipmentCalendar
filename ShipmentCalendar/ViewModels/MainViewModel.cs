@@ -27,6 +27,9 @@ public partial class MainViewModel : ObservableObject {
     // 製品/半製品区分の判定（フィルター・部署別締切集中度で共有）
     private ProductCategoryClassifier _categoryClassifier = new([], [], []);
     public ProductCategoryClassifier CategoryClassifier => _categoryClassifier;
+    // 工程バーの日付バー営業日判定で共有（MainWindow.BuildProcessBarColumn）
+    private List<Holiday> _holidays = [];
+    public IReadOnlyList<Holiday> Holidays => _holidays;
     // 最終更新日時
     private DateTime? _lastLoaded;
 
@@ -428,6 +431,7 @@ public partial class MainViewModel : ObservableObject {
             }
 
             var holidays = await _holidayRepository.GetAllAsync();
+            _holidays = holidays.ToList();
             var calculator = new BusinessDayCalculator(holidays, Settings.DayMinutes);
             var today = DateOnly.FromDateTime(DateTime.Today);
 
