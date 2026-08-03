@@ -30,6 +30,9 @@ public partial class MainViewModel : ObservableObject {
     // 工程バーの日付バー営業日判定で共有（MainWindow.BuildProcessBarColumn）
     private List<Holiday> _holidays = [];
     public IReadOnlyList<Holiday> Holidays => _holidays;
+    // 休日設定の変更を検知するための内容ベースの署名（_holidaysは読み込みのたびに新しいリスト参照になるため、
+    // MainWindowの工程列再構築スキップ判定にはリストの参照ではなくこの値を使う）
+    public int HolidaysSignature => _holidays.Aggregate(_holidays.Count, (acc, h) => HashCode.Combine(acc, h.Date));
     // 最終更新日時
     private DateTime? _lastLoaded;
 
