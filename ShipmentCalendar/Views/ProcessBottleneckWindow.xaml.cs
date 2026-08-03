@@ -34,18 +34,23 @@ public partial class ProcessBottleneckWindow : Window {
         TxtUnderUnit.Text = CmbUnderMode.SelectedIndex == 0 ? "%" : "分";
     }
 
+    // 割合(%)モードは超過100以上・未達100以下を要求することで、モードの組み合わせによらず
+    // 常に「未達しきい値 ≦ 標準時間 ≦ 超過しきい値」を保証し、超過・未達が同時に成立してしまう
+    // 矛盾した設定（例: 超過50%・未達150%）を防ぐ（固定分モードは0以上であれば同じ関係が自然に成り立つ）
     private bool TryReadThresholds(out BottleneckThresholdMode overMode, out double overValue, out BottleneckThresholdMode underMode, out double underValue) {
         overMode = CmbOverMode.SelectedIndex == 0 ? BottleneckThresholdMode.Percent : BottleneckThresholdMode.FixedMinutes;
         underMode = CmbUnderMode.SelectedIndex == 0 ? BottleneckThresholdMode.Percent : BottleneckThresholdMode.FixedMinutes;
 
-        var overOk = double.TryParse(TxtOverValue.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out overValue) && double.IsFinite(overValue) && overValue >= 0;
-        var underOk = double.TryParse(TxtUnderValue.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out underValue) && double.IsFinite(underValue) && underValue >= 0;
+        var overOk = double.TryParse(TxtOverValue.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out overValue) && double.IsFinite(overValue)
+            && (overMode == BottleneckThresholdMode.Percent ? overValue >= 100 : overValue >= 0);
+        var underOk = double.TryParse(TxtUnderValue.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out underValue) && double.IsFinite(underValue)
+            && (underMode == BottleneckThresholdMode.Percent ? underValue is >= 0 and <= 100 : underValue >= 0);
         return overOk && underOk;
     }
 
     private void BtnApplyThreshold_Click(object sender, RoutedEventArgs e) {
         if (!TryReadThresholds(out var overMode, out var overValue, out var underMode, out var underValue)) {
-            MessageBox.Show("しきい値は0以上の数値で入力してください。", "入力エラー", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show("しきい値が不正です。割合(%)モードは超過100以上・未達0〜100、固定分モードは0以上の数値を入力してください。", "入力エラー", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
