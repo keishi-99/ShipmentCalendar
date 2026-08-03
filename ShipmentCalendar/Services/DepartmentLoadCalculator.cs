@@ -26,7 +26,8 @@ public static class DepartmentLoadCalculator {
             .ToDictionary(g => g.Key, g => (
                 Count: g.Select(x => x.Process).Distinct().Count(),
                 Minutes: g.Sum(x => x.DayMinutes),
-                Items: g.Select(x => new DepartmentLoadCellItem { Order = x.Order, Process = x.Process, DayMinutes = x.DayMinutes }).ToList()));
+                // 必要時間が大きい注文ほど先頭に来るようにし、その日の集中度への主要因をすぐ確認できるようにする
+                Items: g.OrderByDescending(x => x.DayMinutes).Select(x => new DepartmentLoadCellItem { Order = x.Order, Process = x.Process, DayMinutes = x.DayMinutes }).ToList()));
 
         if (grouped.Count == 0) return [];
 
