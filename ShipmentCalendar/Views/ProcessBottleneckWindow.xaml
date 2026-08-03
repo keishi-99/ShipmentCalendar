@@ -3,15 +3,14 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="工程別ボトルネック分析"
-    Width="1000"
+    Width="1450"
     Height="520"
-    WindowStartupLocation="CenterOwner"
-    PreviewMouseDown="Window_PreviewMouseDown">
+    WindowStartupLocation="CenterOwner">
     <DockPanel Margin="16">
         <TextBlock DockPanel.Dock="Top" FontSize="16" FontWeight="Bold"
                    Text="工程別ボトルネック分析" Margin="0,0,0,4"/>
         <TextBlock DockPanel.Dock="Top" Foreground="#666666" TextWrapping="Wrap" Margin="0,0,0,12"
-                   Text="指定期間内に完了した実績（受入実績）を品目×工程別に集計し、標準時間（段取時間＋作業時間）を超えて作業時間がかかった割合を表示します。品目を横断して集計するため、対象期間が長いと検索に時間がかかる場合があります。行をダブルクリックすると、集計元の個別注文を表示します。列見出しクリックで並べ替え、Shiftキーを押しながら複数の列見出しをクリックすると第2・第3条件を追加できます。"/>
+                   Text="指定期間内に完了した実績（受入実績）を品目×工程別に集計し、標準時間（段取時間＋作業時間）に対して作業時間が超過・未達だった割合を表示します。品目を横断して集計するため、対象期間が長いと検索に時間がかかる場合があります。行を選択すると、右側に集計元の個別注文を表示します（ダブルクリックで注文詳細を表示）。列見出しクリックで並べ替え、Shiftキーを押しながら複数の列見出しをクリックすると第2・第3条件を追加できます。"/>
 
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,12">
             <TextBlock Text="開始日:" VerticalAlignment="Center" Width="50"/>
@@ -23,45 +22,72 @@
                          IsIndeterminate="True" Visibility="Collapsed"/>
         </StackPanel>
 
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,12">
+            <TextBlock Text="標準超過:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+            <ComboBox Name="CmbOverMode" Width="80" Margin="0,0,4,0" VerticalContentAlignment="Center" SelectionChanged="ThresholdMode_SelectionChanged">
+                <ComboBoxItem Content="割合(%)"/>
+                <ComboBoxItem Content="固定分"/>
+            </ComboBox>
+            <TextBox Name="TxtOverValue" Width="50" Margin="0,0,2,0" Padding="2" VerticalContentAlignment="Center"/>
+            <TextBlock Name="TxtOverUnit" VerticalAlignment="Center" Margin="0,0,16,0" Width="24"/>
+
+            <TextBlock Text="標準未達:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+            <ComboBox Name="CmbUnderMode" Width="80" Margin="0,0,4,0" VerticalContentAlignment="Center" SelectionChanged="ThresholdMode_SelectionChanged">
+                <ComboBoxItem Content="割合(%)"/>
+                <ComboBoxItem Content="固定分"/>
+            </ComboBox>
+            <TextBox Name="TxtUnderValue" Width="50" Margin="0,0,2,0" Padding="2" VerticalContentAlignment="Center"/>
+            <TextBlock Name="TxtUnderUnit" VerticalAlignment="Center" Margin="0,0,16,0" Width="24"/>
+
+            <Button Name="BtnApplyThreshold" Content="適用" Padding="12,4" Click="BtnApplyThreshold_Click"/>
+        </StackPanel>
+
         <TextBlock DockPanel.Dock="Bottom" Name="TxtStatus" Margin="0,8,0,0" Foreground="#666666"/>
 
-        <!--  セルダブルクリック時に該当注文一覧を表示するポップアップ  -->
-        <!--  DockPanelはLastChildFill既定でTrueのため、Popupより後ろにDataGridを置いて
+        <!--  行選択時に該当する個別注文一覧を表示する固定幅のサイドパネル  -->
+        <!--  DockPanelはLastChildFill既定でTrueのため、サイドパネルより後ろにDataGridを置いて
               DataGridが実質的な最後の子要素（残りスペースを埋める要素）になるようにする  -->
-        <Popup Name="ItemDetailPopup" StaysOpen="True" AllowsTransparency="True" Placement="Bottom">
-            <Border Background="White" BorderBrush="#999999" BorderThickness="1" CornerRadius="4" Padding="8" MaxWidth="360">
-                <Border.Effect>
-                    <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.3"/>
-                </Border.Effect>
-                <StackPanel>
-                    <TextBlock Name="TxtPopupTitle" FontWeight="Bold" Margin="0,0,0,4"/>
-                    <ListBox Name="ItemDetailList" MaxHeight="260" BorderThickness="0"
-                             MouseDoubleClick="ItemDetailList_MouseDoubleClick">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Margin="0,2" Cursor="Hand" ToolTip="ダブルクリックで注文詳細を表示">
-                                    <TextBlock FontSize="11" FontWeight="SemiBold" Text="{Binding Seiban}"/>
-                                    <TextBlock FontSize="10" Foreground="#666666">
-                                        <Run Text="標準"/>
-                                        <Run Text="{Binding RequiredMinutesText, Mode=OneWay}"/>
-                                        <Run Text="　実績"/>
-                                        <Run Text="{Binding ActualWorkMinutesText, Mode=OneWay}"/>
-                                        <Run Text="　超過"/>
-                                        <Run Text="{Binding OverMinutesText, Mode=OneWay}"/>
-                                    </TextBlock>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </StackPanel>
-            </Border>
-        </Popup>
+        <Border DockPanel.Dock="Right" Width="260" Margin="12,0,0,0" Padding="8"
+                Background="#F5F5F5" BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="4">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Name="TxtDetailTitle" FontWeight="Bold" Margin="0,0,0,4"
+                           TextWrapping="Wrap" Text="行を選択すると明細を表示します"/>
+                <ListBox Name="ItemDetailList" BorderThickness="0" Background="Transparent" HorizontalContentAlignment="Stretch"
+                         MouseDoubleClick="ItemDetailList_MouseDoubleClick">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="0,2" Cursor="Hand" ToolTip="ダブルクリックで注文詳細を表示">
+                                <TextBlock FontSize="11" FontWeight="SemiBold" Text="{Binding Seiban}"/>
+                                <!--  ラベル列はAuto幅（内容が固定文字列のため行間で自然に揃う）、値列は固定幅にして
+                                      行ごとの桁数差で位置がずれないようにし、はみ出す場合は末尾を省略表示する  -->
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="46"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="46"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="50"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" FontSize="10" Text="標準" Foreground="#666666"/>
+                                    <TextBlock Grid.Column="1" FontSize="10" Text="{Binding RequiredMinutesText, Mode=OneWay}" Foreground="#666666" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Grid.Column="2" FontSize="10" Text="実績" Foreground="#666666" Margin="4,0,0,0"/>
+                                    <TextBlock Grid.Column="3" FontSize="10" Text="{Binding ActualWorkMinutesText, Mode=OneWay}" Foreground="#666666" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Grid.Column="4" FontSize="10" Text="差" Foreground="#666666" Margin="4,0,0,0"/>
+                                    <TextBlock Grid.Column="5" FontSize="10" Text="{Binding OverMinutesText, Mode=OneWay}" Foreground="#666666" TextTrimming="CharacterEllipsis"/>
+                                </Grid>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
 
         <DataGrid Name="ResultGrid" AlternatingRowBackground="#F5F5F5"
                   AutoGenerateColumns="False" CanUserAddRows="False"
                   IsReadOnly="True" HeadersVisibility="Column" RowHeight="32"
                   GridLinesVisibility="Horizontal"
-                  MouseDoubleClick="ResultGrid_MouseDoubleClick">
+                  SelectionChanged="ResultGrid_SelectionChanged">
             <DataGrid.Resources>
                 <Style TargetType="DataGridCell">
                     <Setter Property="Padding" Value="6,0"/>
@@ -93,6 +119,9 @@
                 <DataGridTextColumn Header="標準超過件数" Binding="{Binding OverStandardCount}" Width="90" ElementStyle="{StaticResource RightCellText}"/>
                 <DataGridTextColumn Header="標準超過率" Binding="{Binding OverStandardRateText}" SortMemberPath="OverStandardRate" Width="80" ElementStyle="{StaticResource RightCellText}"/>
                 <DataGridTextColumn Header="平均超過時間" Binding="{Binding AvgOverMinutesText}" SortMemberPath="AvgOverMinutes" Width="90" ElementStyle="{StaticResource RightCellText}"/>
+                <DataGridTextColumn Header="標準未達件数" Binding="{Binding UnderStandardCount}" Width="90" ElementStyle="{StaticResource RightCellText}"/>
+                <DataGridTextColumn Header="標準未達率" Binding="{Binding UnderStandardRateText}" SortMemberPath="UnderStandardRate" Width="80" ElementStyle="{StaticResource RightCellText}"/>
+                <DataGridTextColumn Header="平均短縮時間" Binding="{Binding AvgUnderMinutesText}" SortMemberPath="AvgUnderMinutes" Width="90" ElementStyle="{StaticResource RightCellText}"/>
             </DataGrid.Columns>
         </DataGrid>
     </DockPanel>

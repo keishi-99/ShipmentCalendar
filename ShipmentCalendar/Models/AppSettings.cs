@@ -69,6 +69,15 @@ public class AppSettings
     public double CongestionCautionPercent { get; set; } = 80;
     /// <summary>部署別締切集中度カレンダーで「集中」と判定する充足率（%）のしきい値</summary>
     public double CongestionConcentratedPercent { get; set; } = 100;
+
+    /// <summary>工程別ボトルネック分析：標準超過と判定するしきい値のモード（割合／固定分）</summary>
+    public BottleneckThresholdMode BottleneckOverThresholdMode { get; set; } = BottleneckThresholdMode.Percent;
+    /// <summary>工程別ボトルネック分析：標準超過と判定するしきい値（モードがPercentなら標準時間に対する%、FixedMinutesなら固定分）</summary>
+    public double BottleneckOverThresholdValue { get; set; } = 110;
+    /// <summary>工程別ボトルネック分析：標準未達と判定するしきい値のモード（割合／固定分）</summary>
+    public BottleneckThresholdMode BottleneckUnderThresholdMode { get; set; } = BottleneckThresholdMode.Percent;
+    /// <summary>工程別ボトルネック分析：標準未達と判定するしきい値（モードがPercentなら標準時間に対する%、FixedMinutesなら固定分）</summary>
+    public double BottleneckUnderThresholdValue { get; set; } = 80;
 }
 
 /// <summary>注文一覧の並び順</summary>
@@ -84,4 +93,11 @@ public enum ProcessMode
 {
     Bar,  // 工程バー列で表示
     List, // 工程1つ1列で表示
+}
+
+/// <summary>工程別ボトルネック分析の超過・未達判定しきい値のモード</summary>
+public enum BottleneckThresholdMode
+{
+    Percent,      // 標準時間に対する割合(%)
+    FixedMinutes, // 標準時間からの固定分数
 }

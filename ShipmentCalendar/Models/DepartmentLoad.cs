@@ -23,7 +23,7 @@ public class DepartmentLoadCell
     public string DisplayText => ProcessCount == 0 ? string.Empty : $"{ProcessCount}件\n{TotalMinutes / 60.0:F1}h{FulfillmentText}";
     public string Tooltip => ProcessCount == 0
         ? string.Empty
-        : $"{Date:M/d} 件数:{ProcessCount}　合計必要時間:{TotalMinutes / 60.0:F1}h{FulfillmentText}（ダブルクリックで詳細）";
+        : $"{Date:M/d} 件数:{ProcessCount}　合計必要時間:{TotalMinutes / 60.0:F1}h{FulfillmentText}（クリックで明細表示）";
 }
 
 /// <summary>締切集中度セルの集計元になった注文・工程（ドリルダウン一覧の1行分）</summary>
@@ -37,7 +37,10 @@ public class DepartmentLoadCellItem
     public string ManufactureNumber => Order.ManufactureNumber;
     public string ProductName => Order.ProductName;
     public string ProcessName => Process.ProcessName;
-    public string RequiredTimeText => $"{DayMinutes / 60.0:F1}h";
+    /// <summary>その日に配分された時間。工程の標準時間が複数日に分散している場合は、工程全体の標準時間と按分期間（着手予定日〜完了必須日）も併記する</summary>
+    public string RequiredTimeText => Process.RequiredMinutes > DayMinutes
+        ? $"{DayMinutes / 60.0:F1}h／全体{Process.RequiredMinutes / 60.0:F1}h（{Process.StartDate:M/d}〜{Process.DueDate:M/d}）"
+        : $"{DayMinutes / 60.0:F1}h";
 }
 
 /// <summary>部署別締切集中度カレンダーの1部署分の行（同一Windowで表示する全行はCellsのインデックスを共有する）</summary>

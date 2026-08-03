@@ -8,7 +8,6 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
-using Media3D = System.Windows.Media.Media3D;
 
 namespace ShipmentCalendar.Views;
 
@@ -109,11 +108,10 @@ public partial class DepartmentLoadWindow : Window {
         textFactory.SetBinding(TextBlock.TextProperty, new Binding($"Cells[{index}].DisplayText"));
         borderFactory.AppendChild(textFactory);
 
-        // ダブルクリックで、このセルの集計元になった注文一覧をポップアップ表示する
+        // クリックで、このセルの集計元になった注文一覧をサイドパネルに表示する
         borderFactory.AddHandler(MouseLeftButtonDownEvent, new MouseButtonEventHandler((sender, e) => {
-            if (e.ClickCount != 2) return;
             if (sender is not FrameworkElement { DataContext: DepartmentLoadRow row } target) return;
-            ShowCellDetail(row.Cells[index], target);
+            ShowCellDetail(row.Cells[index]);
         }));
 
         var template = new DataTemplate { VisualTree = borderFactory };
@@ -121,37 +119,19 @@ public partial class DepartmentLoadWindow : Window {
         return column;
     }
 
-    private void ShowCellDetail(DepartmentLoadCell cell, FrameworkElement target) {
-        if (cell.Items.Count == 0) return;
-        TxtPopupTitle.Text = $"{cell.Date:M/d}　{cell.ProcessCount}件";
-        CellDetailList.ItemsSource = cell.Items;
-        CellDetailPopup.PlacementTarget = target;
-        CellDetailPopup.IsOpen = true;
-    }
-
-    // StaysOpen=Falseだと、ポップアップを開いたダブルクリック自身のMouseUpが「外側クリック」と
-    // 誤認されて即閉じてしまうため、StaysOpen=Trueにして次の新しいMouseDownでのみ閉じるようにする
-    private void Window_PreviewMouseDown(object sender, MouseButtonEventArgs e) {
-        if (!CellDetailPopup.IsOpen) return;
-        if (CellDetailPopup.Child is FrameworkElement content && e.OriginalSource is DependencyObject source && IsDescendant(source, content)) return;
-        CellDetailPopup.IsOpen = false;
-    }
-
-    private static bool IsDescendant(DependencyObject? element, DependencyObject ancestor) {
-        while (element != null) {
-            if (ReferenceEquals(element, ancestor)) return true;
-            // Run等のTextElementはVisualTreeHelperの対象外（Visual/Visual3Dではない）で渡すと例外になるため、
-            // 論理ツリー経由で辿ってからVisualTreeHelperに戻す
-            element = element is Visual or Media3D.Visual3D
-                ? VisualTreeHelper.GetParent(element)
-                : LogicalTreeHelper.GetParent(element);
+    private void ShowCellDetail(DepartmentLoadCell cell) {
+        if (cell.Items.Count == 0) {
+            TxtDetailTitle.Text = "日付セルを選択すると明細を表示します";
+            CellDetailList.ItemsSource = null;
+            return;
         }
-        return false;
+
+        TxtDetailTitle.Text = $"{cell.Date:M/d}　{cell.ProcessCount}件";
+        CellDetailList.ItemsSource = cell.Items;
     }
 
     private void CellDetailList_MouseDoubleClick(object sender, MouseButtonEventArgs e) {
         if (CellDetailList.SelectedItem is not DepartmentLoadCellItem item) return;
-        CellDetailPopup.IsOpen = false;
         new OrderDetailWindow(item.Order, _settings.ShowRequiredTimeInMinutes, _settings.DayMinutes) { Owner = this }.ShowDialog();
     }
 }
