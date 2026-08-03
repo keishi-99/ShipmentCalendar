@@ -45,20 +45,23 @@
                         <DataTemplate>
                             <StackPanel Margin="0,2" Cursor="Hand" ToolTip="ダブルクリックで注文詳細を表示">
                                 <TextBlock FontSize="11" FontWeight="SemiBold" Text="{Binding ManufactureNumber}"/>
-                                <!--  品目名・工程名・所要時間をすべて固定幅にして行ごとに位置を揃え、
-                                      はみ出す場合は末尾を省略表示する（全文はツールチップで確認可能）  -->
+                                <!--  1行目=品目名・工程名（固定幅で位置を揃え、全文はツールチップで確認可能）、
+                                      2行目=所要時間（複数日にまたがる場合の「全体○h（期間）」を含み長くなりうるため専用の行にする）  -->
                                 <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="92"/>
                                         <ColumnDefinition Width="84"/>
-                                        <ColumnDefinition Width="34"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" FontSize="10" Text="{Binding ProductName, Mode=OneWay}" Foreground="#666666"
+                                    <TextBlock Grid.Row="0" Grid.Column="0" FontSize="10" Text="{Binding ProductName, Mode=OneWay}" Foreground="#666666"
                                                TextTrimming="CharacterEllipsis" ToolTip="{Binding ProductName, Mode=OneWay}" Margin="0,0,4,0"/>
-                                    <TextBlock Grid.Column="1" FontSize="10" Text="{Binding ProcessName, Mode=OneWay}" Foreground="#666666"
-                                               TextTrimming="CharacterEllipsis" ToolTip="{Binding ProcessName, Mode=OneWay}" Margin="0,0,4,0"/>
-                                    <TextBlock Grid.Column="2" FontSize="10" Text="{Binding RequiredTimeText, Mode=OneWay}" Foreground="#666666"
-                                               TextTrimming="CharacterEllipsis" TextAlignment="Right"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="1" FontSize="10" Text="{Binding ProcessName, Mode=OneWay}" Foreground="#666666"
+                                               TextTrimming="CharacterEllipsis" ToolTip="{Binding ProcessName, Mode=OneWay}"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" FontSize="10" Text="{Binding RequiredTimeText, Mode=OneWay}"
+                                               Foreground="#666666" TextTrimming="CharacterEllipsis"/>
                                 </Grid>
                             </StackPanel>
                         </DataTemplate>
