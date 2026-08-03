@@ -1,9 +1,8 @@
 <Window x:Class="ShipmentCalendar.Views.DepartmentLoadWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="部署別 締切集中度" Height="500" Width="900"
-        WindowStartupLocation="CenterOwner"
-        PreviewMouseDown="Window_PreviewMouseDown">
+        Title="部署別 締切集中度" Height="500" Width="1450"
+        WindowStartupLocation="CenterOwner">
     <DockPanel Margin="16">
         <TextBlock DockPanel.Dock="Top" FontSize="16" FontWeight="Bold"
                    Text="部署別 締切集中度" Margin="0,0,0,4"/>
@@ -32,36 +31,41 @@
             <Button Content="適用" Padding="12,4" Click="BtnApplyThreshold_Click"/>
         </StackPanel>
 
-        <!--  セルダブルクリック時に該当注文一覧を表示するポップアップ  -->
-        <!--  DockPanelはLastChildFill既定でTrueのため、Popupより後ろにDataGridを置いて
+        <!--  セルクリック時に該当注文一覧を表示する固定幅のサイドパネル  -->
+        <!--  DockPanelはLastChildFill既定でTrueのため、サイドパネルより後ろにDataGridを置いて
               DataGridが実質的な最後の子要素（残りスペースを埋める要素）になるようにする  -->
-        <Popup Name="CellDetailPopup" StaysOpen="True" AllowsTransparency="True" Placement="Bottom">
-            <Border Background="White" BorderBrush="#999999" BorderThickness="1" CornerRadius="4" Padding="8" MaxWidth="320">
-                <Border.Effect>
-                    <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.3"/>
-                </Border.Effect>
-                <StackPanel>
-                    <TextBlock Name="TxtPopupTitle" FontWeight="Bold" Margin="0,0,0,4"/>
-                    <ListBox Name="CellDetailList" MaxHeight="220" BorderThickness="0"
-                             MouseDoubleClick="CellDetailList_MouseDoubleClick">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Margin="0,2" Cursor="Hand" ToolTip="ダブルクリックで注文詳細を表示">
-                                    <TextBlock FontSize="11" FontWeight="SemiBold" Text="{Binding ManufactureNumber}"/>
-                                    <TextBlock FontSize="10" Foreground="#666666">
-                                        <Run Text="{Binding ProductName, Mode=OneWay}"/>
-                                        <Run Text="　"/>
-                                        <Run Text="{Binding ProcessName, Mode=OneWay}"/>
-                                        <Run Text="　"/>
-                                        <Run Text="{Binding RequiredTimeText, Mode=OneWay}"/>
-                                    </TextBlock>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </StackPanel>
-            </Border>
-        </Popup>
+        <Border DockPanel.Dock="Right" Width="260" Margin="12,0,0,0" Padding="8"
+                Background="#F5F5F5" BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="4">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Name="TxtDetailTitle" FontWeight="Bold" Margin="0,0,0,4"
+                           TextWrapping="Wrap" Text="日付セルを選択すると明細を表示します"/>
+                <ListBox Name="CellDetailList" BorderThickness="0" Background="Transparent" HorizontalContentAlignment="Stretch"
+                         MouseDoubleClick="CellDetailList_MouseDoubleClick">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="0,2" Cursor="Hand" ToolTip="ダブルクリックで注文詳細を表示">
+                                <TextBlock FontSize="11" FontWeight="SemiBold" Text="{Binding ManufactureNumber}"/>
+                                <!--  品目名・工程名・所要時間をすべて固定幅にして行ごとに位置を揃え、
+                                      はみ出す場合は末尾を省略表示する（全文はツールチップで確認可能）  -->
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="92"/>
+                                        <ColumnDefinition Width="84"/>
+                                        <ColumnDefinition Width="34"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" FontSize="10" Text="{Binding ProductName, Mode=OneWay}" Foreground="#666666"
+                                               TextTrimming="CharacterEllipsis" ToolTip="{Binding ProductName, Mode=OneWay}" Margin="0,0,4,0"/>
+                                    <TextBlock Grid.Column="1" FontSize="10" Text="{Binding ProcessName, Mode=OneWay}" Foreground="#666666"
+                                               TextTrimming="CharacterEllipsis" ToolTip="{Binding ProcessName, Mode=OneWay}" Margin="0,0,4,0"/>
+                                    <TextBlock Grid.Column="2" FontSize="10" Text="{Binding RequiredTimeText, Mode=OneWay}" Foreground="#666666"
+                                               TextTrimming="CharacterEllipsis" TextAlignment="Right"/>
+                                </Grid>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
 
         <DataGrid Name="LoadGrid"
                   AutoGenerateColumns="False" CanUserAddRows="False"

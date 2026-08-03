@@ -5,7 +5,6 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media;
 
 namespace ShipmentCalendar.Views;
 
@@ -110,6 +109,17 @@ public partial class ProcessBottleneckWindow : Window {
         }
     }
 
+    private void ResultGrid_SelectionChanged(object sender, SelectionChangedEventArgs e) {
+        if (ResultGrid.SelectedItem is not ProcessBottleneckRow row || row.Items.Count == 0) {
+            TxtDetailTitle.Text = "行を選択すると明細を表示します";
+            ItemDetailList.ItemsSource = null;
+            return;
+        }
+
+        TxtDetailTitle.Text = $"{row.ItemNumber}　{row.ProcessName}　{row.Items.Count}件";
+        ItemDetailList.ItemsSource = row.Items;
+    }
+
     private async void ItemDetailList_MouseDoubleClick(object sender, MouseButtonEventArgs e) {
         if (ItemDetailList.SelectedItem is not ProcessBottleneckItem item) return;
         await OpenOrderDetailAsync(item.Seiban);
@@ -121,8 +131,6 @@ public partial class ProcessBottleneckWindow : Window {
         if (matchedRows.Count == 0) return;
         var first = matchedRows[0];
         if (!_defsByItem.TryGetValue(first.ItemNumber, out var defs) || defs.Count == 0) return;
-
-        ItemDetailPopup.IsOpen = false;
 
         var calculator = new BusinessDayCalculator(_holidays, _settings.DayMinutes);
         var deliveryDate = first.DeliveryDate ?? DateOnly.FromDateTime(DateTime.Today);
@@ -153,39 +161,5 @@ public partial class ProcessBottleneckWindow : Window {
         BusinessDayCalculator.MarkAllCompletedIfFinalReceiptDone(order.Processes, defs, completedByDestNumber);
 
         new OrderDetailWindow(order, _settings.ShowRequiredTimeInMinutes, _settings.DayMinutes) { Owner = this }.ShowDialog();
-    }
-
-    private void ResultGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e) {
-        if (FindAncestor<DataGridRow>(e.OriginalSource as DependencyObject) is not { Item: ProcessBottleneckRow row } target) return;
-        if (row.Items.Count == 0) return;
-
-        TxtPopupTitle.Text = $"{row.ItemNumber}　{row.ProcessName}　{row.Items.Count}件";
-        ItemDetailList.ItemsSource = row.Items;
-        ItemDetailPopup.PlacementTarget = target;
-        ItemDetailPopup.IsOpen = true;
-    }
-
-    private static T? FindAncestor<T>(DependencyObject? current) where T : DependencyObject {
-        while (current != null) {
-            if (current is T match) return match;
-            current = VisualTreeHelper.GetParent(current);
-        }
-        return null;
-    }
-
-    // StaysOpen=Falseだと、ポップアップを開いたダブルクリック自身のMouseUpが「外側クリック」と
-    // 誤認されて即閉じてしまうため、StaysOpen=Trueにして次の新しいMouseDownでのみ閉じるようにする
-    private void Window_PreviewMouseDown(object sender, MouseButtonEventArgs e) {
-        if (!ItemDetailPopup.IsOpen) return;
-        if (ItemDetailPopup.Child is FrameworkElement content && e.OriginalSource is DependencyObject source && IsDescendant(source, content)) return;
-        ItemDetailPopup.IsOpen = false;
-    }
-
-    private static bool IsDescendant(DependencyObject? element, DependencyObject ancestor) {
-        while (element != null) {
-            if (ReferenceEquals(element, ancestor)) return true;
-            element = element is Visual ? VisualTreeHelper.GetParent(element) : LogicalTreeHelper.GetParent(element);
-        }
-        return false;
     }
 }

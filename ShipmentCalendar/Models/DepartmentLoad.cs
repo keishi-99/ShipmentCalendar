@@ -23,7 +23,7 @@ public class DepartmentLoadCell
     public string DisplayText => ProcessCount == 0 ? string.Empty : $"{ProcessCount}件\n{TotalMinutes / 60.0:F1}h{FulfillmentText}";
     public string Tooltip => ProcessCount == 0
         ? string.Empty
-        : $"{Date:M/d} 件数:{ProcessCount}　合計必要時間:{TotalMinutes / 60.0:F1}h{FulfillmentText}（ダブルクリックで詳細）";
+        : $"{Date:M/d} 件数:{ProcessCount}　合計必要時間:{TotalMinutes / 60.0:F1}h{FulfillmentText}（クリックで明細表示）";
 }
 
 /// <summary>締切集中度セルの集計元になった注文・工程（ドリルダウン一覧の1行分）</summary>
