@@ -1,5 +1,6 @@
 using ShipmentCalendar.Models;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -125,6 +126,20 @@ public partial class ProcessBarControl : UserControl {
         set => SetValue(SuppressHeaderRowProperty, value);
     }
 
+    public static readonly DependencyProperty HolidaysProperty =
+        DependencyProperty.Register(
+            nameof(Holidays),
+            typeof(IEnumerable<Holiday>),
+            typeof(ProcessBarControl),
+            new PropertyMetadata(null, (d, _) => ((ProcessBarControl)d).RebuildBars()));
+
+    /// <summary>ShowDateBar=trueのときの日付バーで、営業日判定に使う休日一覧。
+    /// BusinessDayCalculator.IsBusinessDayと同じルール（Holidaysテーブルのみで判定し、土日の別扱いはしない）で営業日を判定する</summary>
+    public IEnumerable<Holiday> Holidays {
+        get => (IEnumerable<Holiday>)GetValue(HolidaysProperty);
+        set => SetValue(HolidaysProperty, value);
+    }
+
     public ProcessBarControl() {
         InitializeComponent();
     }
@@ -196,10 +211,12 @@ public partial class ProcessBarControl : UserControl {
             // 未設定日付や異常に広い範囲（365日超）はスキップ
             if (minDate == default || maxDate == default || minDate > maxDate || maxDate.DayNumber - minDate.DayNumber > 365) return;
 
-            // 週末をスキップして営業日リストを生成（日付バー・工程バーで共有）
+            // 休日をスキップして営業日リストを生成（日付バー・工程バーで共有）。
+            // BusinessDayCalculator.IsBusinessDayと同じくHolidaysテーブルのみで判定し、土日の別扱いはしない
+            var holidaySet = (Holidays ?? []).Select(h => h.Date).ToHashSet();
             var businessDays = new List<DateOnly>();
             for (var d = minDate; d <= maxDate; d = d.AddDays(1)) {
-                if (d.DayOfWeek is not DayOfWeek.Saturday and not DayOfWeek.Sunday)
+                if (!holidaySet.Contains(d))
                     businessDays.Add(d);
             }
 
