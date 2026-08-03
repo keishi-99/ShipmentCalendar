@@ -1,6 +1,7 @@
 using ShipmentCalendar.Models;
 using ShipmentCalendar.Repositories;
 using ShipmentCalendar.Services;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -20,6 +21,51 @@ public partial class ProcessBottleneckWindow : Window {
         _settings = settings;
         StartDatePicker.SelectedDate = DateTime.Today.AddDays(-90);
         EndDatePicker.SelectedDate = DateTime.Today;
+
+        CmbOverMode.SelectedIndex = settings.BottleneckOverThresholdMode == BottleneckThresholdMode.Percent ? 0 : 1;
+        CmbUnderMode.SelectedIndex = settings.BottleneckUnderThresholdMode == BottleneckThresholdMode.Percent ? 0 : 1;
+        TxtOverValue.Text = settings.BottleneckOverThresholdValue.ToString(CultureInfo.InvariantCulture);
+        TxtUnderValue.Text = settings.BottleneckUnderThresholdValue.ToString(CultureInfo.InvariantCulture);
+    }
+
+    // モード（割合／固定分）の切り替えに応じて、数値入力欄の単位表示を追従させる
+    private void ThresholdMode_SelectionChanged(object sender, SelectionChangedEventArgs e) {
+        if (TxtOverUnit == null || TxtUnderUnit == null) return;
+        TxtOverUnit.Text = CmbOverMode.SelectedIndex == 0 ? "%" : "分";
+        TxtUnderUnit.Text = CmbUnderMode.SelectedIndex == 0 ? "%" : "分";
+    }
+
+    private bool TryReadThresholds(out BottleneckThresholdMode overMode, out double overValue, out BottleneckThresholdMode underMode, out double underValue) {
+        overMode = CmbOverMode.SelectedIndex == 0 ? BottleneckThresholdMode.Percent : BottleneckThresholdMode.FixedMinutes;
+        underMode = CmbUnderMode.SelectedIndex == 0 ? BottleneckThresholdMode.Percent : BottleneckThresholdMode.FixedMinutes;
+
+        var overOk = double.TryParse(TxtOverValue.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out overValue) && double.IsFinite(overValue) && overValue >= 0;
+        var underOk = double.TryParse(TxtUnderValue.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out underValue) && double.IsFinite(underValue) && underValue >= 0;
+        return overOk && underOk;
+    }
+
+    private void BtnApplyThreshold_Click(object sender, RoutedEventArgs e) {
+        if (!TryReadThresholds(out var overMode, out var overValue, out var underMode, out var underValue)) {
+            MessageBox.Show("しきい値は0以上の数値で入力してください。", "入力エラー", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        _settings.BottleneckOverThresholdMode = overMode;
+        _settings.BottleneckOverThresholdValue = overValue;
+        _settings.BottleneckUnderThresholdMode = underMode;
+        _settings.BottleneckUnderThresholdValue = underValue;
+        AppSettingsService.Save(_settings);
+
+        if (_completedRows.Count > 0) RunAggregate();
+    }
+
+    private void RunAggregate() {
+        var result = ProcessBottleneckCalculator.Aggregate(_completedRows, _defsByItem,
+            _settings.BottleneckOverThresholdMode, _settings.BottleneckOverThresholdValue,
+            _settings.BottleneckUnderThresholdMode, _settings.BottleneckUnderThresholdValue);
+
+        ResultGrid.ItemsSource = result;
+        TxtStatus.Text = result.Count == 0 ? "該当する実績がありません" : $"{result.Count} 工程を表示";
     }
 
     private async void BtnSearch_Click(object sender, RoutedEventArgs e) {
@@ -55,10 +101,7 @@ public partial class ProcessBottleneckWindow : Window {
             _completedRows = completedRows;
             _defsByItem = defsByItem;
 
-            var result = ProcessBottleneckCalculator.Aggregate(completedRows, defsByItem);
-
-            ResultGrid.ItemsSource = result;
-            TxtStatus.Text = result.Count == 0 ? "該当する実績がありません" : $"{result.Count} 工程を表示";
+            RunAggregate();
         } catch (Exception ex) {
             TxtStatus.Text = $"検索に失敗しました: {ex.Message}";
         } finally {

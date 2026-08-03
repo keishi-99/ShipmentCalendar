@@ -11,7 +11,7 @@
         <TextBlock DockPanel.Dock="Top" FontSize="16" FontWeight="Bold"
                    Text="工程別ボトルネック分析" Margin="0,0,0,4"/>
         <TextBlock DockPanel.Dock="Top" Foreground="#666666" TextWrapping="Wrap" Margin="0,0,0,12"
-                   Text="指定期間内に完了した実績（受入実績）を品目×工程別に集計し、標準時間（段取時間＋作業時間）を超えて作業時間がかかった割合を表示します。品目を横断して集計するため、対象期間が長いと検索に時間がかかる場合があります。行をダブルクリックすると、集計元の個別注文を表示します。列見出しクリックで並べ替え、Shiftキーを押しながら複数の列見出しをクリックすると第2・第3条件を追加できます。"/>
+                   Text="指定期間内に完了した実績（受入実績）を品目×工程別に集計し、標準時間（段取時間＋作業時間）に対して作業時間が超過・未達だった割合を表示します。品目を横断して集計するため、対象期間が長いと検索に時間がかかる場合があります。行をダブルクリックすると、集計元の個別注文を表示します。列見出しクリックで並べ替え、Shiftキーを押しながら複数の列見出しをクリックすると第2・第3条件を追加できます。"/>
 
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,12">
             <TextBlock Text="開始日:" VerticalAlignment="Center" Width="50"/>
@@ -21,6 +21,26 @@
             <Button Name="BtnSearch" Content="検索" Padding="16,4" Click="BtnSearch_Click"/>
             <ProgressBar Name="SearchProgressBar" Width="80" Height="16" Margin="12,0,0,0"
                          IsIndeterminate="True" Visibility="Collapsed"/>
+        </StackPanel>
+
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,12">
+            <TextBlock Text="標準超過:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+            <ComboBox Name="CmbOverMode" Width="80" Margin="0,0,4,0" VerticalContentAlignment="Center" SelectionChanged="ThresholdMode_SelectionChanged">
+                <ComboBoxItem Content="割合(%)"/>
+                <ComboBoxItem Content="固定分"/>
+            </ComboBox>
+            <TextBox Name="TxtOverValue" Width="50" Margin="0,0,2,0" Padding="2" VerticalContentAlignment="Center"/>
+            <TextBlock Name="TxtOverUnit" VerticalAlignment="Center" Margin="0,0,16,0" Width="24"/>
+
+            <TextBlock Text="標準未達:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+            <ComboBox Name="CmbUnderMode" Width="80" Margin="0,0,4,0" VerticalContentAlignment="Center" SelectionChanged="ThresholdMode_SelectionChanged">
+                <ComboBoxItem Content="割合(%)"/>
+                <ComboBoxItem Content="固定分"/>
+            </ComboBox>
+            <TextBox Name="TxtUnderValue" Width="50" Margin="0,0,2,0" Padding="2" VerticalContentAlignment="Center"/>
+            <TextBlock Name="TxtUnderUnit" VerticalAlignment="Center" Margin="0,0,16,0" Width="24"/>
+
+            <Button Name="BtnApplyThreshold" Content="適用" Padding="12,4" Click="BtnApplyThreshold_Click"/>
         </StackPanel>
 
         <TextBlock DockPanel.Dock="Bottom" Name="TxtStatus" Margin="0,8,0,0" Foreground="#666666"/>
@@ -46,7 +66,7 @@
                                         <Run Text="{Binding RequiredMinutesText, Mode=OneWay}"/>
                                         <Run Text="　実績"/>
                                         <Run Text="{Binding ActualWorkMinutesText, Mode=OneWay}"/>
-                                        <Run Text="　超過"/>
+                                        <Run Text="　差"/>
                                         <Run Text="{Binding OverMinutesText, Mode=OneWay}"/>
                                     </TextBlock>
                                 </StackPanel>
@@ -93,6 +113,9 @@
                 <DataGridTextColumn Header="標準超過件数" Binding="{Binding OverStandardCount}" Width="90" ElementStyle="{StaticResource RightCellText}"/>
                 <DataGridTextColumn Header="標準超過率" Binding="{Binding OverStandardRateText}" SortMemberPath="OverStandardRate" Width="80" ElementStyle="{StaticResource RightCellText}"/>
                 <DataGridTextColumn Header="平均超過時間" Binding="{Binding AvgOverMinutesText}" SortMemberPath="AvgOverMinutes" Width="90" ElementStyle="{StaticResource RightCellText}"/>
+                <DataGridTextColumn Header="標準未達件数" Binding="{Binding UnderStandardCount}" Width="90" ElementStyle="{StaticResource RightCellText}"/>
+                <DataGridTextColumn Header="標準未達率" Binding="{Binding UnderStandardRateText}" SortMemberPath="UnderStandardRate" Width="80" ElementStyle="{StaticResource RightCellText}"/>
+                <DataGridTextColumn Header="平均短縮時間" Binding="{Binding AvgUnderMinutesText}" SortMemberPath="AvgUnderMinutes" Width="90" ElementStyle="{StaticResource RightCellText}"/>
             </DataGrid.Columns>
         </DataGrid>
     </DockPanel>

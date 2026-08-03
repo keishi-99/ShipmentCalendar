@@ -7,7 +7,9 @@ namespace ShipmentCalendar.Services;
 public static class ProcessBottleneckCalculator {
     public static List<ProcessBottleneckRow> Aggregate(
         IEnumerable<(string Seiban, string ItemNumber, string ItemName, string ModelCode, string DestinationCode, DateOnly ActualDate, string WorkerName, double ActualWorkMinutes, int PlannedQuantity, DateOnly? DeliveryDate)> completedRows,
-        IDictionary<string, List<ProcessDefinition>> defsByItemNumber) {
+        IDictionary<string, List<ProcessDefinition>> defsByItemNumber,
+        BottleneckThresholdMode overMode, double overThresholdValue,
+        BottleneckThresholdMode underMode, double underThresholdValue) {
 
         var processResults = new List<(string ItemNumber, string ItemName, string ProcessName, string Seiban, double RequiredMinutes, double ActualWorkMinutes)>();
 
@@ -31,7 +33,8 @@ public static class ProcessBottleneckCalculator {
             .GroupBy(x => (x.ItemNumber, x.ProcessName), StringPairComparer.OrdinalIgnoreCase)
             .Select(g => {
                 var count = g.Count();
-                var overStandard = g.Where(x => x.RequiredMinutes > 0 && x.ActualWorkMinutes > x.RequiredMinutes).ToList();
+                var overStandard = g.Where(x => x.RequiredMinutes > 0 && x.ActualWorkMinutes > OverThreshold(x.RequiredMinutes, overMode, overThresholdValue)).ToList();
+                var underStandard = g.Where(x => x.RequiredMinutes > 0 && x.ActualWorkMinutes < UnderThreshold(x.RequiredMinutes, underMode, underThresholdValue)).ToList();
                 return new ProcessBottleneckRow {
                     ItemNumber = g.Key.ItemNumber,
                     ItemName = g.First().ItemName,
@@ -39,6 +42,8 @@ public static class ProcessBottleneckCalculator {
                     CompletedCount = count,
                     OverStandardCount = overStandard.Count,
                     AvgOverMinutes = overStandard.Count > 0 ? overStandard.Average(x => x.ActualWorkMinutes - x.RequiredMinutes) : 0,
+                    UnderStandardCount = underStandard.Count,
+                    AvgUnderMinutes = underStandard.Count > 0 ? underStandard.Average(x => x.RequiredMinutes - x.ActualWorkMinutes) : 0,
                     // 超過分が大きい注文ほど先頭に来るようにし、外れ値をすぐ確認できるようにする
                     Items = g.OrderByDescending(x => x.ActualWorkMinutes - x.RequiredMinutes)
                         .Select(x => new ProcessBottleneckItem {
@@ -52,6 +57,14 @@ public static class ProcessBottleneckCalculator {
             .ThenByDescending(r => r.CompletedCount)
             .ToList();
     }
+
+    /// <summary>標準超過と判定する境界の作業時間（分）。Percentモードは標準時間に対する割合、FixedMinutesモードは標準時間への加算分</summary>
+    private static double OverThreshold(double requiredMinutes, BottleneckThresholdMode mode, double value) =>
+        mode == BottleneckThresholdMode.Percent ? requiredMinutes * value / 100 : requiredMinutes + value;
+
+    /// <summary>標準未達と判定する境界の作業時間（分）。Percentモードは標準時間に対する割合、FixedMinutesモードは標準時間からの減算分</summary>
+    private static double UnderThreshold(double requiredMinutes, BottleneckThresholdMode mode, double value) =>
+        mode == BottleneckThresholdMode.Percent ? requiredMinutes * value / 100 : requiredMinutes - value;
 
     /// <summary>(ItemNumber, ProcessName)キーの品目番号部分を大文字小文字区別なしで比較する。
     /// ProcessNameは取引先名称そのものでキーとして揺れにくいため、ItemNumberのみ大小無視で十分</summary>
