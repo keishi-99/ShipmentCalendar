@@ -23,6 +23,9 @@ public partial class DepartmentLoadWindow : Window {
     private IEnumerable<Department> _departments = [];
     private IEnumerable<DepartmentAbsence> _absences = [];
     private HashSet<DateOnly> _holidayDates = [];
+    // 初回ロードと「適用」ボタンの初回クリックが重なった場合に、古い呼び出しが後から完了して
+    // 列を重複追加しないよう、呼び出しごとに世代番号を発行して判定する
+    private int _rebuildRevision;
 
     public DepartmentLoadWindow(IEnumerable<Order> orders, AppSettings settings) {
         InitializeComponent();
@@ -60,6 +63,8 @@ public partial class DepartmentLoadWindow : Window {
     }
 
     private async Task RebuildGridAsync() {
+        var revision = ++_rebuildRevision;
+
         var rows = DepartmentLoadCalculator.Aggregate(_orders, _departments, _absences, _settings.DayMinutes, _settings.CongestionCautionPercent, _settings.CongestionConcentratedPercent);
 
         if (rows.Count == 0 || rows[0].Cells.Count == 0) {
@@ -75,6 +80,10 @@ public partial class DepartmentLoadWindow : Window {
             // カレンダー表示期間（複数年にまたがる可能性がある）をカバーする休日を取得する
             var years = rows[0].Cells.Select(c => c.Date.Year).Distinct();
             var holidayLists = await Task.WhenAll(years.Select(y => _holidayRepository.GetByYearAsync(y)));
+
+            // より新しい呼び出しが既に列を構築済みの場合、この呼び出しでは追加しない（重複追加防止）
+            if (revision != _rebuildRevision) return;
+
             _holidayDates = holidayLists.SelectMany(h => h).Select(h => h.Date).ToHashSet();
 
             for (int i = 0; i < rows[0].Cells.Count; i++)

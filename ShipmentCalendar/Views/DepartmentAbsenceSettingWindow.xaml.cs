@@ -13,6 +13,9 @@ public partial class DepartmentAbsenceSettingWindow : Window {
     private List<Department> _departments = [];
     private List<DateOnly> _currentDates = [];
     private HashSet<DateOnly> _holidayDates = [];
+    // 年・月の連続変更で複数のRebuildGridAsyncが重なった場合に、古い呼び出しが後から完了して
+    // 新しい呼び出しの結果を上書きしないよう、呼び出しごとに世代番号を発行して判定する
+    private int _rebuildRevision;
 
     // 休日列は入力不可のためグレーアウトして区別する（XAMLの暗黙スタイルは継承されないため上下中央揃えもここで指定する）
     private static readonly Style HolidayCellStyle = new(typeof(DataGridCell)) {
@@ -60,6 +63,8 @@ public partial class DepartmentAbsenceSettingWindow : Window {
     private async Task RebuildGridAsync() {
         if (CmbYear.SelectedItem is not int year || CmbMonth.SelectedItem is not int month) return;
 
+        var revision = ++_rebuildRevision;
+
         var daysInMonth = DateTime.DaysInMonth(year, month);
         var dates = Enumerable.Range(1, daysInMonth).Select(d => new DateOnly(year, month, d)).ToList();
 
@@ -78,6 +83,9 @@ public partial class DepartmentAbsenceSettingWindow : Window {
                 AbsentCount = absenceMap.GetValueOrDefault((d.Id, date), 0)
             }).ToList()
         }).ToList();
+
+        // より新しい呼び出しが既に開始されている場合、この呼び出しの結果は古いためUIへ反映しない
+        if (revision != _rebuildRevision) return;
 
         // awaitを挟む間に年・月が連続変更されても、行データと列数がずれないよう、
         // ここまでローカル変数で計算してから最後にまとめてフィールド・UIへ反映する

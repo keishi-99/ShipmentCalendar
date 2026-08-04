@@ -191,22 +191,29 @@ public partial class MainViewModel : ObservableObject {
     // 読み込みが一瞬で終わる環境でもスピナーが視認できるよう最小表示時間を確保する
     private static readonly TimeSpan _minLoadingDisplayDuration = TimeSpan.FromMilliseconds(300);
 
+    // IsLoading中に来たRebuildProcessesAsync要求を、進行中の読み込み完了後にまとめて1回だけ反映するための保留フラグ
+    private bool _pendingRebuildRequested;
+    private bool _pendingRebuildReloadHolidays;
+
     /// <summary>工程設定・休日設定・部署設定ウィンドウでのDB変更（工程マスタ・休日・部署等）を画面に反映する。
     /// これらのウィンドウが変更するのはSQLite側のみで受注データ自体はODBCから変わらないため、
     /// ODBCへの再アクセスはせず、キャッシュ済みの_allOrders・_allOdbcDefsに対してBuildのみ再実行する。
+    /// 進行中の読み込み（LoadOrdersAsync/RebuildProcessesAsync）と重なった場合は、その完了を待って
+    /// 保留リクエストとして1回だけ再実行する（無視すると設定変更が反映されないまま終わってしまうため）。
     /// 初回のLoadOrdersAsyncが未完了（ODBCキャッシュが無い）場合は通常のLoadOrdersAsyncにフォールバックする</summary>
     private async Task RebuildProcessesAsync(bool reloadHolidays = false) {
+        if (IsLoading) {
+            _pendingRebuildRequested = true;
+            _pendingRebuildReloadHolidays |= reloadHolidays;
+            StatusMessage = "読み込み中のため、変更内容は現在の読み込み完了後に反映されます。";
+            return;
+        }
+
         if (_lastLoaded is null) {
             await LoadOrdersAsync();
             return;
         }
 
-        if (IsLoading) {
-            // 自動更新タイマー等の読み込みと重なった場合、その読み込みがdbDefs・休日を最新の状態で
-            // 取得し直すため変更は反映されるが、サイレントに無視されたと誤解されないよう案内する
-            StatusMessage = "読み込み中のため、変更内容は現在の読み込み完了時に反映されます。";
-            return;
-        }
         IsLoading = true;
         var startedAt = DateTime.UtcNow;
         try {
@@ -242,7 +249,17 @@ public partial class MainViewModel : ObservableObject {
                 System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
         } finally {
             IsLoading = false;
+            await RunPendingRebuildAsync();
         }
+    }
+
+    /// <summary>IsLoading中に来たRebuildProcessesAsync要求を、読み込み完了直後に1回だけ反映する</summary>
+    private async Task RunPendingRebuildAsync() {
+        if (!_pendingRebuildRequested) return;
+        _pendingRebuildRequested = false;
+        var reloadHolidays = _pendingRebuildReloadHolidays;
+        _pendingRebuildReloadHolidays = false;
+        await RebuildProcessesAsync(reloadHolidays);
     }
 
     [RelayCommand]
@@ -488,6 +505,7 @@ public partial class MainViewModel : ObservableObject {
                 System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
         } finally {
             IsLoading = false;
+            await RunPendingRebuildAsync();
         }
     }
 
