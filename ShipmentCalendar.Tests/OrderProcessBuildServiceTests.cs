@@ -89,6 +89,17 @@ public class OrderProcessBuildServiceTests {
     }
 
     [Fact]
+    public void Build_LeadDaysOverride_UsesItemSpecificValue() {
+        var order = MakeOrder("I1", new DateOnly(2026, 6, 30));
+        var calculator = MakeCalculator();
+        var overrides = new Dictionary<string, int> { ["I1"] = 7 };
+
+        OrderProcessBuildService.Build([order], [], [], NoDisplayNameOverrides, overrides, defaultCompletionDateLeadDays: 3, calculator, order.DeliveryDate);
+
+        Assert.Equal(calculator.SubtractBusinessDays(order.DeliveryDate, 7), order.CompletionDate);
+    }
+
+    [Fact]
     public void Build_HiddenDefinition_IsExcludedFromResultingProcesses() {
         var order = MakeOrder("I1", new DateOnly(2026, 6, 30));
         var defs = new List<ProcessDefinition> {

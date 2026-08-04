@@ -53,10 +53,7 @@ public static class OrderFilterService {
                 var isWarning = criteria.WarningOnly && o.Processes.Any(p => p.Status == ProcessStatus.Warning);
                 var isToday = false;
                 if (criteria.TodayTaskOnly) {
-                    var next = o.Processes
-                        .Where(p => p.Status != ProcessStatus.Completed)
-                        .OrderBy(p => p.SortOrder)
-                        .FirstOrDefault();
+                    var next = GetNextIncompleteProcess(o);
                     isToday = next != null && today >= next.StartDate && today <= next.DueDate;
                 }
                 var isCompleted = criteria.CompletedOnly && o.IsAllCompleted;
@@ -76,13 +73,7 @@ public static class OrderFilterService {
 
         // 担当部署フィルター：未完了工程のうち SortOrder 最小のものが選択部署の行のみ表示
         if (criteria.DepartmentId > 0) {
-            result = result.Where(o => {
-                var next = o.Processes
-                    .Where(p => p.Status != ProcessStatus.Completed)
-                    .OrderBy(p => p.SortOrder)
-                    .FirstOrDefault();
-                return next?.DepartmentId == criteria.DepartmentId;
-            });
+            result = result.Where(o => GetNextIncompleteProcess(o)?.DepartmentId == criteria.DepartmentId);
         }
 
         return sortMode switch {
@@ -95,11 +86,15 @@ public static class OrderFilterService {
     /// <summary>注文の「次の未完了工程」の必須日（表示設定に応じてDueDate/StartDate）を返す。
     /// 全工程完了済みならDateOnly.MaxValue</summary>
     public static DateOnly GetNextProcessSortDate(Order o, bool showDueDateForNotStarted) {
-        var next = o.Processes
-            .Where(p => p.Status != ProcessStatus.Completed)
-            .OrderBy(p => p.SortOrder)
-            .FirstOrDefault();
+        var next = GetNextIncompleteProcess(o);
         if (next == null) return DateOnly.MaxValue;
         return showDueDateForNotStarted ? next.DueDate : next.StartDate;
     }
+
+    /// <summary>SortOrderが最小の未完了工程を返す。全工程完了済みならnull</summary>
+    private static OrderProcess? GetNextIncompleteProcess(Order o) =>
+        o.Processes
+            .Where(p => p.Status != ProcessStatus.Completed)
+            .OrderBy(p => p.SortOrder)
+            .FirstOrDefault();
 }
