@@ -21,31 +21,51 @@ public partial class ProcessBottleneckWindow : Window {
         StartDatePicker.SelectedDate = DateTime.Today.AddDays(-90);
         EndDatePicker.SelectedDate = DateTime.Today;
 
-        CmbOverMode.SelectedIndex = settings.BottleneckOverThresholdMode == BottleneckThresholdMode.Percent ? 0 : 1;
-        CmbUnderMode.SelectedIndex = settings.BottleneckUnderThresholdMode == BottleneckThresholdMode.Percent ? 0 : 1;
+        SelectComboItemByMode(CmbOverMode, settings.BottleneckOverThresholdMode);
+        SelectComboItemByMode(CmbUnderMode, settings.BottleneckUnderThresholdMode);
         TxtOverValue.Text = settings.BottleneckOverThresholdValue.ToString(CultureInfo.InvariantCulture);
         TxtUnderValue.Text = settings.BottleneckUnderThresholdValue.ToString(CultureInfo.InvariantCulture);
+    }
+
+    // XAML側のComboBoxItemの並び順（表示位置）にコードが依存しないよう、選択状態はItem.Tagに
+    // 埋め込んだBottleneckThresholdModeで判定する（並び順を入れ替えても壊れない）
+    private static BottleneckThresholdMode GetSelectedMode(ComboBox combo) =>
+        (BottleneckThresholdMode)((ComboBoxItem)combo.SelectedItem).Tag;
+
+    private static void SelectComboItemByMode(ComboBox combo, BottleneckThresholdMode mode) {
+        foreach (var obj in combo.Items) {
+            var item = (ComboBoxItem)obj;
+            if ((BottleneckThresholdMode)item.Tag == mode) {
+                combo.SelectedItem = item;
+                return;
+            }
+        }
     }
 
     // モード（割合／固定分）の切り替えに応じて、数値入力欄の単位表示を追従させる
     private void ThresholdMode_SelectionChanged(object sender, SelectionChangedEventArgs e) {
         if (TxtOverUnit == null || TxtUnderUnit == null) return;
-        TxtOverUnit.Text = CmbOverMode.SelectedIndex == 0 ? "%" : "分";
-        TxtUnderUnit.Text = CmbUnderMode.SelectedIndex == 0 ? "%" : "分";
+        if (CmbOverMode.SelectedItem != null) TxtOverUnit.Text = GetSelectedMode(CmbOverMode) == BottleneckThresholdMode.Percent ? "%" : "分";
+        if (CmbUnderMode.SelectedItem != null) TxtUnderUnit.Text = GetSelectedMode(CmbUnderMode) == BottleneckThresholdMode.Percent ? "%" : "分";
     }
 
+    // 割合(%)モードは超過100以上・未達100以下を要求することで、モードの組み合わせによらず
+    // 常に「未達しきい値 ≦ 標準時間 ≦ 超過しきい値」を保証し、超過・未達が同時に成立してしまう
+    // 矛盾した設定（例: 超過50%・未達150%）を防ぐ（固定分モードは0以上であれば同じ関係が自然に成り立つ）
     private bool TryReadThresholds(out BottleneckThresholdMode overMode, out double overValue, out BottleneckThresholdMode underMode, out double underValue) {
-        overMode = CmbOverMode.SelectedIndex == 0 ? BottleneckThresholdMode.Percent : BottleneckThresholdMode.FixedMinutes;
-        underMode = CmbUnderMode.SelectedIndex == 0 ? BottleneckThresholdMode.Percent : BottleneckThresholdMode.FixedMinutes;
+        overMode = GetSelectedMode(CmbOverMode);
+        underMode = GetSelectedMode(CmbUnderMode);
 
-        var overOk = double.TryParse(TxtOverValue.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out overValue) && double.IsFinite(overValue) && overValue >= 0;
-        var underOk = double.TryParse(TxtUnderValue.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out underValue) && double.IsFinite(underValue) && underValue >= 0;
+        var overOk = double.TryParse(TxtOverValue.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out overValue) && double.IsFinite(overValue)
+            && (overMode == BottleneckThresholdMode.Percent ? overValue >= 100 : overValue >= 0);
+        var underOk = double.TryParse(TxtUnderValue.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out underValue) && double.IsFinite(underValue)
+            && (underMode == BottleneckThresholdMode.Percent ? underValue is >= 0 and <= 100 : underValue >= 0);
         return overOk && underOk;
     }
 
     private void BtnApplyThreshold_Click(object sender, RoutedEventArgs e) {
         if (!TryReadThresholds(out var overMode, out var overValue, out var underMode, out var underValue)) {
-            MessageBox.Show("しきい値は0以上の数値で入力してください。", "入力エラー", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show("しきい値が不正です。割合(%)モードは超過100以上・未達0〜100、固定分モードは0以上の数値を入力してください。", "入力エラー", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 

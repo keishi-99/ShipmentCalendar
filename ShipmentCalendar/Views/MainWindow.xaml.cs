@@ -201,7 +201,7 @@ public partial class MainWindow : Fluent.RibbonWindow, IDisplaySettingsPreviewTa
     }
 
     // 直前に構築した工程列の構成（変化がなければ再構築をスキップする）
-    private (int MaxProcessCount, bool ShowDueDateForNotStarted, bool ShowProcessDate, bool ShowProcessRequiredHours, bool ShowRequiredTimeInMinutes, double ProcessColumnFontSize, double ProcessBarFontSize, bool ShowProcessBar, bool ShowProcessColumns)? _lastColumnSignature;
+    private (int MaxProcessCount, bool ShowDueDateForNotStarted, bool ShowProcessDate, bool ShowProcessRequiredHours, bool ShowRequiredTimeInMinutes, double ProcessColumnFontSize, double ProcessBarFontSize, bool ShowProcessBar, bool ShowProcessColumns, int HolidaysSignature)? _lastColumnSignature;
 
     /// <summary>工程列をインデックスベースで動的生成する（列ヘッダー: 1, 2, 3...）</summary>
     private void BuildProcessColumns() {
@@ -210,7 +210,7 @@ public partial class MainWindow : Fluent.RibbonWindow, IDisplaySettingsPreviewTa
         // 全注文中の最大工程数を列数とする
         var maxProcessCount = _viewModel.Orders.Count > 0 ? _viewModel.Orders.Max(o => o.Processes.Count) : 0;
         var settings = _viewModel.Settings;
-        var signature = (maxProcessCount, settings.ShowDueDateForNotStarted, settings.ShowProcessDate, settings.ShowProcessRequiredHours, settings.ShowRequiredTimeInMinutes, settings.ProcessColumnFontSize, settings.ProcessBarFontSize, settings.ShowProcessBar, settings.ShowProcessColumns);
+        var signature = (maxProcessCount, settings.ShowDueDateForNotStarted, settings.ShowProcessDate, settings.ShowProcessRequiredHours, settings.ShowRequiredTimeInMinutes, settings.ProcessColumnFontSize, settings.ProcessBarFontSize, settings.ShowProcessBar, settings.ShowProcessColumns, _viewModel.HolidaysSignature);
         if (signature == _lastColumnSignature) return;
         _lastColumnSignature = signature;
 

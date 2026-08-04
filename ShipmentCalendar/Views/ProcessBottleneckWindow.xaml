@@ -2,6 +2,7 @@
     x:Class="ShipmentCalendar.Views.ProcessBottleneckWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:models="clr-namespace:ShipmentCalendar.Models"
     Title="工程別ボトルネック分析"
     Width="1450"
     Height="520"
@@ -25,16 +26,16 @@
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,12">
             <TextBlock Text="標準超過:" VerticalAlignment="Center" Margin="0,0,4,0"/>
             <ComboBox Name="CmbOverMode" Width="80" Margin="0,0,4,0" VerticalContentAlignment="Center" SelectionChanged="ThresholdMode_SelectionChanged">
-                <ComboBoxItem Content="割合(%)"/>
-                <ComboBoxItem Content="固定分"/>
+                <ComboBoxItem Content="割合(%)" Tag="{x:Static models:BottleneckThresholdMode.Percent}"/>
+                <ComboBoxItem Content="固定分" Tag="{x:Static models:BottleneckThresholdMode.FixedMinutes}"/>
             </ComboBox>
             <TextBox Name="TxtOverValue" Width="50" Margin="0,0,2,0" Padding="2" VerticalContentAlignment="Center"/>
             <TextBlock Name="TxtOverUnit" VerticalAlignment="Center" Margin="0,0,16,0" Width="24"/>
 
             <TextBlock Text="標準未達:" VerticalAlignment="Center" Margin="0,0,4,0"/>
             <ComboBox Name="CmbUnderMode" Width="80" Margin="0,0,4,0" VerticalContentAlignment="Center" SelectionChanged="ThresholdMode_SelectionChanged">
-                <ComboBoxItem Content="割合(%)"/>
-                <ComboBoxItem Content="固定分"/>
+                <ComboBoxItem Content="割合(%)" Tag="{x:Static models:BottleneckThresholdMode.Percent}"/>
+                <ComboBoxItem Content="固定分" Tag="{x:Static models:BottleneckThresholdMode.FixedMinutes}"/>
             </ComboBox>
             <TextBox Name="TxtUnderValue" Width="50" Margin="0,0,2,0" Padding="2" VerticalContentAlignment="Center"/>
             <TextBlock Name="TxtUnderUnit" VerticalAlignment="Center" Margin="0,0,16,0" Width="24"/>

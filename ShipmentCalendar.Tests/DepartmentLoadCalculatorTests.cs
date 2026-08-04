@@ -246,6 +246,22 @@ public class DepartmentLoadCalculatorTests
         Assert.Equal(CongestionLevel.Normal, cell.Level);
     }
 
+    [Fact]
+    public void Aggregate_Cell_ItemsAreSortedByDayMinutesDescending() {
+        // 同日・同部署に複数注文が集計される場合、必要時間が大きい注文ほど先頭に来て、
+        // その日の集中度への主要因をすぐ確認できるようにする
+        var dueDate = new DateOnly(2026, 6, 30);
+        var order1 = MakeOrder("M1", MakeProcess(1, dueDate, 50, destinationCode: "P1"));
+        var order2 = MakeOrder("M2", MakeProcess(1, dueDate, 200, destinationCode: "P2"));
+        var order3 = MakeOrder("M3", MakeProcess(1, dueDate, 100, destinationCode: "P3"));
+        var departments = new[] { new Department { Id = 1, Name = "総務部" } };
+
+        var rows = Aggregate([order1, order2, order3], departments);
+
+        var items = rows.Single().Cells.Single(c => c.Date == dueDate).Items;
+        Assert.Equal([200, 100, 50], items.Select(i => i.DayMinutes));
+    }
+
     /// <summary>
     /// しきい値を0にすると、fulfillmentPercent(0) &gt;= cautionPercent(0)でCautionと誤判定されうる境界値。
     /// CodeRabbitの指摘で見つかった不具合（分数閾値版）の再発防止を、充足率版でも維持する。
