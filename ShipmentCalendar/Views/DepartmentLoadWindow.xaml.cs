@@ -12,15 +12,17 @@ using System.Windows.Media;
 namespace ShipmentCalendar.Views;
 
 public partial class DepartmentLoadWindow : Window {
-    // 日付セルの文字サイズ・最大行数（件数/時間/充足率/欠員の4行）。RowHeightをこの値から算出することで、
+    // 日付セルの文字サイズ・最大行数（1行目：割合|超過時間、2行目：件数|時間|欠員）。RowHeightをこの値から算出することで、
     // フォントサイズを変更してもDataGridの行高さが自動的に追従し、部署によって行高さがばらつくのを防ぐ
     private const double CellFontSize = 10.0;
-    private const int MaxCellLines = 4;
+    private const int MaxCellLines = 2;
 
     private readonly AppSettings _settings;
+    private readonly SqliteHolidayRepository _holidayRepository = new();
     private IEnumerable<Order> _orders = [];
     private IEnumerable<Department> _departments = [];
     private IEnumerable<DepartmentAbsence> _absences = [];
+    private HashSet<DateOnly> _holidayDates = [];
 
     public DepartmentLoadWindow(IEnumerable<Order> orders, AppSettings settings) {
         InitializeComponent();
@@ -39,10 +41,10 @@ public partial class DepartmentLoadWindow : Window {
         await Task.WhenAll(departmentsTask, absencesTask);
         _departments = await departmentsTask;
         _absences = await absencesTask;
-        RebuildGrid();
+        await RebuildGridAsync();
     }
 
-    private void BtnApplyThreshold_Click(object sender, RoutedEventArgs e) {
+    private async void BtnApplyThreshold_Click(object sender, RoutedEventArgs e) {
         if (!double.TryParse(TxtCautionPercent.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out var caution)
             || !double.TryParse(TxtConcentratedPercent.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out var concentrated)
             || !double.IsFinite(caution) || !double.IsFinite(concentrated)
@@ -54,10 +56,10 @@ public partial class DepartmentLoadWindow : Window {
         _settings.CongestionCautionPercent = caution;
         _settings.CongestionConcentratedPercent = concentrated;
         AppSettingsService.Save(_settings);
-        RebuildGrid();
+        await RebuildGridAsync();
     }
 
-    private void RebuildGrid() {
+    private async Task RebuildGridAsync() {
         var rows = DepartmentLoadCalculator.Aggregate(_orders, _departments, _absences, _settings.DayMinutes, _settings.CongestionCautionPercent, _settings.CongestionConcentratedPercent);
 
         if (rows.Count == 0 || rows[0].Cells.Count == 0) {
@@ -70,16 +72,21 @@ public partial class DepartmentLoadWindow : Window {
         TxtEmpty.Visibility = Visibility.Collapsed;
         TxtHeadcountWarning.Visibility = rows.Any(r => r.DepartmentId != 0 && r.Headcount <= 0) ? Visibility.Visible : Visibility.Collapsed;
         if (LoadGrid.Columns.Count <= 1) {
+            // カレンダー表示期間（複数年にまたがる可能性がある）をカバーする休日を取得する
+            var years = rows[0].Cells.Select(c => c.Date.Year).Distinct();
+            var holidayLists = await Task.WhenAll(years.Select(y => _holidayRepository.GetByYearAsync(y)));
+            _holidayDates = holidayLists.SelectMany(h => h).Select(h => h.Date).ToHashSet();
+
             for (int i = 0; i < rows[0].Cells.Count; i++)
-                LoadGrid.Columns.Add(BuildDateColumn(rows[0].Cells[i].Date, i));
+                LoadGrid.Columns.Add(BuildDateColumn(rows[0].Cells[i].Date, i, _holidayDates.Contains(rows[0].Cells[i].Date)));
         }
 
         LoadGrid.ItemsSource = rows;
     }
 
-    private DataGridTemplateColumn BuildDateColumn(DateOnly date, int index) {
+    private DataGridTemplateColumn BuildDateColumn(DateOnly date, int index, bool isHoliday) {
         var isToday = date == DateOnly.FromDateTime(DateTime.Today);
-        var column = new DataGridTemplateColumn { Header = date.ToString("M/d"), Width = 64 };
+        var column = new DataGridTemplateColumn { Header = date.ToString("M/d"), Width = 100 };
 
         if (isToday) {
             // BasedOnを指定しないとテーマの既定スタイル(Template)を引き継げず、ヘッダーが空白になるため明示的に継承する
@@ -96,17 +103,58 @@ public partial class DepartmentLoadWindow : Window {
             ? (Brush)Application.Current.Resources["AccentColor"]
             : new SolidColorBrush(Color.FromRgb(0xDD, 0xDD, 0xDD)));
         borderFactory.SetValue(Border.BorderThicknessProperty, isToday ? new Thickness(2, 0, 2, 0) : new Thickness(0, 0, 1, 0));
-        borderFactory.SetBinding(Border.BackgroundProperty, new Binding($"Cells[{index}].Level") { Converter = new CongestionLevelToBrushConverter() });
+        // 休日は集中度に関わらず稼働しないため、Levelバインディングではなく固定のグレーで塗る
+        if (isHoliday)
+            borderFactory.SetValue(Border.BackgroundProperty, new SolidColorBrush(Color.FromRgb(0xEE, 0xEE, 0xEE)));
+        else
+            borderFactory.SetBinding(Border.BackgroundProperty, new Binding($"Cells[{index}].Level") { Converter = new CongestionLevelToBrushConverter() });
         borderFactory.SetBinding(FrameworkElement.ToolTipProperty, new Binding($"Cells[{index}].Tooltip"));
 
-        var textFactory = new FrameworkElementFactory(typeof(TextBlock));
-        textFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-        textFactory.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
-        textFactory.SetValue(TextBlock.FontSizeProperty, CellFontSize);
-        // 行選択時にDataGridの既定スタイルで文字色が白に切り替わり、白背景（通常）セルで見えなくなるため固定色にする
-        textFactory.SetValue(TextBlock.ForegroundProperty, Brushes.Black);
-        textFactory.SetBinding(TextBlock.TextProperty, new Binding($"Cells[{index}].DisplayText"));
-        borderFactory.AppendChild(textFactory);
+        // 1行目・2行目で列数が異なる（割合|超過時間の2列 / 件数|時間|欠員の3列）ため、
+        // 外側は2行1列のみとし、各行に列数の異なる内側Gridを個別に持たせる
+        var gridFactory = new FrameworkElementFactory(typeof(Grid));
+        gridFactory.AppendChild(new FrameworkElementFactory(typeof(RowDefinition)));
+        gridFactory.AppendChild(new FrameworkElementFactory(typeof(RowDefinition)));
+
+        // 1行目：[割合|超過時間]（1:1）
+        var row1Factory = new FrameworkElementFactory(typeof(Grid));
+        row1Factory.SetValue(Grid.RowProperty, 0);
+        row1Factory.AppendChild(new FrameworkElementFactory(typeof(ColumnDefinition)));
+        row1Factory.AppendChild(new FrameworkElementFactory(typeof(ColumnDefinition)));
+
+        var fulfillmentFactory = BuildCellTextFactory($"Cells[{index}].FulfillmentPercentText", HorizontalAlignment.Left);
+        fulfillmentFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.Bold);
+        fulfillmentFactory.SetValue(Grid.ColumnProperty, 0);
+        row1Factory.AppendChild(fulfillmentFactory);
+
+        var overtimeFactory = BuildCellTextFactory($"Cells[{index}].OvertimeText");
+        overtimeFactory.SetValue(Grid.ColumnProperty, 1);
+        row1Factory.AppendChild(overtimeFactory);
+
+        gridFactory.AppendChild(row1Factory);
+
+        // 2行目：[件数|時間|欠員]（均等3分割）
+        var row2Factory = new FrameworkElementFactory(typeof(Grid));
+        row2Factory.SetValue(Grid.RowProperty, 1);
+        row2Factory.AppendChild(new FrameworkElementFactory(typeof(ColumnDefinition)));
+        row2Factory.AppendChild(new FrameworkElementFactory(typeof(ColumnDefinition)));
+        row2Factory.AppendChild(new FrameworkElementFactory(typeof(ColumnDefinition)));
+
+        var countFactory = BuildCellTextFactory($"Cells[{index}].ProcessCountText");
+        countFactory.SetValue(Grid.ColumnProperty, 0);
+        row2Factory.AppendChild(countFactory);
+
+        var hoursFactory = BuildCellTextFactory($"Cells[{index}].TotalHoursText");
+        hoursFactory.SetValue(Grid.ColumnProperty, 1);
+        row2Factory.AppendChild(hoursFactory);
+
+        var absentFactory = BuildCellTextFactory($"Cells[{index}].AbsentCellText");
+        absentFactory.SetValue(Grid.ColumnProperty, 2);
+        row2Factory.AppendChild(absentFactory);
+
+        gridFactory.AppendChild(row2Factory);
+
+        borderFactory.AppendChild(gridFactory);
 
         // クリックで、このセルの集計元になった注文一覧をサイドパネルに表示する
         borderFactory.AddHandler(MouseLeftButtonDownEvent, new MouseButtonEventHandler((sender, e) => {
@@ -117,6 +165,23 @@ public partial class DepartmentLoadWindow : Window {
         var template = new DataTemplate { VisualTree = borderFactory };
         column.CellTemplate = template;
         return column;
+    }
+
+    /// <summary>セル内の1マス分のTextBlockを構築する。幅が狭いため、収まらない場合は末尾を省略する。
+    /// 既定は中央揃えだが、割合は超過時間の有無で文字数が大きく変わり中央揃えだと数値の位置がずれるため左揃えにする</summary>
+    private static FrameworkElementFactory BuildCellTextFactory(string bindingPath, HorizontalAlignment horizontalAlignment = HorizontalAlignment.Center) {
+        var textFactory = new FrameworkElementFactory(typeof(TextBlock));
+        textFactory.SetValue(TextBlock.HorizontalAlignmentProperty, horizontalAlignment);
+        textFactory.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
+        textFactory.SetValue(TextBlock.TextAlignmentProperty, horizontalAlignment == HorizontalAlignment.Left ? TextAlignment.Left : TextAlignment.Center);
+        if (horizontalAlignment == HorizontalAlignment.Left)
+            textFactory.SetValue(TextBlock.MarginProperty, new Thickness(4, 0, 0, 0));
+        textFactory.SetValue(TextBlock.FontSizeProperty, CellFontSize);
+        textFactory.SetValue(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis);
+        // 行選択時にDataGridの既定スタイルで文字色が白に切り替わり、白背景（通常）セルで見えなくなるため固定色にする
+        textFactory.SetValue(TextBlock.ForegroundProperty, Brushes.Black);
+        textFactory.SetBinding(TextBlock.TextProperty, new Binding(bindingPath));
+        return textFactory;
     }
 
     private void ShowCellDetail(DepartmentLoadCell cell) {

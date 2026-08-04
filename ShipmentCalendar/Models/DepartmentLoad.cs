@@ -24,7 +24,14 @@ public class DepartmentLoadCell
         ? AbsentCount > 0 ? $"\n{percent:F0}%{OvertimeSuffix}\n欠員{AbsentCount}人" : $"\n{percent:F0}%{OvertimeSuffix}"
         : string.Empty;
 
-    public string DisplayText => ProcessCount == 0 ? string.Empty : $"{ProcessCount}件\n{TotalMinutes / 60.0:F1}h{FulfillmentText}";
+    // セル表示用（1行目：割合/超過時間、2行目：件数/時間/欠員）。Tooltipは従来通りFulfillmentTextの改行結合を使う
+    public string ProcessCountText => ProcessCount == 0 ? string.Empty : $"{ProcessCount}件";
+    public string TotalHoursText => ProcessCount == 0 ? string.Empty : $"{TotalMinutes / 60.0:F1}h";
+    // 工程が無い日は基本人数設定があると充足率が0%になるが、実質「対象工程なし」なので表示しない
+    public string FulfillmentPercentText => ProcessCount > 0 && FulfillmentPercent is { } percent ? $"{percent:F0}%" : string.Empty;
+    public string OvertimeText => ProcessCount > 0 ? OvertimeSuffix : string.Empty;
+    public string AbsentCellText => AbsentCount > 0 ? $"欠{AbsentCount}" : string.Empty;
+
     public string Tooltip => ProcessCount == 0
         ? string.Empty
         : $"{Date:M/d} 件数:{ProcessCount}　合計必要時間:{TotalMinutes / 60.0:F1}h{FulfillmentText}（クリックで明細表示）";
