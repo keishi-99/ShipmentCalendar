@@ -27,7 +27,7 @@ public static class DepartmentLoadCalculator {
                 Count: g.Select(x => x.Process).Distinct().Count(),
                 Minutes: g.Sum(x => x.DayMinutes),
                 // 必要時間が大きい注文ほど先頭に来るようにし、その日の集中度への主要因をすぐ確認できるようにする
-                Items: g.OrderByDescending(x => x.DayMinutes).Select(x => new DepartmentLoadCellItem { Order = x.Order, Process = x.Process, DayMinutes = x.DayMinutes }).ToList()));
+                Items: g.OrderByDescending(x => x.DayMinutes).Select(x => new DepartmentLoadCellItem { Order = x.Order, Process = x.Process, Date = x.Date, DayMinutes = x.DayMinutes }).ToList()));
 
         if (grouped.Count == 0) return [];
 
@@ -50,12 +50,14 @@ public static class DepartmentLoadCalculator {
                 var activeHeadcount = Math.Max(0, headcount - absentCount);
                 var capacity = activeHeadcount * dayMinutes;
                 var fulfillmentPercent = capacity > 0 ? agg.Minutes / capacity * 100 : (double?)null;
+                var excessMinutes = capacity > 0 && agg.Minutes > capacity ? agg.Minutes - capacity : (double?)null;
                 return new DepartmentLoadCell {
                     Date = date,
                     ProcessCount = agg.Count,
                     TotalMinutes = agg.Minutes,
                     Items = agg.Items ?? [],
                     FulfillmentPercent = fulfillmentPercent,
+                    ExcessMinutes = excessMinutes,
                     AbsentCount = absentCount,
                     Level = DetermineCongestionLevel(fulfillmentPercent, cautionPercent, concentratedPercent)
                 };

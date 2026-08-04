@@ -160,6 +160,57 @@ public class DepartmentLoadCalculatorTests
     }
 
     [Fact]
+    public void Aggregate_SingleDayProcess_TextPropertiesShowOnlyDayMinutes() {
+        var dueDate = new DateOnly(2026, 6, 30);
+        var order = MakeOrder("M1", MakeProcess(1, dueDate, 90));
+        var departments = new[] { new Department { Id = 1, Name = "総務部" } };
+
+        var rows = Aggregate([order], departments);
+
+        var item = rows.Single().Cells.Single(c => c.Date == dueDate).Items.Single();
+        Assert.Equal("1.5h", item.DayMinutesText);
+        Assert.Equal(string.Empty, item.TotalMinutesText);
+        Assert.Equal(string.Empty, item.ProgressText);
+    }
+
+    [Fact]
+    public void Aggregate_ProcessSpansMultipleDays_ProgressTextShowsDayIndexOutOfTotal() {
+        var startDate = new DateOnly(2026, 6, 29);
+        var dueDate = new DateOnly(2026, 6, 30);
+        var process = MakeMultiDayProcess(1, startDate, dueDate, new() { [startDate] = 180, [dueDate] = 20 });
+        var order = MakeOrder("M1", process);
+        var departments = new[] { new Department { Id = 1, Name = "総務部" } };
+
+        var rows = Aggregate([order], departments);
+
+        var cells = rows.Single().Cells;
+        var firstDayItem = cells.Single(c => c.Date == startDate).Items.Single();
+        var lastDayItem = cells.Single(c => c.Date == dueDate).Items.Single();
+        Assert.Equal("1/2日目", firstDayItem.ProgressText);
+        Assert.Equal("2/2日目", lastDayItem.ProgressText);
+        Assert.Equal("3.3h", firstDayItem.TotalMinutesText);
+        Assert.Equal("3.3h", lastDayItem.TotalMinutesText);
+    }
+
+    [Fact]
+    public void Aggregate_ProcessSpansNonContiguousBusinessDays_ProgressTextCountsByRankNotCalendarGap() {
+        // 休日で日付が飛んでいても、DailyMinutesのキー数（営業日の順位）でカウントすることを確認する
+        var day1 = new DateOnly(2026, 6, 26);
+        var day2 = new DateOnly(2026, 6, 29); // 6/27・6/28は休日等で飛ばされている想定
+        var day3 = new DateOnly(2026, 6, 30);
+        var process = MakeMultiDayProcess(1, day1, day3, new() { [day1] = 100, [day2] = 100, [day3] = 100 });
+        var order = MakeOrder("M1", process);
+        var departments = new[] { new Department { Id = 1, Name = "総務部" } };
+
+        var rows = Aggregate([order], departments);
+
+        var cells = rows.Single().Cells;
+        Assert.Equal("1/3日目", cells.Single(c => c.Date == day1).Items.Single().ProgressText);
+        Assert.Equal("2/3日目", cells.Single(c => c.Date == day2).Items.Single().ProgressText);
+        Assert.Equal("3/3日目", cells.Single(c => c.Date == day3).Items.Single().ProgressText);
+    }
+
+    [Fact]
     public void Aggregate_HeadcountNotSet_AlwaysNormalRegardlessOfMinutes() {
         // 基本人数が未設定（0）だと充足率を計算できないため、必要時間がどれだけ大きくてもNormalのまま
         var dueDate = new DateOnly(2026, 6, 30);
@@ -228,7 +279,34 @@ public class DepartmentLoadCalculatorTests
         var rows = Aggregate([order], departments, absences);
 
         var cell = rows.Single().Cells.Single(c => c.Date == dueDate);
-        Assert.Contains("充足率50%\n欠員1人", cell.DisplayText);
+        Assert.Contains("50%\n欠員1人", cell.DisplayText);
+    }
+
+    [Fact]
+    public void Aggregate_Cell_DisplayTextIncludesOvertimeHoursWhenOverCapacity() {
+        // 実働人数1人・稼働480分に対し必要時間600分 → 充足率125%、超過120分(2.0h)
+        var dueDate = new DateOnly(2026, 6, 30);
+        var order = MakeOrder("M1", MakeProcess(1, dueDate, 600));
+        var departments = new[] { new Department { Id = 1, Name = "総務部", Headcount = 1 } };
+
+        var rows = Aggregate([order], departments);
+
+        var cell = rows.Single().Cells.Single(c => c.Date == dueDate);
+        Assert.Equal(120, cell.ExcessMinutes);
+        Assert.Contains("125%(+2.0h)", cell.DisplayText);
+    }
+
+    [Fact]
+    public void Aggregate_Cell_DisplayTextOmitsOvertimeHoursWhenUnderCapacity() {
+        var dueDate = new DateOnly(2026, 6, 30);
+        var order = MakeOrder("M1", MakeProcess(1, dueDate, 240));
+        var departments = new[] { new Department { Id = 1, Name = "総務部", Headcount = 1 } };
+
+        var rows = Aggregate([order], departments);
+
+        var cell = rows.Single().Cells.Single(c => c.Date == dueDate);
+        Assert.Null(cell.ExcessMinutes);
+        Assert.DoesNotContain("+", cell.DisplayText);
     }
 
     [Fact]

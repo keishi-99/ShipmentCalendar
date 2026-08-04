@@ -122,17 +122,26 @@ public partial class DepartmentLoadWindow : Window {
     private void ShowCellDetail(DepartmentLoadCell cell) {
         if (cell.Items.Count == 0) {
             TxtDetailTitle.Text = "日付セルを選択すると明細を表示します";
-            CellDetailList.ItemsSource = null;
+            CellDetailGrid.ItemsSource = null;
             return;
         }
 
         TxtDetailTitle.Text = $"{cell.Date:M/d}　{cell.ProcessCount}件";
-        CellDetailList.ItemsSource = cell.Items;
+        CellDetailGrid.ItemsSource = cell.Items;
     }
 
-    private void CellDetailList_MouseDoubleClick(object sender, MouseButtonEventArgs e) {
-        if (CellDetailList.SelectedItem is not DepartmentLoadCellItem item) return;
+    private void CellDetailGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e) {
+        // 行のない余白部分のダブルクリックでは、選択済み行が残っていても何もしない
+        if (e.OriginalSource is not DependencyObject source || !IsInRow(source)) return;
+        if (CellDetailGrid.SelectedItem is not DepartmentLoadCellItem item) return;
         new OrderDetailWindow(item.Order, _settings.ShowRequiredTimeInMinutes, _settings.DayMinutes) { Owner = this }.ShowDialog();
+    }
+
+    private static bool IsInRow(DependencyObject source) {
+        for (var current = source; current != null; current = VisualTreeHelper.GetParent(current)) {
+            if (current is DataGridRow) return true;
+        }
+        return false;
     }
 }
 
