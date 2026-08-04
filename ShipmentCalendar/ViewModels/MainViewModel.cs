@@ -13,6 +13,9 @@ public partial class MainViewModel : ObservableObject {
     private readonly IProcessDefinitionRepository _processDefinitionRepository;
     private readonly IModelCodeRepository _modelCodeRepository;
     private readonly IDialogService _dialogService;
+
+    private readonly Func<AppSettings, IOdbcOrderRepository> _odbcOrderRepositoryFactory;
+    private readonly Func<AppSettings, IOdbcProcessDefinitionRepository> _odbcProcessDefinitionRepositoryFactory;
     private readonly DispatcherTimer _refreshTimer;
     private readonly DispatcherTimer _filterDebounceTimer;
 
@@ -231,82 +234,24 @@ public partial class MainViewModel : ObservableObject {
         FilterDeliveryTo = null;
     }
 
-    /// <summary>注文の「次の未完了工程」の必須日（表示設定に応じてDueDate/StartDate）を返す。
-    /// 全工程完了済みならDateOnly.MaxValue</summary>
-    private DateOnly GetNextProcessSortDate(Order o) {
-        var next = o.Processes
-            .Where(p => p.Status != ProcessStatus.Completed)
-            .OrderBy(p => p.SortOrder)
-            .FirstOrDefault();
-        if (next == null) return DateOnly.MaxValue;
-        return Settings.ShowDueDateForNotStarted ? next.DueDate : next.StartDate;
-    }
+    private OrderFilterCriteria BuildFilterCriteria() => new() {
+        ItemNumber = FilterItemNumber,
+        ProductName = FilterProductName,
+        ManufactureNumber = FilterManufactureNumber,
+        DeliveryFrom = FilterDeliveryFrom,
+        DeliveryTo = FilterDeliveryTo,
+        HideCompleted = FilterHideCompleted,
+        OverdueOnly = FilterOverdueOnly,
+        WarningOnly = FilterWarningOnly,
+        TodayTaskOnly = FilterTodayTask,
+        CompletedOnly = FilterCompletedOnly,
+        ProductCategory = FilterProductCategory,
+        DepartmentId = FilterDepartmentId,
+    };
 
     public void ApplyFilter() {
-        var result = _allOrders.AsEnumerable();
-
-        if (!string.IsNullOrEmpty(FilterItemNumber))
-            result = result.Where(o => o.ItemNumber.Contains(FilterItemNumber, StringComparison.OrdinalIgnoreCase));
-
-        if (!string.IsNullOrEmpty(FilterProductName))
-            result = result.Where(o => o.ProductName.Contains(FilterProductName, StringComparison.OrdinalIgnoreCase));
-
-        if (!string.IsNullOrEmpty(FilterManufactureNumber))
-            result = result.Where(o => o.ManufactureNumber.Contains(FilterManufactureNumber, StringComparison.OrdinalIgnoreCase));
-
-        if (FilterDeliveryFrom.HasValue)
-            result = result.Where(o => o.DeliveryDate >= DateOnly.FromDateTime(FilterDeliveryFrom.Value));
-
-        if (FilterDeliveryTo.HasValue)
-            result = result.Where(o => o.DeliveryDate <= DateOnly.FromDateTime(FilterDeliveryTo.Value));
-
-        if (FilterHideCompleted)
-            result = result.Where(o => o.Processes.Count == 0 || o.Processes.Any(p => p.Status != ProcessStatus.Completed));
-
-        if (FilterOverdueOnly || FilterWarningOnly || FilterTodayTask || FilterCompletedOnly) {
-            var today = DateOnly.FromDateTime(DateTime.Today);
-            result = result.Where(o => {
-                var isOverdue = FilterOverdueOnly && o.HasOverdue;
-                var isWarning = FilterWarningOnly && o.Processes.Any(p => p.Status == ProcessStatus.Warning);
-                var isToday = false;
-                if (FilterTodayTask) {
-                    var next = o.Processes
-                        .Where(p => p.Status != ProcessStatus.Completed)
-                        .OrderBy(p => p.SortOrder)
-                        .FirstOrDefault();
-                    isToday = next != null && today >= next.StartDate && today <= next.DueDate;
-                }
-                var isCompleted = FilterCompletedOnly && o.IsAllCompleted;
-                return isOverdue || isWarning || isToday || isCompleted;
-            });
-        }
-
-        // 製品/半製品/どちらでもないフィルター（機種コード登録マスタの区分で判定）
-        if (FilterProductCategory == "製品")
-            result = result.Where(o => _categoryClassifier.Classify(o) == ProductCategoryClassifier.Product);
-        else if (FilterProductCategory == "半製品")
-            result = result.Where(o => _categoryClassifier.Classify(o) == ProductCategoryClassifier.SemiProduct);
-        else if (FilterProductCategory == "半製品（工程未登録）")
-            result = result.Where(o => _categoryClassifier.IsUnregisteredSemiProduct(o));
-        else if (FilterProductCategory == "どちらでもない")
-            result = result.Where(o => _categoryClassifier.Classify(o) == ProductCategoryClassifier.Other);
-
-        // 担当部署フィルター：未完了工程のうち SortOrder 最小のものが選択部署の行のみ表示
-        if (FilterDepartmentId > 0) {
-            result = result.Where(o => {
-                var next = o.Processes
-                    .Where(p => p.Status != ProcessStatus.Completed)
-                    .OrderBy(p => p.SortOrder)
-                    .FirstOrDefault();
-                return next?.DepartmentId == FilterDepartmentId;
-            });
-        }
-
-        Orders = new ObservableCollection<Order>(Settings.SortMode switch {
-            SortMode.CompletionDate  => result.OrderBy(o => o.CompletionDate),
-            SortMode.ProcessDeadline => result.OrderBy(GetNextProcessSortDate),
-            _                        => result.OrderBy(o => o.DeliveryDate),
-        });
+        var filtered = OrderFilterService.Apply(_allOrders, BuildFilterCriteria(), _categoryClassifier, Settings.SortMode, Settings.ShowDueDateForNotStarted);
+        Orders = new ObservableCollection<Order>(filtered);
         UpdateStatusMessage();
     }
 
@@ -353,11 +298,14 @@ public partial class MainViewModel : ObservableObject {
 
     private bool _holidaysSynced;
 
-    public MainViewModel(IHolidayRepository holidayRepository, IProcessDefinitionRepository processDefinitionRepository, IModelCodeRepository modelCodeRepository, IDialogService dialogService) {
+    public MainViewModel(IHolidayRepository holidayRepository, IProcessDefinitionRepository processDefinitionRepository, IModelCodeRepository modelCodeRepository, IDialogService dialogService, Func<AppSettings, IOdbcOrderRepository> odbcOrderRepositoryFactory, Func<AppSettings, IOdbcProcessDefinitionRepository> odbcProcessDefinitionRepositoryFactory) {
         _holidayRepository = holidayRepository;
         _processDefinitionRepository = processDefinitionRepository;
         _modelCodeRepository = modelCodeRepository;
         _dialogService = dialogService;
+        _odbcOrderRepositoryFactory = odbcOrderRepositoryFactory;
+        _odbcProcessDefinitionRepositoryFactory = odbcProcessDefinitionRepositoryFactory;
+
         _settings = AppSettingsService.Load();
 
         _refreshTimer = new DispatcherTimer();
@@ -405,7 +353,7 @@ public partial class MainViewModel : ObservableObject {
 
                 // 取得範囲（過去/未来日数設定）の絞り込みによる正常な0件か、
                 // ERPの一時的な空読みかを、フィルター無しの存在確認で区別する
-                var hasAnyRecord = await Task.Run(() => new OdbcOrderRepository(settings).HasAnySeisanKeikakuRecord());
+                var hasAnyRecord = await Task.Run(() => _odbcOrderRepositoryFactory(settings).HasAnySeisanKeikakuRecord());
                 if (hasAnyRecord) break;
 
                 if (attempt == MaxRetryCount) {
@@ -438,87 +386,12 @@ public partial class MainViewModel : ObservableObject {
             var calculator = new BusinessDayCalculator(holidays, Settings.DayMinutes);
             var today = DateOnly.FromDateTime(DateTime.Today);
 
-            // DB登録済みの品目名があればODBC品目名を上書きする
+            // DB登録済みの品目名・完了日リードタイムのユーザー設定（未設定の品目はリードタイムに含まれないため、参照時に共通設定へフォールバックする）
             var displayNames = await Repositories.SqliteProductDisplayNameRepository.GetAllDisplayNamesAsync();
-            foreach (var order in orders) {
-                if (displayNames.TryGetValue(order.ItemNumber, out var displayName) && !string.IsNullOrEmpty(displayName))
-                    order.ProductName = displayName;
-            }
-
-            // 品目番号ごとの完了日リードタイム（未設定の品目は含まれないため、参照時に共通設定へフォールバックする）
             var leadDaysOverrides = await Repositories.SqliteProductDisplayNameRepository.GetAllCompletionDateLeadDaysAsync();
-
-            // DB のユーザー設定（工程名カスタマイズ・LT・表示・警告）をマージ
-            // キー: "ItemNumber|DestinationCode(=指示先番号)"
             var dbDefs = await _processDefinitionRepository.GetAllAsync();
-            var dbDict = dbDefs
-                .Where(d => !string.IsNullOrEmpty(d.DestinationCode))
-                .GroupBy(d => $"{d.ItemNumber}|{d.DestinationCode}", StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
-            var allDefs = allOdbcDefs.Select(odbcDef => {
-                var key = $"{odbcDef.ItemNumber}|{odbcDef.DestinationCode}";
-                if (!dbDict.TryGetValue(key, out var db)) return odbcDef;
-                return new ProcessDefinition {
-                    ItemNumber = odbcDef.ItemNumber,
-                    ProcessName = db.ProcessName,
-                    DestinationCode = odbcDef.DestinationCode,
-                    SortOrder = odbcDef.SortOrder,                           // 順序は常にODBC
-                    SetupTimeMinutes = db.SetupTimeMinutes,
-                    WorkTimeMinutes = db.WorkTimeMinutes,
-                    IsVisible = db.IsVisible,
-                    WarningDaysBeforeDeadline = db.WarningDaysBeforeDeadline,
-                    DepartmentId = db.DepartmentId,
-                    DwellTimeMinutes = db.DwellTimeMinutes,
-                    OutsourceLeadDays = db.OutsourceLeadDays
-                };
-            }).ToList();
-
-            // 品目番号をキーにした工程定義辞書を構築（O(1)ルックアップ）
-            var defDict = allDefs
-                .GroupBy(d => d.ItemNumber, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
-
-            foreach (var order in orders) {
-                defDict.TryGetValue(order.ItemNumber, out var productDefs);
-                productDefs ??= [];
-
-                var leadDays = leadDaysOverrides.TryGetValue(order.ItemNumber, out var itemLeadDays)
-                    ? itemLeadDays
-                    : Settings.CompletionDateLeadDays;
-                order.CompletionDate = calculator.SubtractBusinessDays(order.DeliveryDate, leadDays);
-
-                if (productDefs.Count == 0)
-                    continue;
-
-                // 仮登録した完了済み指示先番号→受入日・作業者名のマッピング（指示先番号は工程ごとに一意。重複は先着優先）
-                var completedByDestNumber = order.Processes
-                    .Where(p => p.Status == ProcessStatus.Completed)
-                    .GroupBy(p => p.DestinationCode, StringComparer.OrdinalIgnoreCase)
-                    .ToDictionary(g => g.Key, g => (g.First().ActualDate, g.First().WorkerName, g.First().ActualWorkMinutes), StringComparer.OrdinalIgnoreCase);
-
-                order.Processes = calculator.BuildProcesses(order, productDefs.Where(d => d.IsVisible), completedByDestNumber);
-
-                BusinessDayCalculator.MarkAllCompletedIfFinalReceiptDone(order.Processes, productDefs, completedByDestNumber);
-
-                // ステータスを警告日数込みで確定
-                foreach (var process in order.Processes) {
-                    var warningDays = productDefs
-                        .FirstOrDefault(d => string.Equals(d.DestinationCode, process.DestinationCode, StringComparison.OrdinalIgnoreCase))
-                        ?.WarningDaysBeforeDeadline ?? 0;
-                    process.WarningDaysBeforeDeadline = warningDays;
-                    process.Status = BusinessDayCalculator.DetermineStatus(process, today, warningDays);
-                }
-
-                // Overdue を後続工程に伝播（完了済みは除く）
-                bool overdueFound = false;
-                foreach (var process in order.Processes.OrderBy(p => p.SortOrder)) {
-                    if (process.Status == ProcessStatus.Overdue)
-                        overdueFound = true;
-                    else if (overdueFound && process.Status != ProcessStatus.Completed)
-                        process.Status = ProcessStatus.Overdue;
-                }
-            }
+            OrderProcessBuildService.Build(orders, allOdbcDefs, dbDefs.ToList(), displayNames, leadDaysOverrides, Settings.CompletionDateLeadDays, calculator, today);
 
             _allOrders = orders.OrderBy(o => o.DeliveryDate).ToList();
 
@@ -547,12 +420,12 @@ public partial class MainViewModel : ObservableObject {
     }
 
     /// <summary>ODBC（ERP）から注文と工程定義を取得する。同期処理のためTask.Runでスレッドプールに逃がす</summary>
-    private static async Task<(List<Order> Orders, List<ProcessDefinition> Defs)> FetchOdbcDataAsync(AppSettings settings) {
+    private async Task<(List<Order> Orders, List<ProcessDefinition> Defs)> FetchOdbcDataAsync(AppSettings settings) {
         return await Task.Run(() => {
-            var repo = new OdbcOrderRepository(settings);
+            var repo = _odbcOrderRepositoryFactory(settings);
             var orders = repo.GetAll().ToList();
 
-            var processRepo = new OdbcProcessDefinitionRepository(settings);
+            var processRepo = _odbcProcessDefinitionRepositoryFactory(settings);
             var defs = processRepo.GetAll().ToList();
             return (orders, defs);
         });

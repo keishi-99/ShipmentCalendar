@@ -7,7 +7,7 @@ namespace ShipmentCalendar.Repositories;
 /// <summary>
 /// ODBC経由でVP_生産計画情報_YD / VP_受入実績情報_YD から注文データを取得するリポジトリ。
 /// </summary>
-public class OdbcOrderRepository(AppSettings settings) {
+public class OdbcOrderRepository(AppSettings settings) : IOdbcOrderRepository {
     /// <summary>VP_生産計画情報_YD から指定した機種コード（半製品）の品目番号・品目名を重複除外して取得する（品目番号昇順、日付範囲なし）。
     /// excludeItemNumberEqualsSeiban が true の場合、品目番号+'-00'=製番 の行が1件でもある品目番号は除外する。
     /// excludeItemNumberStartsWithM が true の場合、品目番号が'M'で始まる品目番号は除外する。</summary>
