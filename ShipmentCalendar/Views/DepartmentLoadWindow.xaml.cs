@@ -29,7 +29,7 @@ public partial class DepartmentLoadWindow : Window {
         _settings = settings;
         TxtCautionPercent.Text = settings.CongestionCautionPercent.ToString(CultureInfo.InvariantCulture);
         TxtConcentratedPercent.Text = settings.CongestionConcentratedPercent.ToString(CultureInfo.InvariantCulture);
-        // 行の上下余白（DataGridCellの既定Padding相当）を含め、4行分の高さを確保する
+        // 行の上下余白（DataGridCellの既定Padding相当）を含め、MaxCellLines行分の高さを確保する
         LoadGrid.RowHeight = CellFontSize * 1.3 * MaxCellLines + 8;
         Loaded += async (_, _) => await LoadAsync(orders);
     }

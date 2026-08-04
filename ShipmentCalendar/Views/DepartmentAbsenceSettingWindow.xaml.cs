@@ -64,7 +64,7 @@ public partial class DepartmentAbsenceSettingWindow : Window {
         var dates = Enumerable.Range(1, daysInMonth).Select(d => new DateOnly(year, month, d)).ToList();
 
         var holidays = await _holidayRepository.GetByYearAsync(year);
-        _holidayDates = holidays.Select(h => h.Date).ToHashSet();
+        var holidayDates = holidays.Select(h => h.Date).ToHashSet();
 
         var absences = await SqliteDepartmentAbsenceRepository.GetByMonthAsync(year, month);
         var absenceMap = absences.ToDictionary(a => (a.DepartmentId, a.Date), a => a.AbsentCount);
@@ -82,6 +82,7 @@ public partial class DepartmentAbsenceSettingWindow : Window {
         // awaitを挟む間に年・月が連続変更されても、行データと列数がずれないよう、
         // ここまでローカル変数で計算してから最後にまとめてフィールド・UIへ反映する
         _currentDates = dates;
+        _holidayDates = holidayDates;
 
         // 月替わりで日数が変わるため、日付列は毎回作り直す
         while (AbsenceGrid.Columns.Count > 2)
