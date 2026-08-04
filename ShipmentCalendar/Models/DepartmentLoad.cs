@@ -11,13 +11,17 @@ public class DepartmentLoadCell
     public CongestionLevel Level { get; init; }
     /// <summary>充足率（%）＝合計必要時間÷(実働人数×1日の稼働時間)。実働人数を算出できない（基本人数未設定、または欠員が基本人数以上）場合はnull</summary>
     public double? FulfillmentPercent { get; init; }
+    /// <summary>超過時間（分）＝合計必要時間−(実働人数×1日の稼働時間)。超過していない、または実働人数を算出できない場合はnull</summary>
+    public double? ExcessMinutes { get; init; }
     /// <summary>この日の欠員数（0=欠員なし）</summary>
     public int AbsentCount { get; init; }
     /// <summary>このセルの集計元になった注文・工程（ドリルダウン表示用）</summary>
     public List<DepartmentLoadCellItem> Items { get; init; } = [];
 
+    private string OvertimeSuffix => ExcessMinutes is { } excess ? $"(+{excess / 60.0:F1}h)" : string.Empty;
+
     private string FulfillmentText => FulfillmentPercent is { } percent
-        ? AbsentCount > 0 ? $"\n充足率{percent:F0}%\n欠員{AbsentCount}人" : $"\n充足率{percent:F0}%"
+        ? AbsentCount > 0 ? $"\n{percent:F0}%{OvertimeSuffix}\n欠員{AbsentCount}人" : $"\n{percent:F0}%{OvertimeSuffix}"
         : string.Empty;
 
     public string DisplayText => ProcessCount == 0 ? string.Empty : $"{ProcessCount}件\n{TotalMinutes / 60.0:F1}h{FulfillmentText}";
@@ -31,16 +35,26 @@ public class DepartmentLoadCellItem
 {
     public required Order Order { get; init; }
     public required OrderProcess Process { get; init; }
+    /// <summary>このセルの日付（Process.DailyMinutesのキー）</summary>
+    public required DateOnly Date { get; init; }
     /// <summary>このセルの日付に按分された必要時間（分）。工程全体のRequiredMinutesとは異なる場合がある</summary>
     public required double DayMinutes { get; init; }
 
     public string ManufactureNumber => Order.ManufactureNumber;
+    public int Quantity => Order.PlannedQuantity;
     public string ProductName => Order.ProductName;
     public string ProcessName => Process.ProcessName;
-    /// <summary>その日に配分された時間。工程の標準時間が複数日に分散している場合は、工程全体の標準時間と按分期間（着手予定日〜完了必須日）も併記する</summary>
-    public string RequiredTimeText => Process.RequiredMinutes > DayMinutes
-        ? $"{DayMinutes / 60.0:F1}h／全体{Process.RequiredMinutes / 60.0:F1}h（{Process.StartDate:M/d}〜{Process.DueDate:M/d}）"
-        : $"{DayMinutes / 60.0:F1}h";
+
+    /// <summary>工程の標準時間が複数営業日に分散しているか（Process.DailyMinutesが2日以上）</summary>
+    private bool IsMultiDay => Process.DailyMinutes.Count > 1;
+
+    public string DayMinutesText => $"{DayMinutes / 60.0:F1}h";
+    /// <summary>複数日にまたがる工程の場合のみ、工程全体の標準時間を表示する</summary>
+    public string TotalMinutesText => IsMultiDay ? $"{Process.RequiredMinutes / 60.0:F1}h" : string.Empty;
+    /// <summary>複数日にまたがる工程の場合のみ、営業日ベースで「何日中の何日目」かを表示する（休日で日付が飛んでいても日数は正しく数えられる）</summary>
+    public string ProgressText => IsMultiDay
+        ? $"{Process.DailyMinutes.Keys.Count(d => d <= Date)}/{Process.DailyMinutes.Count}日目"
+        : string.Empty;
 }
 
 /// <summary>部署別締切集中度カレンダーの1部署分の行（同一Windowで表示する全行はCellsのインデックスを共有する）</summary>
