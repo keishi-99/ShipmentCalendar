@@ -33,7 +33,7 @@ public partial class MainWindow : Fluent.RibbonWindow, IDisplaySettingsPreviewTa
 
     public MainWindow() {
         InitializeComponent();
-        _viewModel = new MainViewModel(new SqliteHolidayRepository(), new SqliteProcessDefinitionRepository(), new SqliteModelCodeRepository(), new DialogService());
+        _viewModel = new MainViewModel(new SqliteHolidayRepository(), new SqliteProcessDefinitionRepository(), new SqliteModelCodeRepository(), new DialogService(), (settings) => new OdbcOrderRepository(settings), (settings) => new OdbcProcessDefinitionRepository(settings));
         DataContext = _viewModel;
         _viewModel.PreviewTarget = this;
         Loaded += async (_, _) => await _viewModel.LoadOrdersAsync();
@@ -159,13 +159,13 @@ public partial class MainWindow : Fluent.RibbonWindow, IDisplaySettingsPreviewTa
 
     /// <summary>保存済みの設定値をColumnVisibilityItemsとDataGridColumnの表示状態に反映する（保存はしない）</summary>
     private void InitializeColumnVisibility() {
-        ColumnVisibilityItems.Add(new("出荷日",     ColDeliveryDate,      s => s.ShowColumnDeliveryDate,      (s, v) => s.ShowColumnDeliveryDate = v));
-        ColumnVisibilityItems.Add(new("完了期限日", ColCompletionDate,    s => s.ShowColumnCompletionDate,    (s, v) => s.ShowColumnCompletionDate = v));
-        ColumnVisibilityItems.Add(new("品目番号",   ColItemNumber,        s => s.ShowColumnItemNumber,        (s, v) => s.ShowColumnItemNumber = v));
-        ColumnVisibilityItems.Add(new("機種コード", ColModelCode,         s => s.ShowColumnModelCode,         (s, v) => s.ShowColumnModelCode = v));
-        ColumnVisibilityItems.Add(new("品目名",     ColProductName,       s => s.ShowColumnProductName,       (s, v) => s.ShowColumnProductName = v));
-        ColumnVisibilityItems.Add(new("製番",       ColManufactureNumber, s => s.ShowColumnManufactureNumber, (s, v) => s.ShowColumnManufactureNumber = v));
-        ColumnVisibilityItems.Add(new("計画数",     ColPlannedQuantity,   s => s.ShowColumnPlannedQuantity,   (s, v) => s.ShowColumnPlannedQuantity = v));
+        ColumnVisibilityItems.Add(new("出荷日", ColDeliveryDate, s => s.ShowColumnDeliveryDate, (s, v) => s.ShowColumnDeliveryDate = v));
+        ColumnVisibilityItems.Add(new("完了期限日", ColCompletionDate, s => s.ShowColumnCompletionDate, (s, v) => s.ShowColumnCompletionDate = v));
+        ColumnVisibilityItems.Add(new("品目番号", ColItemNumber, s => s.ShowColumnItemNumber, (s, v) => s.ShowColumnItemNumber = v));
+        ColumnVisibilityItems.Add(new("機種コード", ColModelCode, s => s.ShowColumnModelCode, (s, v) => s.ShowColumnModelCode = v));
+        ColumnVisibilityItems.Add(new("品目名", ColProductName, s => s.ShowColumnProductName, (s, v) => s.ShowColumnProductName = v));
+        ColumnVisibilityItems.Add(new("製番", ColManufactureNumber, s => s.ShowColumnManufactureNumber, (s, v) => s.ShowColumnManufactureNumber = v));
+        ColumnVisibilityItems.Add(new("計画数", ColPlannedQuantity, s => s.ShowColumnPlannedQuantity, (s, v) => s.ShowColumnPlannedQuantity = v));
 
         foreach (var option in ColumnVisibilityItems) {
             var isVisible = option.Getter(_viewModel.Settings);
@@ -418,10 +418,10 @@ public class StatusToColorConverter : System.Windows.Data.IValueConverter {
     private static Brush Res(string key) => (Brush)Application.Current.Resources[key];
 
     public static Brush StatusToBrush(ProcessStatus status) => status switch {
-        ProcessStatus.Completed  => Res("StatusCompleted"),
+        ProcessStatus.Completed => Res("StatusCompleted"),
         ProcessStatus.InProgress => Res("StatusInProgress"),
-        ProcessStatus.Warning    => Res("StatusWarning"),
-        ProcessStatus.Overdue    => Res("StatusOverdue"),
+        ProcessStatus.Warning => Res("StatusWarning"),
+        ProcessStatus.Overdue => Res("StatusOverdue"),
         ProcessStatus.NotStarted => Res("StatusNotStarted"),
         _ => Brushes.Transparent
     };

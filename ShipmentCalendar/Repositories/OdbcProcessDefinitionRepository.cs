@@ -7,7 +7,7 @@ namespace ShipmentCalendar.Repositories;
 /// ODBC経由でVP_指示工程情報_YD + VP_取引先情報_YD から工程定義を取得するリポジトリ。
 /// V_指示工程情報_YD（ビュー）は使用しない。
 /// </summary>
-public class OdbcProcessDefinitionRepository(AppSettings settings) {
+public class OdbcProcessDefinitionRepository(AppSettings settings) : IOdbcProcessDefinitionRepository {
     public IEnumerable<ProcessDefinition> GetAll() {
         using var conn = OdbcConnectionFactory.Create(settings);
         conn.Open();
