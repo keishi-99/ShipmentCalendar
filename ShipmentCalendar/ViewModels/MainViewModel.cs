@@ -284,7 +284,7 @@ public partial class MainViewModel : ObservableObject {
     private void OpenProductPerformance() => _dialogService.ShowProductPerformance(Settings);
 
     [RelayCommand]
-    private void OpenDepartmentLoad() => _dialogService.ShowDepartmentLoad(Orders, Settings);
+    private void OpenDepartmentLoad() => _dialogService.ShowDepartmentLoad(_allOrders, _categoryClassifier, Settings);
 
     [RelayCommand]
     private void OpenProcessBottleneck() => _dialogService.ShowProcessBottleneck(Settings);

@@ -26,8 +26,8 @@ public class DialogService : IDialogService {
     public void ShowProductPerformance(AppSettings settings) =>
         new ProductPerformanceWindow(settings) { Owner = Owner }.ShowDialog();
 
-    public void ShowDepartmentLoad(IEnumerable<Order> orders, AppSettings settings) =>
-        new DepartmentLoadWindow(orders, settings) { Owner = Owner }.ShowDialog();
+    public void ShowDepartmentLoad(IEnumerable<Order> orders, ProductCategoryClassifier categoryClassifier, AppSettings settings) =>
+        new DepartmentLoadWindow(orders, categoryClassifier, settings) { Owner = Owner }.ShowDialog();
 
     public void ShowProcessBottleneck(AppSettings settings) =>
         new ProcessBottleneckWindow(settings) { Owner = Owner }.ShowDialog();

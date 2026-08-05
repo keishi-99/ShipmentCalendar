@@ -1,6 +1,7 @@
 using ShipmentCalendar.Models;
 using ShipmentCalendar.Repositories;
 using ShipmentCalendar.Services;
+using ShipmentCalendar.ViewModels;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
@@ -18,8 +19,9 @@ public partial class DepartmentLoadWindow : Window {
     private const int MaxCellLines = 2;
 
     private readonly AppSettings _settings;
+    private readonly ProductCategoryClassifier _categoryClassifier;
     private readonly SqliteHolidayRepository _holidayRepository = new();
-    private IEnumerable<Order> _orders = [];
+    private IEnumerable<Order> _allOrders = [];
     private IEnumerable<Department> _departments = [];
     private IEnumerable<DepartmentAbsence> _absences = [];
     private HashSet<DateOnly> _holidayDates = [];
@@ -27,18 +29,21 @@ public partial class DepartmentLoadWindow : Window {
     // 列を重複追加しないよう、呼び出しごとに世代番号を発行して判定する
     private int _rebuildRevision;
 
-    public DepartmentLoadWindow(IEnumerable<Order> orders, AppSettings settings) {
+    public DepartmentLoadWindow(IEnumerable<Order> orders, ProductCategoryClassifier categoryClassifier, AppSettings settings) {
         InitializeComponent();
         _settings = settings;
+        _categoryClassifier = categoryClassifier;
         TxtCautionPercent.Text = settings.CongestionCautionPercent.ToString(CultureInfo.InvariantCulture);
         TxtConcentratedPercent.Text = settings.CongestionConcentratedPercent.ToString(CultureInfo.InvariantCulture);
         // 行の上下余白（DataGridCellの既定Padding相当）を含め、MaxCellLines行分の高さを確保する
         LoadGrid.RowHeight = CellFontSize * 1.3 * MaxCellLines + 8;
+        CmbCategory.ItemsSource = MainViewModel.ProductCategoryOptions;
+        CmbCategory.SelectedIndex = 0;
         Loaded += async (_, _) => await LoadAsync(orders);
     }
 
     private async Task LoadAsync(IEnumerable<Order> orders) {
-        _orders = orders;
+        _allOrders = orders;
         var departmentsTask = SqliteDepartmentRepository.GetAllAsync();
         var absencesTask = SqliteDepartmentAbsenceRepository.GetAllAsync();
         await Task.WhenAll(departmentsTask, absencesTask);
@@ -46,6 +51,21 @@ public partial class DepartmentLoadWindow : Window {
         _absences = await absencesTask;
         await RebuildGridAsync();
     }
+
+    // 区分の切り替えで対象注文の日付範囲が変わりうるため、日付列だけを作り直す（先頭の「部署」列はXAML定義の静的列なので残す）
+    private async void CmbCategory_SelectionChanged(object sender, SelectionChangedEventArgs e) {
+        while (LoadGrid.Columns.Count > 1)
+            LoadGrid.Columns.RemoveAt(LoadGrid.Columns.Count - 1);
+        await RebuildGridAsync();
+    }
+
+    private IEnumerable<Order> FilteredOrders() => (CmbCategory.SelectedItem as string) switch {
+        "製品" => _allOrders.Where(o => _categoryClassifier.Classify(o) == ProductCategoryClassifier.Product),
+        "半製品" => _allOrders.Where(o => _categoryClassifier.Classify(o) == ProductCategoryClassifier.SemiProduct),
+        "半製品（工程未登録）" => _allOrders.Where(o => _categoryClassifier.IsUnregisteredSemiProduct(o)),
+        "どちらでもない" => _allOrders.Where(o => _categoryClassifier.Classify(o) == ProductCategoryClassifier.Other),
+        _ => _allOrders,
+    };
 
     private async void BtnApplyThreshold_Click(object sender, RoutedEventArgs e) {
         if (!double.TryParse(TxtCautionPercent.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out var caution)
@@ -65,7 +85,7 @@ public partial class DepartmentLoadWindow : Window {
     private async Task RebuildGridAsync() {
         var revision = ++_rebuildRevision;
 
-        var rows = DepartmentLoadCalculator.Aggregate(_orders, _departments, _absences, _settings.DayMinutes, _settings.CongestionCautionPercent, _settings.CongestionConcentratedPercent);
+        var rows = DepartmentLoadCalculator.Aggregate(FilteredOrders(), _departments, _absences, _settings.DayMinutes, _settings.CongestionCautionPercent, _settings.CongestionConcentratedPercent);
 
         if (rows.Count == 0 || rows[0].Cells.Count == 0) {
             TxtEmpty.Visibility = Visibility.Visible;
