@@ -181,7 +181,7 @@
             CanUserDeleteRows="False"
             HeadersVisibility="Column"
             IsEnabled="False"
-            PreviewMouseLeftButtonDown="ProcessGrid_PreviewMouseLeftButtonDown"
+            PreviewKeyDown="ProcessGrid_PreviewKeyDown"
             SelectionMode="Single"
             SelectionUnit="Cell">
             <DataGrid.Columns>
@@ -242,29 +242,22 @@
                     Binding="{Binding WarningDaysBeforeDeadline, UpdateSourceTrigger=PropertyChanged}"
                     ElementStyle="{StaticResource NumericColumnCellStyle}"
                     Header="警告（日前）" />
-                <!--  担当部署コンボボックス列  -->
+                <!--  担当部署列。DataGridの編集モードは使わず（IsReadOnly）、常時表示のComboBoxで選択する。
+                      クリック挙動はComboBox標準のまま（シングルクリックでもドロップダウンが開く）  -->
                 <DataGridTemplateColumn
                     x:Name="DepartmentColumn"
                     Width="110"
-                    Header="担当部署">
+                    Header="担当部署"
+                    IsReadOnly="True">
                     <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <TextBlock
-                                Padding="4,0"
-                                VerticalAlignment="Center"
-                                Text="{Binding DepartmentId, Converter={StaticResource DeptIdToNameConverter}}" />
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                    <DataGridTemplateColumn.CellEditingTemplate>
                         <DataTemplate>
                             <ComboBox
                                 DisplayMemberPath="Name"
                                 ItemsSource="{Binding Tag, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                PreviewKeyDown="DepartmentComboBox_PreviewKeyDown"
                                 SelectedValue="{Binding DepartmentId, UpdateSourceTrigger=PropertyChanged}"
                                 SelectedValuePath="Id" />
                         </DataTemplate>
-                    </DataGridTemplateColumn.CellEditingTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
                 <DataGridTemplateColumn Width="44" Header="">
                     <DataGridTemplateColumn.CellTemplate>

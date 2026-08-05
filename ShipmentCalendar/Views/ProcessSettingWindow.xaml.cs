@@ -118,10 +118,24 @@ public partial class ProcessSettingWindow : Window
         };
     }
 
-    /// <summary>担当部署コンボボックスのドロップダウンが開いている状態で数字キーを押すと、該当インデックスの部署を選択して閉じる</summary>
-    private void DepartmentComboBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    /// <summary>担当部署セルが選択されている状態で数字キーを押すと、DataGridの編集モードを使わずに
+    /// 該当インデックスの部署を直接セットする（DataGridTemplateColumnはIsReadOnly=Trueのため、
+    /// このセルはBeginEdit/編集トランザクションと無縁のまま完結する）。
+    /// また、担当部署セルのComboBoxはクリックするとキーボードフォーカスを受け取るため、
+    /// 上下矢印キーがDataGridの行移動ではなくComboBox自身の選択切り替えに使われてしまう。
+    /// これを防ぐため、上下矢印キーもここで横取りしてDataGridの行移動を直接行う</summary>
+    private void ProcessGrid_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (sender is not ComboBox comboBox) return;
+        if (ProcessGrid.CurrentCell.Column != DepartmentColumn) return;
+
+        if (e.Key == Key.Down || e.Key == Key.Up)
+        {
+            MoveDepartmentCurrentCellVertically(e.Key == Key.Down ? 1 : -1);
+            e.Handled = true;
+            return;
+        }
+
+        if (DepartmentsSource is not { } depts) return;
 
         int digit;
         if (e.Key >= Key.D0 && e.Key <= Key.D9)
@@ -131,53 +145,33 @@ public partial class ProcessSettingWindow : Window
         else
             return;
 
-        if (digit >= comboBox.Items.Count) return;
+        if (digit >= depts.Count) return;
+        if (ProcessGrid.CurrentCell.Item is not ProcessDefinition definition) return;
 
-        comboBox.SelectedIndex = digit;
-        comboBox.IsDropDownOpen = false;
+        definition.DepartmentId = depts[digit].Id;
         e.Handled = true;
     }
 
-    /// <summary>担当部署セルをクリックした際、選択だけでなく即座に編集モード＋コンボボックスのドロップダウンまで開く</summary>
-    private void ProcessGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    /// <summary>担当部署列のCurrentCellを上下に1行移動し、実際にキーボードフォーカスも新しいセルへ移す</summary>
+    private void MoveDepartmentCurrentCellVertically(int rowDelta)
     {
-        if (FindAncestor<DataGridCell>(e.OriginalSource as DependencyObject) is not { } cell) return;
-        if (cell.Column != DepartmentColumn || cell.IsEditing) return;
+        var column = ProcessGrid.CurrentCell.Column;
+        if (ProcessGrid.CurrentCell.Item is not ProcessDefinition currentItem) return;
 
-        // クリック直後はまだセル選択・編集モード切替がWPF内部で処理される前なので、
-        // それらが完了した後（Background優先度）にBeginEdit/ドロップダウン展開を行う
-        Dispatcher.BeginInvoke(new Action(() =>
-        {
-            ProcessGrid.BeginEdit();
-            if (FindVisualChild<ComboBox>(cell) is { } comboBox)
-                comboBox.IsDropDownOpen = true;
-        }), System.Windows.Threading.DispatcherPriority.Background);
-    }
+        var currentIndex = ProcessGrid.Items.IndexOf(currentItem);
+        var newIndex = currentIndex + rowDelta;
+        if (newIndex < 0 || newIndex >= ProcessGrid.Items.Count) return;
 
-    /// <summary>指定した要素の祖先（自分自身を含む）から、指定した型に最初に一致する要素を探す</summary>
-    private static T? FindAncestor<T>(DependencyObject? element) where T : DependencyObject
-    {
-        while (element != null)
-        {
-            if (element is T match) return match;
-            element = VisualTreeHelper.GetParent(element);
-        }
-        return null;
-    }
+        var newItem = ProcessGrid.Items[newIndex];
+        ProcessGrid.CurrentCell = new DataGridCellInfo(newItem, column);
+        ProcessGrid.SelectedCells.Clear();
+        ProcessGrid.SelectedCells.Add(ProcessGrid.CurrentCell);
+        ProcessGrid.ScrollIntoView(newItem, column);
 
-    /// <summary>指定した要素以下のビジュアルツリーから、指定した型に最初に一致する子要素を探す</summary>
-    private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
-    {
-        var childCount = VisualTreeHelper.GetChildrenCount(parent);
-        for (var i = 0; i < childCount; i++)
-        {
-            var child = VisualTreeHelper.GetChild(parent, i);
-            if (child is T match) return match;
-
-            var result = FindVisualChild<T>(child);
-            if (result != null) return result;
-        }
-        return null;
+        ProcessGrid.UpdateLayout();
+        if (ProcessGrid.ItemContainerGenerator.ContainerFromItem(newItem) is DataGridRow row
+            && column.GetCellContent(row)?.Parent is DataGridCell cell)
+            cell.Focus();
     }
 
     /// <summary>機種コード登録マスタをDBから読み込む</summary>

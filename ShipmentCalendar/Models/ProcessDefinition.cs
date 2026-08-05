@@ -1,7 +1,9 @@
+using System.ComponentModel;
+
 namespace ShipmentCalendar.Models;
 
 /// <summary>工程マスタ定義（製品ごとに設定）</summary>
-public class ProcessDefinition
+public class ProcessDefinition : INotifyPropertyChanged
 {
     /// <summary>「最終受入」を表す特別なSortOrder値。この工程が完了扱いになった場合、前工程すべてを完了扱いにする</summary>
     public const int FinalReceiptSortOrder = 999;
@@ -22,10 +24,23 @@ public class ProcessDefinition
     public string DestinationCode { get; set; } = string.Empty;
     /// <summary>期限日まで何日以内で警告するか（0=警告なし）</summary>
     public int WarningDaysBeforeDeadline { get; set; } = 0;
-    /// <summary>担当部署ID（0=未設定）</summary>
-    public int DepartmentId { get; set; } = 0;
+    private int _departmentId;
+    /// <summary>担当部署ID（0=未設定）。DataGridの編集フローを経ずに直接セットされることがあるため、
+    /// PropertyChangedで表示側（TextBlockのバインディング）に変更を伝える</summary>
+    public int DepartmentId
+    {
+        get => _departmentId;
+        set
+        {
+            if (_departmentId == value) return;
+            _departmentId = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DepartmentId)));
+        }
+    }
     /// <summary>この工程の後に発生する固定の待機時間（分・数量に依存しない）。0=なし</summary>
     public double DwellTimeMinutes { get; set; } = 0;
     /// <summary>この工程の後の外注待ち等で発生する営業日数。0=なし</summary>
     public int OutsourceLeadDays { get; set; } = 0;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 }
