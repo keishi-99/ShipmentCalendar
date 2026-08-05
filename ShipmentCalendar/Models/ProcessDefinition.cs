@@ -26,7 +26,7 @@ public class ProcessDefinition : INotifyPropertyChanged
     public int WarningDaysBeforeDeadline { get; set; } = 0;
     private int _departmentId;
     /// <summary>担当部署ID（0=未設定）。DataGridの編集フローを経ずに直接セットされることがあるため、
-    /// PropertyChangedで表示側（TextBlockのバインディング）に変更を伝える</summary>
+    /// PropertyChangedで表示側（ComboBoxのSelectedValueバインディング）に変更を伝える</summary>
     public int DepartmentId
     {
         get => _departmentId;

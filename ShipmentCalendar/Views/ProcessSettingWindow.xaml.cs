@@ -3,7 +3,6 @@ using ShipmentCalendar.Repositories;
 using ShipmentCalendar.Services;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -11,23 +10,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 
 namespace ShipmentCalendar.Views;
-
-/// <summary>DepartmentId → 部署名に変換するコンバーター（ProcessSettingWindow 用）</summary>
-public class DeptIdToNameConverter : IValueConverter
-{
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        if (value is int id && id > 0)
-        {
-            var dept = ProcessSettingWindow.DepartmentsSource?.FirstOrDefault(d => d.Id == id);
-            return dept?.Name ?? string.Empty;
-        }
-        return string.Empty;
-    }
-
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        => throw new NotImplementedException();
-}
 
 public partial class ProcessSettingWindow : Window
 {
@@ -104,7 +86,7 @@ public partial class ProcessSettingWindow : Window
         ModelCodeGrid.ItemsSource = _modelCodes;
         Loaded += async (_, _) =>
         {
-            // 部署リストをDBから読み込んでDataGrid.Tag経由でCellEditingTemplateに渡す
+            // 部署リストをDBから読み込んでDataGrid.Tag経由でCellTemplate内のComboBoxに渡す
             var depts = (await SqliteDepartmentRepository.GetAllAsync()).ToList();
             // 先頭に「未設定」（Id=0）を追加
             List<Department> allDepts = [new Department { Id = 0, Name = "（未設定）" }];
