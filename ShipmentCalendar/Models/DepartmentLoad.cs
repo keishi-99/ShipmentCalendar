@@ -77,7 +77,8 @@ public class DepartmentLoadRow
     public int OverdueProcessCount { get; init; }
     /// <summary>上記工程の必要時間（分）合計</summary>
     public double OverdueMinutes { get; init; }
-    /// <summary>「超過」列の集計元になった注文・工程（ドリルダウン表示用）。1工程1行（複数営業日に分散する工程も合算した1行）</summary>
+    /// <summary>「超過」列の集計元になった注文・工程（ドリルダウン表示用）。日別の内訳（Process.DailyMinutesの1エントリ）ごとに1行のため、
+    /// 複数営業日に分散する工程は複数行になる</summary>
     public List<DepartmentLoadCellItem> OverdueItems { get; init; } = [];
 
     /// <summary>部署列に表示するテキスト。基本人数が設定されていれば部署名の下に添える</summary>
