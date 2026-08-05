@@ -121,21 +121,24 @@ public partial class MainWindow : Fluent.RibbonWindow, IDisplaySettingsPreviewTa
         BtnToggleFullScreen.ToolTip = _isFullScreen ? "ウィンドウ表示に戻す (F11)" : "全画面表示切り替え (F11)";
     }
 
-    [DllImport("user32.dll")]
-    private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
+    [LibraryImport("user32.dll")]
+    private static partial IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
 
-    [DllImport("user32.dll", CharSet = CharSet.Auto)]
-    private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
+    // CharSet.Autoは実行環境が常にUnicodeのWindowsであるため、Wサフィックス付きのエントリポイントに解決される。
+    // LibraryImportはDllImportのようなA/W自動解決を行わないため、明示的にエントリポイントを指定する
+    [LibraryImport("user32.dll", EntryPoint = "GetMonitorInfoW")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct RECT { public int Left, Top, Right, Bottom; }
 
     [StructLayout(LayoutKind.Sequential)]
     private struct MONITORINFO {
-        public int cbSize;
-        public RECT rcMonitor;
-        public RECT rcWork;
-        public int dwFlags;
+        public int CbSize;
+        public RECT RcMonitor;
+        public RECT RcWork;
+        public int DwFlags;
     }
 
     private const uint MONITOR_DEFAULTTONEAREST = 2;
@@ -144,13 +147,13 @@ public partial class MainWindow : Fluent.RibbonWindow, IDisplaySettingsPreviewTa
     private Rect GetCurrentMonitorBounds() {
         var hwnd = new WindowInteropHelper(this).Handle;
         var monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-        var info = new MONITORINFO { cbSize = Marshal.SizeOf<MONITORINFO>() };
+        var info = new MONITORINFO { CbSize = Marshal.SizeOf<MONITORINFO>() };
         if (!GetMonitorInfo(monitor, ref info))
             return new Rect(0, 0, SystemParameters.PrimaryScreenWidth, SystemParameters.PrimaryScreenHeight);
 
         var transform = PresentationSource.FromVisual(this)?.CompositionTarget?.TransformFromDevice ?? Matrix.Identity;
-        var topLeft = transform.Transform(new Point(info.rcMonitor.Left, info.rcMonitor.Top));
-        var bottomRight = transform.Transform(new Point(info.rcMonitor.Right, info.rcMonitor.Bottom));
+        var topLeft = transform.Transform(new Point(info.RcMonitor.Left, info.RcMonitor.Top));
+        var bottomRight = transform.Transform(new Point(info.RcMonitor.Right, info.RcMonitor.Bottom));
         return new Rect(topLeft, bottomRight);
     }
 

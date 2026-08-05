@@ -56,9 +56,9 @@ public partial class ProcessSettingWindow : Window
         ProcessGrid.CommitEdit(DataGridEditingUnit.Row, true);
         if (!HasValidationError(ProcessGrid)) return false;
 
-        const string message = "編集中のセルに不正な値があります。修正するかEscでキャンセルしてください。";
-        TxtStatus.Text = message;
-        MessageBox.Show(message, "入力エラー", MessageBoxButton.OK, MessageBoxImage.Warning);
+        const string Message = "編集中のセルに不正な値があります。修正するかEscでキャンセルしてください。";
+        TxtStatus.Text = Message;
+        MessageBox.Show(Message, "入力エラー", MessageBoxButton.OK, MessageBoxImage.Warning);
         return true;
     }
 

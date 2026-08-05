@@ -73,6 +73,21 @@ public class DepartmentLoadRow
     public int Headcount { get; init; }
     public List<DepartmentLoadCell> Cells { get; init; } = [];
 
+    /// <summary>締切（DueDate）を過ぎても未完了の工程の件数。日別セルには含めず、この部署の「超過」列にまとめて集計する</summary>
+    public int OverdueProcessCount { get; init; }
+    /// <summary>上記工程の必要時間（分）合計</summary>
+    public double OverdueMinutes { get; init; }
+    /// <summary>「超過」列の集計元になった注文・工程（ドリルダウン表示用）。日別の内訳（Process.DailyMinutesの1エントリ）ごとに1行のため、
+    /// 複数営業日に分散する工程は複数行になる</summary>
+    public List<DepartmentLoadCellItem> OverdueItems { get; init; } = [];
+
     /// <summary>部署列に表示するテキスト。基本人数が設定されていれば部署名の下に添える</summary>
     public string DepartmentDisplayText => Headcount > 0 ? $"{DepartmentName}\n{Headcount}人" : DepartmentName;
+
+    public bool HasOverdue => OverdueProcessCount > 0;
+    public string OverdueCountText => HasOverdue ? $"{OverdueProcessCount}件" : string.Empty;
+    public string OverdueHoursText => HasOverdue ? $"{OverdueMinutes / 60.0:F1}h" : string.Empty;
+    public string OverdueTooltip => HasOverdue
+        ? $"超過中　件数:{OverdueProcessCount}　合計必要時間:{OverdueMinutes / 60.0:F1}h（クリックで明細表示）"
+        : string.Empty;
 }

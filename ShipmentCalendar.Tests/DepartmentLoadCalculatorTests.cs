@@ -5,7 +5,7 @@ namespace ShipmentCalendar.Tests;
 
 public class DepartmentLoadCalculatorTests
 {
-    private static readonly Department[] NoDepartments = [];
+    private static readonly Department[] _noDepartments = [];
 
     // 特記のない限り、1人=480分/日・充足率80%以上でCaution・100%以上でConcentratedとして扱う
     private const double DayMinutes = 480;
@@ -25,13 +25,13 @@ public class DepartmentLoadCalculatorTests
     };
 
     // 複数日にまたがる工程用に、日別内訳を直接指定できるヘルパー
-    private static OrderProcess MakeMultiDayProcess(int departmentId, DateOnly startDate, DateOnly dueDate, Dictionary<DateOnly, double> dailyMinutes, string destinationCode = "P1") => new() {
+    private static OrderProcess MakeMultiDayProcess(int departmentId, DateOnly startDate, DateOnly dueDate, Dictionary<DateOnly, double> dailyMinutes, ProcessStatus status = ProcessStatus.NotStarted, string destinationCode = "P1") => new() {
         DepartmentId = departmentId,
         StartDate = startDate,
         DueDate = dueDate,
         RequiredMinutes = dailyMinutes.Values.Sum(),
         DailyMinutes = dailyMinutes,
-        Status = ProcessStatus.NotStarted,
+        Status = status,
         DestinationCode = destinationCode,
         ProcessName = destinationCode
     };
@@ -41,14 +41,18 @@ public class DepartmentLoadCalculatorTests
         Processes = [.. processes]
     };
 
+    // 他のテストが使う日付（2026/6/26〜7/3）より確実に前にし、todayを指定しないテストが超過扱いにならないようにする
+    private static readonly DateOnly _defaultToday = new(2026, 6, 1);
+
     private static List<DepartmentLoadRow> Aggregate(IEnumerable<Order> orders, IEnumerable<Department> departments,
         IEnumerable<DepartmentAbsence>? absences = null,
-        double dayMinutes = DayMinutes, double cautionPercent = CautionPercent, double concentratedPercent = ConcentratedPercent)
-        => DepartmentLoadCalculator.Aggregate(orders, departments, absences ?? [], dayMinutes, cautionPercent, concentratedPercent);
+        double dayMinutes = DayMinutes, double cautionPercent = CautionPercent, double concentratedPercent = ConcentratedPercent,
+        DateOnly? today = null)
+        => DepartmentLoadCalculator.Aggregate(orders, departments, absences ?? [], dayMinutes, cautionPercent, concentratedPercent, today ?? _defaultToday);
 
     [Fact]
     public void Aggregate_NoOrders_ReturnsEmptyList() {
-        var rows = Aggregate([], NoDepartments);
+        var rows = Aggregate([], _noDepartments);
 
         Assert.Empty(rows);
     }
@@ -57,7 +61,7 @@ public class DepartmentLoadCalculatorTests
     public void Aggregate_AllProcessesCompleted_ReturnsEmptyList() {
         var order = MakeOrder("M1", MakeProcess(1, new DateOnly(2026, 6, 30), 100, ProcessStatus.Completed));
 
-        var rows = Aggregate([order], NoDepartments);
+        var rows = Aggregate([order], _noDepartments);
 
         Assert.Empty(rows);
     }
@@ -81,7 +85,7 @@ public class DepartmentLoadCalculatorTests
     public void Aggregate_UnknownDepartmentId_AddsFallbackRow() {
         var order = MakeOrder("M1", MakeProcess(departmentId: 0, new DateOnly(2026, 6, 30), 100));
 
-        var rows = Aggregate([order], NoDepartments);
+        var rows = Aggregate([order], _noDepartments);
 
         Assert.Contains(rows, r => r.DepartmentName == "未設定");
     }
@@ -378,5 +382,89 @@ public class DepartmentLoadCalculatorTests
         var emptyCell = rows.Single(r => r.DepartmentName == "総務部").Cells.Single(c => c.Date == new DateOnly(2026, 7, 1));
         Assert.Equal(0, emptyCell.ProcessCount);
         Assert.Equal(CongestionLevel.Normal, emptyCell.Level);
+    }
+
+    [Fact]
+    public void Aggregate_ProcessDueDateBeforeToday_GoesToOverdueNotCells() {
+        var dueDate = new DateOnly(2026, 6, 30);
+        var today = new DateOnly(2026, 7, 5);
+        var order = MakeOrder("M1", MakeProcess(1, dueDate, 100));
+        var departments = new[] { new Department { Id = 1, Name = "総務部" } };
+
+        var rows = Aggregate([order], departments, today: today);
+
+        var row = rows.Single();
+        Assert.Empty(row.Cells);
+        Assert.Equal(1, row.OverdueProcessCount);
+        Assert.Equal(100, row.OverdueMinutes);
+        Assert.Same(order, row.OverdueItems.Single().Order);
+    }
+
+    [Fact]
+    public void Aggregate_OverdueMultiDayProcess_KeepsPerDayBreakdownInOverdueItems() {
+        // 超過と判定された工程でも、日ごとの内訳（進捗表示等）は失わず「超過」列の明細に残す
+        var day1 = new DateOnly(2026, 6, 29);
+        var day2 = new DateOnly(2026, 6, 30);
+        var today = new DateOnly(2026, 7, 5);
+        var process = MakeMultiDayProcess(1, day1, day2, new() { [day1] = 180, [day2] = 20 });
+        var order = MakeOrder("M1", process);
+        var departments = new[] { new Department { Id = 1, Name = "総務部" } };
+
+        var rows = Aggregate([order], departments, today: today);
+
+        var items = rows.Single().OverdueItems;
+        Assert.Equal(2, items.Count);
+        Assert.Equal(180, items.Single(i => i.Date == day1).DayMinutes);
+        Assert.Equal("1/2日目", items.Single(i => i.Date == day1).ProgressText);
+        Assert.Equal(20, items.Single(i => i.Date == day2).DayMinutes);
+        Assert.Equal("2/2日目", items.Single(i => i.Date == day2).ProgressText);
+    }
+
+    [Fact]
+    public void Aggregate_MultiDayProcessDueDateNotYetPassed_EarlyPastDaysStayInCellsNotOverdue() {
+        // ユーザー報告の再現1: 完了判定は工程単位（最終日確定時）でしか行われず日ごとには追跡されないため、
+        // DueDateがまだ来ていない複数日工程は、先頭側の日の日付が経過しているだけでは超過にしてはならない
+        var day1 = new DateOnly(2026, 6, 29);
+        var day2 = new DateOnly(2026, 6, 30); // DueDate。今日はこれと同日＝まだ超過ではない
+        var process = MakeMultiDayProcess(1, day1, day2, new() { [day1] = 180, [day2] = 20 });
+        var order = MakeOrder("M1", process);
+        var departments = new[] { new Department { Id = 1, Name = "総務部" } };
+
+        var rows = Aggregate([order], departments, today: day2);
+
+        var row = rows.Single();
+        Assert.Equal(0, row.OverdueProcessCount);
+        Assert.Empty(row.OverdueItems);
+        Assert.Equal(180, row.Cells.Single(c => c.Date == day1).TotalMinutes);
+        Assert.Equal(20, row.Cells.Single(c => c.Date == day2).TotalMinutes);
+    }
+
+    [Fact]
+    public void Aggregate_StatusOverdueByPropagationButOwnDueDateNotYetPassed_StaysInCellsNotOverdue() {
+        // ユーザー報告の再現2: OrderProcessBuildService.Buildは前工程が超過すると後続工程のStatusも
+        // Overdueに伝播させる（メイン画面の色分け用）。この工程自身のDueDateはまだ先なのに
+        // Statusだけ伝播でOverdueになっているケースで、誤って超過集計に含めてはならない
+        var dueDate = new DateOnly(2026, 7, 10);
+        var today = new DateOnly(2026, 7, 5);
+        var order = MakeOrder("M1", MakeProcess(1, dueDate, 100, status: ProcessStatus.Overdue));
+        var departments = new[] { new Department { Id = 1, Name = "総務部" } };
+
+        var rows = Aggregate([order], departments, today: today);
+
+        var row = rows.Single();
+        Assert.Equal(0, row.OverdueProcessCount);
+        Assert.Empty(row.OverdueItems);
+        Assert.Equal(100, row.Cells.Single(c => c.Date == dueDate).TotalMinutes);
+    }
+
+    [Fact]
+    public void Aggregate_OverdueOnly_UnknownDepartment_AddsFallbackRow() {
+        var dueDate = new DateOnly(2026, 6, 30);
+        var today = new DateOnly(2026, 7, 5);
+        var order = MakeOrder("M1", MakeProcess(departmentId: 0, dueDate, 100));
+
+        var rows = Aggregate([order], _noDepartments, today: today);
+
+        Assert.Contains(rows, r => r.DepartmentName == "未設定");
     }
 }

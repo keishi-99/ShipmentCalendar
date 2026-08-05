@@ -7,15 +7,18 @@
         <TextBlock DockPanel.Dock="Top" FontSize="16" FontWeight="Bold"
                    Text="部署別 締切集中度" Margin="0,0,0,4"/>
         <TextBlock DockPanel.Dock="Top" Foreground="#666666" TextWrapping="Wrap" Margin="0,0,0,12"
-                   Text="表示中の注文の未完了工程について、必要時間を営業日に按分し、日別・部署別に集計しています。充足率は、合計必要時間÷(実働人数×1日の稼働時間)で算出します。実働人数は基本人数から日別欠員数を差し引いた人数です。"/>
+                   Text="全注文（区分フィルターで絞り込み可能）の未完了工程について、必要時間を営業日に按分し、日別・部署別に集計しています。充足率は、合計必要時間÷(実働人数×1日の稼働時間)で算出します。実働人数は基本人数から日別欠員数を差し引いた人数です。"/>
 
         <TextBlock DockPanel.Dock="Bottom" Name="TxtEmpty" Margin="0,8,0,0" Foreground="#666666"
-                   Text="表示中の注文に未完了工程がありません。" Visibility="Collapsed"/>
+                   Text="対象の注文に未完了工程がありません。" Visibility="Collapsed"/>
 
         <TextBlock DockPanel.Dock="Top" Name="TxtHeadcountWarning" Margin="0,0,0,8" Foreground="#B00020" TextWrapping="Wrap"
                    Text="基本人数が未設定の部署があります。「欠員」画面で基本人数を設定すると、その部署の充足率による集中度判定が有効になります。" Visibility="Collapsed"/>
 
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,12">
+            <TextBlock Text="区分：" VerticalAlignment="Center"/>
+            <ComboBox Name="CmbCategory" Width="160" Margin="4,0,16,0" VerticalContentAlignment="Center"
+                      SelectionChanged="CmbCategory_SelectionChanged"/>
             <Border Background="{StaticResource CongestionCaution}" CornerRadius="3" Padding="6,2" Margin="0,0,4,0" VerticalAlignment="Center">
                 <TextBlock Text="やや集中" Foreground="Black"/>
             </Border>
@@ -43,7 +46,8 @@
             <DataGrid Name="LoadGrid" Grid.Row="0"
                       AutoGenerateColumns="False" CanUserAddRows="False"
                       IsReadOnly="True" HeadersVisibility="Column"
-                      HorizontalScrollBarVisibility="Auto" FrozenColumnCount="1" SelectionUnit="Cell">
+                      HorizontalScrollBarVisibility="Auto" FrozenColumnCount="2" SelectionUnit="Cell"
+                      CurrentCellChanged="LoadGrid_CurrentCellChanged">
                 <!--  セル選択時も非選択時と同じ見た目のままにする（ハイライト無効化）  -->
                 <DataGrid.CellStyle>
                     <Style TargetType="DataGridCell">
@@ -64,6 +68,32 @@
                             </Style>
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
+                    <!--  締切を過ぎても未完了の工程は日別セルに含めず、ここに部署単位で集計する（クリックで明細表示）  -->
+                    <DataGridTemplateColumn Header="超過" Width="90">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <!--  固定列（部署・超過）とスクロールする日付列の境界を、既存の配色（今日＝青、超過＝赤）と衝突しない
+                                      無彩色・太めの線で明示する  -->
+                                <Border ToolTip="{Binding OverdueTooltip}"
+                                        BorderBrush="#999999" BorderThickness="0,0,2,0">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="Transparent"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasOverdue}" Value="True">
+                                                    <Setter Property="Background" Value="{StaticResource StatusOverdue}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding OverdueCountText}" HorizontalAlignment="Center" FontWeight="Bold"/>
+                                        <TextBlock Text="{Binding OverdueHoursText}" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                 </DataGrid.Columns>
             </DataGrid>
 
@@ -90,8 +120,8 @@
                             </Style>
                         </DataGrid.Resources>
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="当日分" Binding="{Binding DayMinutesText}" Width="70" ElementStyle="{StaticResource CenterCellText}"/>
-                            <DataGridTextColumn Header="全体" Binding="{Binding TotalMinutesText}" Width="70" ElementStyle="{StaticResource CenterCellText}"/>
+                            <DataGridTextColumn Header="当日分" Binding="{Binding DayMinutesText}" SortMemberPath="DayMinutes" Width="70" ElementStyle="{StaticResource CenterCellText}"/>
+                            <DataGridTextColumn Header="全体" Binding="{Binding TotalMinutesText}" SortMemberPath="Process.RequiredMinutes" Width="70" ElementStyle="{StaticResource CenterCellText}"/>
                             <DataGridTextColumn Header="進捗" Binding="{Binding ProgressText}" Width="70" ElementStyle="{StaticResource CenterCellText}"/>
                             <DataGridTextColumn Header="製番" Binding="{Binding ManufactureNumber}" Width="200" ElementStyle="{StaticResource CenterCellText}"/>
                             <DataGridTextColumn Header="数量" Binding="{Binding Quantity}" Width="60" ElementStyle="{StaticResource CenterCellText}"/>
