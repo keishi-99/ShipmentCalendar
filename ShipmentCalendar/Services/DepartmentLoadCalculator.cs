@@ -9,19 +9,38 @@ namespace ShipmentCalendar.Services;
 /// これは実績や確定スケジュールではなく、締切に基づくリスクの目安である。
 /// 部署に基本人数（Headcount）が設定されている場合、その日の実働人数（Headcount−その日の欠員数、0未満は0）を求め、
 /// 充足率＝合計必要時間÷(実働人数×1日の稼働時間)で「やや集中／集中」を判定する。
-/// Headcount未設定、または実働人数が0の部署・日は判定できないため常にNormalとする。</summary>
+/// Headcount未設定、または実働人数が0の部署・日は判定できないため常にNormalとする。
+/// 完了判定は工程単位（最終日の指示先番号が確定した時点）でしか行われず、日ごとの完了は追跡していない。
+/// そのため「まだ進行中（DueDateが来ていない）複数日工程」の先頭側の日は、単に日付が今日より前という理由だけでは
+/// 超過とみなせない（実際に予定通り終わっているかもしれない）。超過かどうかは工程自身のDueDateを過ぎているかで判定する
+/// （Process.Statusは前工程が超過した場合に後続工程へ伝播するため、伝播後の値をそのまま使うと自分自身のDueDateは
+/// まだ先の工程まで超過扱いになってしまう。OrderProcessBuildService.Buildの伝播ロジック参照）。
+/// 超過と判定された工程については、日別の内訳をそのまま部署ごとの「超過」列にまとめる。</summary>
 public static class DepartmentLoadCalculator {
     public static List<DepartmentLoadRow> Aggregate(
         IEnumerable<Order> orders, IEnumerable<Department> departments, IEnumerable<DepartmentAbsence> absences,
-        double dayMinutes, double cautionPercent, double concentratedPercent) {
+        double dayMinutes, double cautionPercent, double concentratedPercent, DateOnly today) {
         var absenceMap = absences.ToDictionary(a => (a.DepartmentId, a.Date), a => a.AbsentCount);
-        var grouped = orders
+        // RequiredMinutesが0（未設定）の工程はDailyMinutesが空になるため、DueDateに0分として計上し集計から漏れないようにする
+        var dailyEntries = orders
             .SelectMany(o => o.Processes.Select(p => (Order: o, Process: p)))
             .Where(x => x.Process.Status != ProcessStatus.Completed)
-            // RequiredMinutesが0（未設定）の工程はDailyMinutesが空になるため、DueDateに0分として計上し集計から漏れないようにする
             .SelectMany(x => x.Process.DailyMinutes.Count > 0
                 ? x.Process.DailyMinutes.Select(dm => (x.Order, x.Process, Date: dm.Key, DayMinutes: dm.Value))
                 : [(x.Order, x.Process, Date: x.Process.DueDate, DayMinutes: 0.0)])
+            .ToList();
+
+        var overdueByDept = dailyEntries
+            .Where(x => x.Process.DueDate < today)
+            .GroupBy(x => x.Process.DepartmentId)
+            .ToDictionary(g => g.Key, g => (
+                Count: g.Select(x => x.Process).Distinct().Count(),
+                Minutes: g.Sum(x => x.DayMinutes),
+                // 古い日付のものほど先頭に来るようにし、長く滞留しているものから対応できるようにする
+                Items: g.OrderBy(x => x.Date).Select(x => new DepartmentLoadCellItem { Order = x.Order, Process = x.Process, Date = x.Date, DayMinutes = x.DayMinutes }).ToList()));
+
+        var grouped = dailyEntries
+            .Where(x => x.Process.DueDate >= today)
             .GroupBy(x => (x.Process.DepartmentId, x.Date))
             .ToDictionary(g => g.Key, g => (
                 Count: g.Select(x => x.Process).Distinct().Count(),
@@ -29,17 +48,19 @@ public static class DepartmentLoadCalculator {
                 // 必要時間が大きい注文ほど先頭に来るようにし、その日の集中度への主要因をすぐ確認できるようにする
                 Items: g.OrderByDescending(x => x.DayMinutes).Select(x => new DepartmentLoadCellItem { Order = x.Order, Process = x.Process, Date = x.Date, DayMinutes = x.DayMinutes }).ToList()));
 
-        if (grouped.Count == 0) return [];
+        if (grouped.Count == 0 && overdueByDept.Count == 0) return [];
 
-        var minDate = grouped.Keys.Min(k => k.Date);
-        var maxDate = grouped.Keys.Max(k => k.Date);
         var dates = new List<DateOnly>();
-        for (var d = minDate; d <= maxDate; d = d.AddDays(1))
-            dates.Add(d);
+        if (grouped.Count > 0) {
+            var minDate = grouped.Keys.Min(k => k.Date);
+            var maxDate = grouped.Keys.Max(k => k.Date);
+            for (var d = minDate; d <= maxDate; d = d.AddDays(1))
+                dates.Add(d);
+        }
 
         // マスタに存在する部署に加え、部署未設定（DepartmentId=0）の工程がある場合は「未設定」行を追加する
-        var departmentEntries = departments.Select(d => (Id: d.Id, Name: d.Name, Headcount: d.Headcount)).ToList();
-        if (grouped.Keys.Any(k => k.DepartmentId == 0))
+        var departmentEntries = departments.Select(d => (d.Id, d.Name, d.Headcount)).ToList();
+        if (grouped.Keys.Any(k => k.DepartmentId == 0) || overdueByDept.ContainsKey(0))
             departmentEntries.Add((0, "未設定", 0));
 
         var rows = new List<DepartmentLoadRow>();
@@ -62,7 +83,11 @@ public static class DepartmentLoadCalculator {
                     Level = DetermineCongestionLevel(fulfillmentPercent, cautionPercent, concentratedPercent)
                 };
             }).ToList();
-            rows.Add(new DepartmentLoadRow { DepartmentId = id, DepartmentName = name, Headcount = headcount, Cells = cells });
+            overdueByDept.TryGetValue(id, out var overdue);
+            rows.Add(new DepartmentLoadRow {
+                DepartmentId = id, DepartmentName = name, Headcount = headcount, Cells = cells,
+                OverdueProcessCount = overdue.Count, OverdueMinutes = overdue.Minutes, OverdueItems = overdue.Items ?? []
+            });
         }
         return rows;
     }

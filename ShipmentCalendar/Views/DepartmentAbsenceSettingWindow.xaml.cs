@@ -18,7 +18,7 @@ public partial class DepartmentAbsenceSettingWindow : Window {
     private int _rebuildRevision;
 
     // 休日列は入力不可のためグレーアウトして区別する（XAMLの暗黙スタイルは継承されないため上下中央揃えもここで指定する）
-    private static readonly Style HolidayCellStyle = new(typeof(DataGridCell)) {
+    private static readonly Style _holidayCellStyle = new(typeof(DataGridCell)) {
         Setters = {
             new Setter(Control.BackgroundProperty, new SolidColorBrush(Color.FromRgb(0xEE, 0xEE, 0xEE))),
             new Setter(Control.ForegroundProperty, new SolidColorBrush(Color.FromRgb(0x99, 0x99, 0x99))),
@@ -27,13 +27,13 @@ public partial class DepartmentAbsenceSettingWindow : Window {
     };
 
     // 欠員数（数値）は桁を揃えて比較しやすいよう右寄せ・上下中央にする
-    private static readonly Style RightAlignedTextStyle = new(typeof(TextBlock)) {
+    private static readonly Style _rightAlignedTextStyle = new(typeof(TextBlock)) {
         Setters = {
             new Setter(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Right),
             new Setter(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center)
         }
     };
-    private static readonly Style RightAlignedEditingStyle = new(typeof(TextBox)) {
+    private static readonly Style _rightAlignedEditingStyle = new(typeof(TextBox)) {
         Setters = {
             new Setter(TextBox.TextAlignmentProperty, TextAlignment.Right),
             new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center)
@@ -108,12 +108,12 @@ public partial class DepartmentAbsenceSettingWindow : Window {
             Header = date.ToString("M/d"),
             Width = 40,
             Binding = new Binding($"Cells[{index}].AbsentCount"),
-            ElementStyle = RightAlignedTextStyle,
-            EditingElementStyle = RightAlignedEditingStyle
+            ElementStyle = _rightAlignedTextStyle,
+            EditingElementStyle = _rightAlignedEditingStyle
         };
         if (isHoliday) {
             column.IsReadOnly = true;
-            column.CellStyle = HolidayCellStyle;
+            column.CellStyle = _holidayCellStyle;
         }
         return column;
     }
@@ -136,7 +136,7 @@ public partial class DepartmentAbsenceSettingWindow : Window {
                 await SqliteDepartmentRepository.UpdateHeadcountAsync(row.DepartmentId, value);
                 row.Headcount = value;
                 var department = _departments.FirstOrDefault(d => d.Id == row.DepartmentId);
-                if (department != null) department.Headcount = value;
+                department?.Headcount = value;
                 return;
             }
 

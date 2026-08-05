@@ -4,7 +4,7 @@ using ShipmentCalendar.Services;
 namespace ShipmentCalendar.Tests;
 
 public class OrderFilterServiceTests {
-    private static readonly ProductCategoryClassifier EmptyClassifier = new([], [], []);
+    private static readonly ProductCategoryClassifier _emptyClassifier = new([], [], []);
 
     private static Order MakeOrder(
         string itemNumber = "I1", string productName = "製品A", string manufactureNumber = "M1",
@@ -30,7 +30,7 @@ public class OrderFilterServiceTests {
         };
 
     private static List<Order> Apply(IEnumerable<Order> orders, OrderFilterCriteria criteria)
-        => OrderFilterService.Apply(orders, criteria, EmptyClassifier, SortMode.DeliveryDate, showDueDateForNotStarted: false);
+        => OrderFilterService.Apply(orders, criteria, _emptyClassifier, SortMode.DeliveryDate, showDueDateForNotStarted: false);
 
     [Fact]
     public void Apply_ItemNumberFilter_IsCaseInsensitivePartialMatch() {
@@ -120,7 +120,7 @@ public class OrderFilterServiceTests {
             MakeOrder(itemNumber: "earlier", deliveryDate: new DateOnly(2026, 1, 1)),
         };
 
-        var result = OrderFilterService.Apply(orders, new OrderFilterCriteria(), EmptyClassifier, SortMode.DeliveryDate, false);
+        var result = OrderFilterService.Apply(orders, new OrderFilterCriteria(), _emptyClassifier, SortMode.DeliveryDate, false);
 
         Assert.Equal(["earlier", "later"], result.Select(o => o.ItemNumber));
     }

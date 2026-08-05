@@ -6,23 +6,17 @@ namespace ShipmentCalendar.Services;
 /// 「半製品（工程未登録）」は分類ではなく、この3分類とは別軸で「半製品のうち工程マスタ未登録のもの」を
 /// 絞り込むための判定のため、IsUnregisteredSemiProductとして別途提供する。
 /// 機種コードが製品・半製品の両方に登録されている場合（本来あってはならないマスタ不整合）は製品側を優先する</summary>
-public class ProductCategoryClassifier {
+public class ProductCategoryClassifier(
+    IEnumerable<string> productModelCodes,
+    IEnumerable<string> semiProductModelCodes,
+    IEnumerable<string> registeredItemNumbers) {
     public const string Product = "製品";
     public const string SemiProduct = "半製品";
     public const string Other = "どちらでもない";
 
-    private readonly HashSet<string> _productModelCodes;
-    private readonly HashSet<string> _semiProductModelCodes;
-    private readonly HashSet<string> _registeredItemNumbers;
-
-    public ProductCategoryClassifier(
-        IEnumerable<string> productModelCodes,
-        IEnumerable<string> semiProductModelCodes,
-        IEnumerable<string> registeredItemNumbers) {
-        _productModelCodes = new HashSet<string>(productModelCodes, StringComparer.OrdinalIgnoreCase);
-        _semiProductModelCodes = new HashSet<string>(semiProductModelCodes, StringComparer.OrdinalIgnoreCase);
-        _registeredItemNumbers = new HashSet<string>(registeredItemNumbers, StringComparer.OrdinalIgnoreCase);
-    }
+    private readonly HashSet<string> _productModelCodes = new(productModelCodes, StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _semiProductModelCodes = new(semiProductModelCodes, StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _registeredItemNumbers = new(registeredItemNumbers, StringComparer.OrdinalIgnoreCase);
 
     public string Classify(Order order) {
         if (_productModelCodes.Contains(order.ModelCode)) return Product;

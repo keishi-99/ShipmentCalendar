@@ -46,7 +46,8 @@
             <DataGrid Name="LoadGrid" Grid.Row="0"
                       AutoGenerateColumns="False" CanUserAddRows="False"
                       IsReadOnly="True" HeadersVisibility="Column"
-                      HorizontalScrollBarVisibility="Auto" FrozenColumnCount="1" SelectionUnit="Cell">
+                      HorizontalScrollBarVisibility="Auto" FrozenColumnCount="2" SelectionUnit="Cell"
+                      CurrentCellChanged="LoadGrid_CurrentCellChanged">
                 <!--  セル選択時も非選択時と同じ見た目のままにする（ハイライト無効化）  -->
                 <DataGrid.CellStyle>
                     <Style TargetType="DataGridCell">
@@ -67,6 +68,32 @@
                             </Style>
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
+                    <!--  締切を過ぎても未完了の工程は日別セルに含めず、ここに部署単位で集計する（クリックで明細表示）  -->
+                    <DataGridTemplateColumn Header="超過" Width="90">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <!--  固定列（部署・超過）とスクロールする日付列の境界を、既存の配色（今日＝青、超過＝赤）と衝突しない
+                                      無彩色・太めの線で明示する  -->
+                                <Border ToolTip="{Binding OverdueTooltip}"
+                                        BorderBrush="#999999" BorderThickness="0,0,2,0">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="Transparent"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasOverdue}" Value="True">
+                                                    <Setter Property="Background" Value="{StaticResource StatusOverdue}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding OverdueCountText}" HorizontalAlignment="Center" FontWeight="Bold"/>
+                                        <TextBlock Text="{Binding OverdueHoursText}" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                 </DataGrid.Columns>
             </DataGrid>
 
@@ -93,8 +120,8 @@
                             </Style>
                         </DataGrid.Resources>
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="当日分" Binding="{Binding DayMinutesText}" Width="70" ElementStyle="{StaticResource CenterCellText}"/>
-                            <DataGridTextColumn Header="全体" Binding="{Binding TotalMinutesText}" Width="70" ElementStyle="{StaticResource CenterCellText}"/>
+                            <DataGridTextColumn Header="当日分" Binding="{Binding DayMinutesText}" SortMemberPath="DayMinutes" Width="70" ElementStyle="{StaticResource CenterCellText}"/>
+                            <DataGridTextColumn Header="全体" Binding="{Binding TotalMinutesText}" SortMemberPath="Process.RequiredMinutes" Width="70" ElementStyle="{StaticResource CenterCellText}"/>
                             <DataGridTextColumn Header="進捗" Binding="{Binding ProgressText}" Width="70" ElementStyle="{StaticResource CenterCellText}"/>
                             <DataGridTextColumn Header="製番" Binding="{Binding ManufactureNumber}" Width="200" ElementStyle="{StaticResource CenterCellText}"/>
                             <DataGridTextColumn Header="数量" Binding="{Binding Quantity}" Width="60" ElementStyle="{StaticResource CenterCellText}"/>

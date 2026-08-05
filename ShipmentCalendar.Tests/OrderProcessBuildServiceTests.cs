@@ -4,8 +4,8 @@ using ShipmentCalendar.Services;
 namespace ShipmentCalendar.Tests;
 
 public class OrderProcessBuildServiceTests {
-    private static readonly Dictionary<string, string> NoDisplayNameOverrides = new();
-    private static readonly Dictionary<string, int> NoLeadDaysOverrides = new();
+    private static readonly Dictionary<string, string> _noDisplayNameOverrides = [];
+    private static readonly Dictionary<string, int> _noLeadDaysOverrides = [];
 
     private static BusinessDayCalculator MakeCalculator() => new(holidays: [], dayMinutes: 480);
 
@@ -43,7 +43,7 @@ public class OrderProcessBuildServiceTests {
         var order = MakeOrder("I1", deliveryDate, processes: [existingCompleted]);
         var defs = new List<ProcessDefinition> { OdbcDef("I1", "D1", sortOrder: 1) };
 
-        OrderProcessBuildService.Build([order], defs, dbDefs: [], NoDisplayNameOverrides, NoLeadDaysOverrides, defaultCompletionDateLeadDays: 0, MakeCalculator(), today: deliveryDate);
+        OrderProcessBuildService.Build([order], defs, dbDefs: [], _noDisplayNameOverrides, _noLeadDaysOverrides, defaultCompletionDateLeadDays: 0, MakeCalculator(), today: deliveryDate);
 
         var rebuilt = Assert.Single(order.Processes);
         Assert.Equal(ProcessStatus.Completed, rebuilt.Status);
@@ -60,7 +60,7 @@ public class OrderProcessBuildServiceTests {
             new() { ItemNumber = "I1", DestinationCode = "D1", ProcessName = "カスタム名", SortOrder = 999, IsVisible = true, SetupTimeMinutes = 50 },
         };
 
-        OrderProcessBuildService.Build([order], odbcDefs, dbDefs, NoDisplayNameOverrides, NoLeadDaysOverrides, 0, MakeCalculator(), order.DeliveryDate);
+        OrderProcessBuildService.Build([order], odbcDefs, dbDefs, _noDisplayNameOverrides, _noLeadDaysOverrides, 0, MakeCalculator(), order.DeliveryDate);
 
         var process = Assert.Single(order.Processes);
         Assert.Equal("カスタム名", process.ProcessName);
@@ -73,7 +73,7 @@ public class OrderProcessBuildServiceTests {
         order.ProductName = "ODBC品目名";
         var displayNames = new Dictionary<string, string> { ["I1"] = "登録済み品目名" };
 
-        OrderProcessBuildService.Build([order], [], [], displayNames, NoLeadDaysOverrides, 0, MakeCalculator(), order.DeliveryDate);
+        OrderProcessBuildService.Build([order], [], [], displayNames, _noLeadDaysOverrides, 0, MakeCalculator(), order.DeliveryDate);
 
         Assert.Equal("登録済み品目名", order.ProductName);
     }
@@ -83,7 +83,7 @@ public class OrderProcessBuildServiceTests {
         var order = MakeOrder("I1", new DateOnly(2026, 6, 30));
         var calculator = MakeCalculator();
 
-        OrderProcessBuildService.Build([order], [], [], NoDisplayNameOverrides, NoLeadDaysOverrides, defaultCompletionDateLeadDays: 3, calculator, order.DeliveryDate);
+        OrderProcessBuildService.Build([order], [], [], _noDisplayNameOverrides, _noLeadDaysOverrides, defaultCompletionDateLeadDays: 3, calculator, order.DeliveryDate);
 
         Assert.Equal(calculator.SubtractBusinessDays(order.DeliveryDate, 3), order.CompletionDate);
     }
@@ -94,7 +94,7 @@ public class OrderProcessBuildServiceTests {
         var calculator = MakeCalculator();
         var overrides = new Dictionary<string, int> { ["I1"] = 7 };
 
-        OrderProcessBuildService.Build([order], [], [], NoDisplayNameOverrides, overrides, defaultCompletionDateLeadDays: 3, calculator, order.DeliveryDate);
+        OrderProcessBuildService.Build([order], [], [], _noDisplayNameOverrides, overrides, defaultCompletionDateLeadDays: 3, calculator, order.DeliveryDate);
 
         Assert.Equal(calculator.SubtractBusinessDays(order.DeliveryDate, 7), order.CompletionDate);
     }
@@ -107,7 +107,7 @@ public class OrderProcessBuildServiceTests {
             OdbcDef("I1", "D2", sortOrder: 2, isVisible: true),
         };
 
-        OrderProcessBuildService.Build([order], defs, [], NoDisplayNameOverrides, NoLeadDaysOverrides, 0, MakeCalculator(), order.DeliveryDate);
+        OrderProcessBuildService.Build([order], defs, [], _noDisplayNameOverrides, _noLeadDaysOverrides, 0, MakeCalculator(), order.DeliveryDate);
 
         var process = Assert.Single(order.Processes);
         Assert.Equal("D2", process.DestinationCode);
@@ -126,7 +126,7 @@ public class OrderProcessBuildServiceTests {
         };
         var today = deliveryDate; // 先行工程の期限（前日）は過ぎているが、後続工程の期限（当日）はまだ過ぎていない
 
-        OrderProcessBuildService.Build([order], defs, [], NoDisplayNameOverrides, NoLeadDaysOverrides, 0, MakeCalculator(), today);
+        OrderProcessBuildService.Build([order], defs, [], _noDisplayNameOverrides, _noLeadDaysOverrides, 0, MakeCalculator(), today);
 
         Assert.Equal(ProcessStatus.Overdue, order.Processes.Single(p => p.SortOrder == 1).Status);
         Assert.Equal(ProcessStatus.Overdue, order.Processes.Single(p => p.SortOrder == 2).Status);

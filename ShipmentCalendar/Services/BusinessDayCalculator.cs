@@ -171,7 +171,7 @@ public class BusinessDayCalculator(IEnumerable<Holiday> holidays, double dayMinu
                 .GroupBy(r => r.DestinationCode, StringComparer.OrdinalIgnoreCase)
                 .Select(g => {
                     var latest = g.OrderByDescending(r => r.ActualDate).First();
-                    return (DestinationCode: g.Key, ActualDate: latest.ActualDate, WorkerName: latest.WorkerName, ActualWorkMinutes: g.Sum(r => r.ActualWorkMinutes));
+                    return (DestinationCode: g.Key, latest.ActualDate, latest.WorkerName, ActualWorkMinutes: g.Sum(r => r.ActualWorkMinutes));
                 });
 
             var matched = aggregated

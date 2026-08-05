@@ -157,7 +157,7 @@ public partial class ProductPerformanceWindow : Window {
     private static List<OrderProcess> BuildStandardProcesses(IEnumerable<ProcessDefinition> defs, int plannedQuantity, int dayMinutes) {
         var calculator = new BusinessDayCalculator([], dayMinutes);
         var dummyOrder = new Order { CompletionDate = DateOnly.FromDateTime(DateTime.Today), PlannedQuantity = plannedQuantity };
-        return calculator.BuildProcesses(dummyOrder, defs, new Dictionary<string, (DateOnly?, string, double)>());
+        return calculator.BuildProcesses(dummyOrder, defs, []);
     }
 
     private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();
@@ -352,7 +352,7 @@ public partial class ProductPerformanceWindow : Window {
     // 表側に収める（文字はレーン表示と同じフォントサイズのまま、スケールによるにじみもない）
     // 実績が標準の200%まで超過した場合、オーバーレイバーは(LaneBarMaxSize×2)×0.5=200pxまで伸びうるため、
     // それが列内に収まるよう列幅を確保する（収まらないとDataGridは既定でクリップしないため隣列に重なって見えてしまう）
-    private DataGridTemplateColumn BuildMatrixProcessColumn(string header, int laneIndex = -1, bool isTotal = false) {
+    private static DataGridTemplateColumn BuildMatrixProcessColumn(string header, int laneIndex = -1, bool isTotal = false) {
         // ラベルに%表記が付いた分(例: " (112%)")、以前の+10幅では収まらずDataGridの既定動作で隣列に重なるため広げてある
         var column = new DataGridTemplateColumn { Header = header, Width = LaneBarMaxSize + 60 };
         var template = new DataTemplate();

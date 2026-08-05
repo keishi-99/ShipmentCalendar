@@ -17,6 +17,10 @@ public partial class DepartmentLoadWindow : Window {
     // フォントサイズを変更してもDataGridの行高さが自動的に追従し、部署によって行高さがばらつくのを防ぐ
     private const double CellFontSize = 10.0;
     private const int MaxCellLines = 2;
+    // 静的列（部署・超過）の数。日付列はこれより後ろに動的追加される
+    private const int StaticColumnCount = 2;
+    // 超過列のColumns内インデックス（0=部署、1=超過）
+    private const int OverdueColumnIndex = 1;
 
     private readonly AppSettings _settings;
     private readonly ProductCategoryClassifier _categoryClassifier;
@@ -52,12 +56,12 @@ public partial class DepartmentLoadWindow : Window {
         await RebuildGridAsync();
     }
 
-    // 区分の切り替えで対象注文の日付範囲が変わりうるため、日付列だけを作り直す（先頭の「部署」列はXAML定義の静的列なので残す）
+    // 区分の切り替えで対象注文の日付範囲が変わりうるため、日付列だけを作り直す（先頭の「部署」「超過」列はXAML定義の静的列なので残す）
     private async void CmbCategory_SelectionChanged(object sender, SelectionChangedEventArgs e) {
         // Window.Loaded前（コンストラクタでの初期選択設定）は_allOrders等が未ロードのため何もしない
         if (!IsLoaded) return;
 
-        while (LoadGrid.Columns.Count > 1)
+        while (LoadGrid.Columns.Count > StaticColumnCount)
             LoadGrid.Columns.RemoveAt(LoadGrid.Columns.Count - 1);
         // 区分が変わると明細パネルが示していたセルの内容と現在の集計が対応しなくなるため表示をリセットする
         TxtDetailTitle.Text = "日付セルを選択すると明細を表示します";
@@ -91,9 +95,10 @@ public partial class DepartmentLoadWindow : Window {
     private async Task RebuildGridAsync() {
         var revision = ++_rebuildRevision;
 
-        var rows = DepartmentLoadCalculator.Aggregate(FilteredOrders(), _departments, _absences, _settings.DayMinutes, _settings.CongestionCautionPercent, _settings.CongestionConcentratedPercent);
+        var rows = DepartmentLoadCalculator.Aggregate(FilteredOrders(), _departments, _absences, _settings.DayMinutes, _settings.CongestionCautionPercent, _settings.CongestionConcentratedPercent, DateOnly.FromDateTime(DateTime.Today));
 
-        if (rows.Count == 0 || rows[0].Cells.Count == 0) {
+        // 対象工程が1件もない場合のみ「空」。超過工程のみで日付セルが0件の場合は「超過」列だけで表示するため空扱いにしない
+        if (rows.Count == 0) {
             TxtEmpty.Visibility = Visibility.Visible;
             TxtHeadcountWarning.Visibility = Visibility.Collapsed;
             LoadGrid.ItemsSource = null;
@@ -102,7 +107,7 @@ public partial class DepartmentLoadWindow : Window {
 
         TxtEmpty.Visibility = Visibility.Collapsed;
         TxtHeadcountWarning.Visibility = rows.Any(r => r.DepartmentId != 0 && r.Headcount <= 0) ? Visibility.Visible : Visibility.Collapsed;
-        if (LoadGrid.Columns.Count <= 1) {
+        if (LoadGrid.Columns.Count <= StaticColumnCount) {
             // カレンダー表示期間（複数年にまたがる可能性がある）をカバーする休日を取得する
             var years = rows[0].Cells.Select(c => c.Date.Year).Distinct();
             var holidayLists = await Task.WhenAll(years.Select(y => _holidayRepository.GetByYearAsync(y)));
@@ -119,7 +124,7 @@ public partial class DepartmentLoadWindow : Window {
         LoadGrid.ItemsSource = rows;
     }
 
-    private DataGridTemplateColumn BuildDateColumn(DateOnly date, int index, bool isHoliday) {
+    private static DataGridTemplateColumn BuildDateColumn(DateOnly date, int index, bool isHoliday) {
         var isToday = date == DateOnly.FromDateTime(DateTime.Today);
         var column = new DataGridTemplateColumn { Header = date.ToString("M/d"), Width = 100 };
 
@@ -191,12 +196,6 @@ public partial class DepartmentLoadWindow : Window {
 
         borderFactory.AppendChild(gridFactory);
 
-        // クリックで、このセルの集計元になった注文一覧をサイドパネルに表示する
-        borderFactory.AddHandler(MouseLeftButtonDownEvent, new MouseButtonEventHandler((sender, e) => {
-            if (sender is not FrameworkElement { DataContext: DepartmentLoadRow row } target) return;
-            ShowCellDetail(row.Cells[index]);
-        }));
-
         var template = new DataTemplate { VisualTree = borderFactory };
         column.CellTemplate = template;
         return column;
@@ -219,15 +218,28 @@ public partial class DepartmentLoadWindow : Window {
         return textFactory;
     }
 
-    private void ShowCellDetail(DepartmentLoadCell cell) {
-        if (cell.Items.Count == 0) {
+    // マウスクリック・キーボードでのセル移動のどちらでも選択セルが変わるたびに発火するため、明細更新をここに一本化する
+    private void LoadGrid_CurrentCellChanged(object sender, EventArgs e) {
+        if (LoadGrid.CurrentCell.Item is not DepartmentLoadRow row || LoadGrid.CurrentCell.Column is not { } column) return;
+
+        var columnIndex = LoadGrid.Columns.IndexOf(column);
+        if (columnIndex == OverdueColumnIndex) ShowOverdueDetail(row);
+        else if (columnIndex >= StaticColumnCount) ShowCellDetail(row.Cells[columnIndex - StaticColumnCount]);
+    }
+
+    private void ShowCellDetail(DepartmentLoadCell cell) => ShowDetail($"{cell.Date:M/d}　{cell.ProcessCount}件", cell.Items);
+
+    private void ShowOverdueDetail(DepartmentLoadRow row) => ShowDetail($"超過　{row.OverdueProcessCount}件", row.OverdueItems);
+
+    private void ShowDetail(string title, List<DepartmentLoadCellItem> items) {
+        if (items.Count == 0) {
             TxtDetailTitle.Text = "日付セルを選択すると明細を表示します";
             CellDetailGrid.ItemsSource = null;
             return;
         }
 
-        TxtDetailTitle.Text = $"{cell.Date:M/d}　{cell.ProcessCount}件";
-        CellDetailGrid.ItemsSource = cell.Items;
+        TxtDetailTitle.Text = title;
+        CellDetailGrid.ItemsSource = items;
     }
 
     private void CellDetailGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e) {
