@@ -5,7 +5,7 @@
     xmlns:local="clr-namespace:ShipmentCalendar.Views"
     xmlns:sys="clr-namespace:System;assembly=System.Runtime"
     Title="工程設定"
-    Width="820"
+    Width="1100"
     Height="560"
     WindowStartupLocation="CenterOwner">
     <Window.Resources>
@@ -181,6 +181,7 @@
             CanUserDeleteRows="False"
             HeadersVisibility="Column"
             IsEnabled="False"
+            PreviewMouseLeftButtonDown="ProcessGrid_PreviewMouseLeftButtonDown"
             SelectionMode="Single"
             SelectionUnit="Cell">
             <DataGrid.Columns>
@@ -242,7 +243,10 @@
                     ElementStyle="{StaticResource NumericColumnCellStyle}"
                     Header="警告（日前）" />
                 <!--  担当部署コンボボックス列  -->
-                <DataGridTemplateColumn Width="110" Header="担当部署">
+                <DataGridTemplateColumn
+                    x:Name="DepartmentColumn"
+                    Width="110"
+                    Header="担当部署">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <TextBlock
@@ -256,6 +260,7 @@
                             <ComboBox
                                 DisplayMemberPath="Name"
                                 ItemsSource="{Binding Tag, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                PreviewKeyDown="DepartmentComboBox_PreviewKeyDown"
                                 SelectedValue="{Binding DepartmentId, UpdateSourceTrigger=PropertyChanged}"
                                 SelectedValuePath="Id" />
                         </DataTemplate>

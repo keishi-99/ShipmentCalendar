@@ -7,6 +7,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace ShipmentCalendar.Views;
@@ -115,6 +116,68 @@ public partial class ProcessSettingWindow : Window
             await RefreshRegisteredListAsync();
             await RefreshModelCodesAsync();
         };
+    }
+
+    /// <summary>担当部署コンボボックスのドロップダウンが開いている状態で数字キーを押すと、該当インデックスの部署を選択して閉じる</summary>
+    private void DepartmentComboBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (sender is not ComboBox comboBox) return;
+
+        int digit;
+        if (e.Key >= Key.D0 && e.Key <= Key.D9)
+            digit = e.Key - Key.D0;
+        else if (e.Key >= Key.NumPad0 && e.Key <= Key.NumPad9)
+            digit = e.Key - Key.NumPad0;
+        else
+            return;
+
+        if (digit >= comboBox.Items.Count) return;
+
+        comboBox.SelectedIndex = digit;
+        comboBox.IsDropDownOpen = false;
+        e.Handled = true;
+    }
+
+    /// <summary>担当部署セルをクリックした際、選択だけでなく即座に編集モード＋コンボボックスのドロップダウンまで開く</summary>
+    private void ProcessGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (FindAncestor<DataGridCell>(e.OriginalSource as DependencyObject) is not { } cell) return;
+        if (cell.Column != DepartmentColumn || cell.IsEditing) return;
+
+        // クリック直後はまだセル選択・編集モード切替がWPF内部で処理される前なので、
+        // それらが完了した後（Background優先度）にBeginEdit/ドロップダウン展開を行う
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            ProcessGrid.BeginEdit();
+            if (FindVisualChild<ComboBox>(cell) is { } comboBox)
+                comboBox.IsDropDownOpen = true;
+        }), System.Windows.Threading.DispatcherPriority.Background);
+    }
+
+    /// <summary>指定した要素の祖先（自分自身を含む）から、指定した型に最初に一致する要素を探す</summary>
+    private static T? FindAncestor<T>(DependencyObject? element) where T : DependencyObject
+    {
+        while (element != null)
+        {
+            if (element is T match) return match;
+            element = VisualTreeHelper.GetParent(element);
+        }
+        return null;
+    }
+
+    /// <summary>指定した要素以下のビジュアルツリーから、指定した型に最初に一致する子要素を探す</summary>
+    private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+    {
+        var childCount = VisualTreeHelper.GetChildrenCount(parent);
+        for (var i = 0; i < childCount; i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T match) return match;
+
+            var result = FindVisualChild<T>(child);
+            if (result != null) return result;
+        }
+        return null;
     }
 
     /// <summary>機種コード登録マスタをDBから読み込む</summary>
@@ -257,7 +320,8 @@ public partial class ProcessSettingWindow : Window
                 .Select(i => new UnregisteredItemEntry
                 {
                     ItemNumber = i.ItemNumber,
-                    DisplayName = i.ItemName
+                    DisplayName = i.ItemName,
+                    SeibanYearMonth = i.SeibanYearMonth
                 })
                 .ToList();
         }

@@ -8,22 +8,22 @@ namespace ShipmentCalendar.Repositories;
 /// ODBC経由でVP_生産計画情報_YD / VP_受入実績情報_YD から注文データを取得するリポジトリ。
 /// </summary>
 public class OdbcOrderRepository(AppSettings settings) : IOdbcOrderRepository {
-    /// <summary>VP_生産計画情報_YD から指定した機種コード（半製品）の品目番号・品目名を重複除外して取得する（品目番号昇順、日付範囲なし）。
+    /// <summary>VP_生産計画情報_YD から指定した機種コード（半製品）の品目番号・品目名・製番年月（最新）を重複除外して取得する（品目番号昇順、日付範囲なし）。
+    /// 同一品目番号が複数行ある場合、製番年月（yymm文字列）が最も新しい行を採用する。
     /// excludeItemNumberEqualsSeiban が true の場合、品目番号+'-00'=製番 の行が1件でもある品目番号は除外する。
     /// excludeItemNumberStartsWithM が true の場合、品目番号が'M'で始まる品目番号は除外する。</summary>
-    public IEnumerable<(string ItemNumber, string ItemName)> GetSemiFinishedItemNumbersWithNames(IEnumerable<string> modelCodes, bool excludeItemNumberEqualsSeiban, bool excludeItemNumberStartsWithM) {
+    public IEnumerable<(string ItemNumber, string ItemName, string SeibanYearMonth)> GetSemiFinishedItemNumbersWithNames(IEnumerable<string> modelCodes, bool excludeItemNumberEqualsSeiban, bool excludeItemNumberStartsWithM) {
         var codes = modelCodes.Where(c => !string.IsNullOrEmpty(c)).Distinct().ToList();
         if (codes.Count == 0) return [];
 
         using var conn = OdbcConnectionFactory.Create(settings);
         conn.Open();
 
-        List<(string ItemNumber, string ItemName)> items = [];
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var latestByItemNumber = new Dictionary<string, (string ItemName, string SeibanYearMonth)>(StringComparer.OrdinalIgnoreCase);
         var excluded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         using var cmd = conn.CreateCommand();
         var placeholders = string.Join(",", codes.Select(_ => "?"));
-        cmd.CommandText = $@"SELECT 品目番号, 品目名, 製番
+        cmd.CommandText = $@"SELECT 品目番号, 品目名, 製番, 製番年月
             FROM VP_生産計画情報_YD
             WHERE 機種コード IN ({placeholders})
               AND 工場番号 = ?
@@ -45,16 +45,21 @@ public class OdbcOrderRepository(AppSettings settings) : IOdbcOrderRepository {
                 continue;
             }
 
-            if (!seen.Add(itemNumber)) continue;
-
             var itemName = reader["品目名"]?.ToString()?.Trim() ?? string.Empty;
-            items.Add((itemNumber, itemName));
+            var yearMonth = reader["製番年月"]?.ToString()?.Trim() ?? string.Empty;
+            if (!latestByItemNumber.TryGetValue(itemNumber, out var existing)
+                || string.CompareOrdinal(yearMonth, existing.SeibanYearMonth) > 0)
+                latestByItemNumber[itemNumber] = (itemName, yearMonth);
         }
 
+        IEnumerable<string> itemNumbers = latestByItemNumber.Keys;
         if (excludeItemNumberEqualsSeiban)
-            items = items.Where(i => !excluded.Contains(i.ItemNumber)).ToList();
+            itemNumbers = itemNumbers.Where(n => !excluded.Contains(n));
 
-        return items;
+        return itemNumbers
+            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
+            .Select(n => (n, latestByItemNumber[n].ItemName, latestByItemNumber[n].SeibanYearMonth))
+            .ToList();
     }
 
     /// <summary>VP_受入実績情報_YD と VP_生産計画情報_YD を製番でJOINし、指定した品目番号・受入日範囲の完了工程実績を製番横断で取得する。

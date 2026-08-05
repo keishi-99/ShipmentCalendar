@@ -8,6 +8,8 @@ public class UnregisteredItemEntry : INotifyPropertyChanged
 {
     public string ItemNumber { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
+    /// <summary>製番年月（yymm形式の文字列。複数月にまたがる場合は最新月）</summary>
+    public string SeibanYearMonth { get; set; } = string.Empty;
 
     private bool _isSelected;
     public bool IsSelected
@@ -35,7 +37,9 @@ public partial class UnregisteredItemPickerWindow : Window
     public UnregisteredItemPickerWindow(IEnumerable<UnregisteredItemEntry> items)
     {
         InitializeComponent();
-        _allItems = items.ToList();
+        _allItems = items
+            .OrderByDescending(i => i.SeibanYearMonth, StringComparer.OrdinalIgnoreCase)
+            .ToList();
         LstItems.ItemsSource = _allItems;
     }
 
@@ -51,7 +55,8 @@ public partial class UnregisteredItemPickerWindow : Window
 
         LstItems.ItemsSource = _allItems
             .Where(i => i.ItemNumber.Contains(keyword, StringComparison.OrdinalIgnoreCase)
-                     || i.DisplayName.Contains(keyword, StringComparison.OrdinalIgnoreCase))
+                     || i.DisplayName.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+                     || i.SeibanYearMonth.Contains(keyword, StringComparison.OrdinalIgnoreCase))
             .ToList();
     }
 
