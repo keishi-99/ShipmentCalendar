@@ -54,8 +54,14 @@ public partial class DepartmentLoadWindow : Window {
 
     // 区分の切り替えで対象注文の日付範囲が変わりうるため、日付列だけを作り直す（先頭の「部署」列はXAML定義の静的列なので残す）
     private async void CmbCategory_SelectionChanged(object sender, SelectionChangedEventArgs e) {
+        // Window.Loaded前（コンストラクタでの初期選択設定）は_allOrders等が未ロードのため何もしない
+        if (!IsLoaded) return;
+
         while (LoadGrid.Columns.Count > 1)
             LoadGrid.Columns.RemoveAt(LoadGrid.Columns.Count - 1);
+        // 区分が変わると明細パネルが示していたセルの内容と現在の集計が対応しなくなるため表示をリセットする
+        TxtDetailTitle.Text = "日付セルを選択すると明細を表示します";
+        CellDetailGrid.ItemsSource = null;
         await RebuildGridAsync();
     }
 

@@ -3,7 +3,7 @@ using ShipmentCalendar.Models;
 namespace ShipmentCalendar.Services;
 
 /// <summary>部署別・日別の締切集中度を集計する。
-/// 表示中の注文の未完了工程について、各工程のRequiredMinutesをStartDate〜DueDateの営業日へ
+/// 引数で渡された注文の未完了工程について、各工程のRequiredMinutesをStartDate〜DueDateの営業日へ
 /// 按分したDailyMinutes（BusinessDayCalculator.BuildProcessesで算出）を日ごとに合算し、
 /// 「その日、部署にどれだけの作業時間が発生するか」を示す。実際の着手タイミングは現場判断のため、
 /// これは実績や確定スケジュールではなく、締切に基づくリスクの目安である。
