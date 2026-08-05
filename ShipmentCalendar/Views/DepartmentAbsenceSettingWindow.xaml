@@ -25,12 +25,37 @@
 
         <DataGrid Name="AbsenceGrid"
                   AutoGenerateColumns="False" CanUserAddRows="False"
-                  IsReadOnly="False" HeadersVisibility="Column"
+                  IsReadOnly="False" HeadersVisibility="Column" RowHeight="32"
                   HorizontalScrollBarVisibility="Auto" FrozenColumnCount="2" SelectionUnit="Cell"
                   CellEditEnding="AbsenceGrid_CellEditEnding">
+            <DataGrid.Resources>
+                <!-- 全セル共通：上下中央揃え（休日列のグレーアウトスタイルにも同じ設定をコード側で追加している） -->
+                <Style TargetType="DataGridCell">
+                    <Setter Property="VerticalContentAlignment" Value="Center"/>
+                </Style>
+            </DataGrid.Resources>
             <DataGrid.Columns>
-                <DataGridTextColumn Header="部署" Binding="{Binding DepartmentName}" Width="90" IsReadOnly="True"/>
-                <DataGridTextColumn Header="基本人数" Binding="{Binding Headcount}" Width="70"/>
+                <DataGridTextColumn Header="部署" Binding="{Binding DepartmentName}" Width="90" IsReadOnly="True">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="基本人数" Binding="{Binding Headcount}" Width="70">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                    <DataGridTextColumn.EditingElementStyle>
+                        <Style TargetType="TextBox">
+                            <Setter Property="TextAlignment" Value="Right"/>
+                            <Setter Property="VerticalContentAlignment" Value="Center"/>
+                        </Style>
+                    </DataGridTextColumn.EditingElementStyle>
+                </DataGridTextColumn>
             </DataGrid.Columns>
         </DataGrid>
     </DockPanel>

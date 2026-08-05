@@ -35,9 +35,9 @@
               この部分だけDockPanelのDock指定ではなくGrid行ベースのレイアウトにする  -->
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="*" MinHeight="80"/>
+                <RowDefinition Height="200" MinHeight="80"/>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="160" MinHeight="80"/>
+                <RowDefinition Height="*" MinHeight="80"/>
             </Grid.RowDefinitions>
 
             <DataGrid Name="LoadGrid" Grid.Row="0"

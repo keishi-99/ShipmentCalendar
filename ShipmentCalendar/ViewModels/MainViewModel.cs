@@ -27,6 +27,8 @@ public partial class MainViewModel : ObservableObject {
 
     // 全件キャッシュ（フィルター用）
     private List<Order> _allOrders = [];
+    // ODBC工程定義キャッシュ（工程設定変更後の再構築でODBC再アクセスを避けるため保持）
+    private List<ProcessDefinition> _allOdbcDefs = [];
     // 製品/半製品区分の判定（フィルター・部署別締切集中度で共有）
     private ProductCategoryClassifier _categoryClassifier = new([], [], []);
     public ProductCategoryClassifier CategoryClassifier => _categoryClassifier;
@@ -183,15 +185,94 @@ public partial class MainViewModel : ObservableObject {
     [RelayCommand]
     private async Task OpenProcessSettingAsync() {
         _dialogService.ShowProcessSetting();
-        await LoadOrdersAsync();
+        await RebuildProcessesAsync();
+    }
+
+    // 読み込みが一瞬で終わる環境でもスピナーが視認できるよう最小表示時間を確保する
+    private static readonly TimeSpan _minLoadingDisplayDuration = TimeSpan.FromMilliseconds(300);
+
+    // IsLoading中に来たRebuildProcessesAsync要求を、進行中の読み込み完了後にまとめて1回だけ反映するための保留フラグ
+    private bool _pendingRebuildRequested;
+    private bool _pendingRebuildReloadHolidays;
+
+    /// <summary>工程設定・休日設定・部署設定ウィンドウでのDB変更（工程マスタ・休日・部署等）を画面に反映する。
+    /// これらのウィンドウが変更するのはSQLite側のみで受注データ自体はODBCから変わらないため、
+    /// ODBCへの再アクセスはせず、キャッシュ済みの_allOrders・_allOdbcDefsに対してBuildのみ再実行する。
+    /// 進行中の読み込み（LoadOrdersAsync/RebuildProcessesAsync）と重なった場合は、その完了を待って
+    /// 保留リクエストとして1回だけ再実行する（無視すると設定変更が反映されないまま終わってしまうため）。
+    /// 初回のLoadOrdersAsyncが未完了（ODBCキャッシュが無い）場合は通常のLoadOrdersAsyncにフォールバックする</summary>
+    private async Task RebuildProcessesAsync(bool reloadHolidays = false) {
+        if (IsLoading) {
+            _pendingRebuildRequested = true;
+            _pendingRebuildReloadHolidays |= reloadHolidays;
+            StatusMessage = "読み込み中のため、変更内容は現在の読み込み完了後に反映されます。";
+            return;
+        }
+
+        if (_lastLoaded is null) {
+            await LoadOrdersAsync();
+            return;
+        }
+
+        IsLoading = true;
+        var startedAt = DateTime.UtcNow;
+        try {
+            if (reloadHolidays) {
+                var holidays = await _holidayRepository.GetAllAsync();
+                _holidays = holidays.ToList();
+            }
+
+            var calculator = new BusinessDayCalculator(_holidays, Settings.DayMinutes);
+            var today = DateOnly.FromDateTime(DateTime.Today);
+
+            var displayNames = await Repositories.SqliteProductDisplayNameRepository.GetAllDisplayNamesAsync();
+            var leadDaysOverrides = await Repositories.SqliteProductDisplayNameRepository.GetAllCompletionDateLeadDaysAsync();
+            var dbDefs = await _processDefinitionRepository.GetAllAsync();
+
+            OrderProcessBuildService.Build(_allOrders, _allOdbcDefs, dbDefs.ToList(), displayNames, leadDaysOverrides, Settings.CompletionDateLeadDays, calculator, today);
+
+            var modelCodes = await _modelCodeRepository.GetAllAsync();
+            var registeredNumbers = await _processDefinitionRepository.GetItemNumbersAsync();
+            _categoryClassifier = new ProductCategoryClassifier(
+                modelCodes.Where(m => m.Category == "製品").Select(m => m.ModelCode),
+                modelCodes.Where(m => m.Category == "半製品").Select(m => m.ModelCode),
+                registeredNumbers);
+
+            ApplyFilter();
+
+            var elapsed = DateTime.UtcNow - startedAt;
+            if (elapsed < _minLoadingDisplayDuration)
+                await Task.Delay(_minLoadingDisplayDuration - elapsed);
+        } catch (Exception ex) {
+            StatusMessage = $"読み込みエラー：{ex.Message}";
+            System.Windows.MessageBox.Show(ex.Message, "読み込みエラー",
+                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        } finally {
+            IsLoading = false;
+            await RunPendingRebuildAsync();
+        }
+    }
+
+    /// <summary>IsLoading中に来たRebuildProcessesAsync要求を、読み込み完了直後に1回だけ反映する</summary>
+    private async Task RunPendingRebuildAsync() {
+        if (!_pendingRebuildRequested) return;
+        _pendingRebuildRequested = false;
+        var reloadHolidays = _pendingRebuildReloadHolidays;
+        _pendingRebuildReloadHolidays = false;
+        await RebuildProcessesAsync(reloadHolidays);
     }
 
     [RelayCommand]
-    private void OpenHolidaySetting() => _dialogService.ShowHolidaySetting();
+    private async Task OpenHolidaySettingAsync() {
+        _dialogService.ShowHolidaySetting();
+        await RebuildProcessesAsync(reloadHolidays: true);
+    }
 
     [RelayCommand]
     private async Task OpenDepartmentSettingAsync() {
         _dialogService.ShowDepartmentSetting();
+        // 部署削除でProcessDefinitions.DepartmentIdが0にリセットされている可能性があるため、Processesを再構築
+        await RebuildProcessesAsync();
         // 部署マスタが変更された可能性があるため、フィルターボタンリストを更新
         await RefreshDepartmentFiltersAsync();
     }
@@ -338,6 +419,7 @@ public partial class MainViewModel : ObservableObject {
 
         StatusMessage = "読み込み中...";
         IsLoading = true;
+        var startedAt = DateTime.UtcNow;
 
         const int MaxRetryCount = 3;
         const int RetryIntervalSeconds = 60;
@@ -394,6 +476,7 @@ public partial class MainViewModel : ObservableObject {
             OrderProcessBuildService.Build(orders, allOdbcDefs, dbDefs.ToList(), displayNames, leadDaysOverrides, Settings.CompletionDateLeadDays, calculator, today);
 
             _allOrders = orders.OrderBy(o => o.DeliveryDate).ToList();
+            _allOdbcDefs = allOdbcDefs;
 
             var modelCodes = await _modelCodeRepository.GetAllAsync();
             var registeredNumbers = await _processDefinitionRepository.GetItemNumbersAsync();
@@ -410,12 +493,19 @@ public partial class MainViewModel : ObservableObject {
             if (holidaySyncFailed)
                 StatusMessage += "（休日データの自動同期に失敗したため、既存の休日データで計算しています）";
 
+            // ODBCが高速に応答する環境でもスピナーが視認できるよう最小表示時間を確保する
+            // （通常はODBC通信自体が300ms以上かかるため、ここでの待機はほぼ発生しない）
+            var elapsed = DateTime.UtcNow - startedAt;
+            if (elapsed < _minLoadingDisplayDuration)
+                await Task.Delay(_minLoadingDisplayDuration - elapsed);
+
         } catch (Exception ex) {
             StatusMessage = $"読み込みエラー：{ex.Message}";
             System.Windows.MessageBox.Show(ex.Message, "読み込みエラー",
                 System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
         } finally {
             IsLoading = false;
+            await RunPendingRebuildAsync();
         }
     }
 

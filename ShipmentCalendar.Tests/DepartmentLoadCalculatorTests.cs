@@ -279,7 +279,8 @@ public class DepartmentLoadCalculatorTests
         var rows = Aggregate([order], departments, absences);
 
         var cell = rows.Single().Cells.Single(c => c.Date == dueDate);
-        Assert.Contains("50%\n欠員1人", cell.DisplayText);
+        Assert.Equal("50%", cell.FulfillmentPercentText);
+        Assert.Equal("欠1", cell.AbsentCellText);
     }
 
     [Fact]
@@ -293,7 +294,8 @@ public class DepartmentLoadCalculatorTests
 
         var cell = rows.Single().Cells.Single(c => c.Date == dueDate);
         Assert.Equal(120, cell.ExcessMinutes);
-        Assert.Contains("125%(+2.0h)", cell.DisplayText);
+        Assert.Equal("125%", cell.FulfillmentPercentText);
+        Assert.Equal("(+2.0h)", cell.OvertimeText);
     }
 
     [Fact]
@@ -306,7 +308,24 @@ public class DepartmentLoadCalculatorTests
 
         var cell = rows.Single().Cells.Single(c => c.Date == dueDate);
         Assert.Null(cell.ExcessMinutes);
-        Assert.DoesNotContain("+", cell.DisplayText);
+        Assert.Equal(string.Empty, cell.OvertimeText);
+    }
+
+    [Fact]
+    public void Aggregate_Cell_FulfillmentCellTextEmptyWhenNoProcesses() {
+        // 工程が無い日でも基本人数が設定されていれば充足率0%が算出されるが、対象工程が無いためセル表示では省略する
+        var date1 = new DateOnly(2026, 6, 30);
+        var emptyDate = new DateOnly(2026, 7, 1);
+        var date2 = new DateOnly(2026, 7, 2);
+        var order = MakeOrder("M1", MakeProcess(1, date1, 240), MakeProcess(1, date2, 100, destinationCode: "P2"));
+        var departments = new[] { new Department { Id = 1, Name = "総務部", Headcount = 2 } };
+
+        var rows = Aggregate([order], departments);
+
+        var emptyCell = rows.Single().Cells.Single(c => c.Date == emptyDate);
+        Assert.Equal(0, emptyCell.ProcessCount);
+        Assert.Equal(0, emptyCell.FulfillmentPercent);
+        Assert.Equal(string.Empty, emptyCell.FulfillmentPercentText);
     }
 
     [Fact]
