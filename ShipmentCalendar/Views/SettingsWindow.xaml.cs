@@ -1,6 +1,7 @@
 using ShipmentCalendar.Models;
 using ShipmentCalendar.Services;
 using ShipmentCalendar.ViewModels;
+using System.IO;
 using System.Windows;
 
 namespace ShipmentCalendar.Views;
@@ -64,13 +65,25 @@ public partial class SettingsWindow : Window
         if (!int.TryParse(TxtDayMinutes.Text, out var dayMinutes) || dayMinutes <= 0 || dayMinutes > 1440)
             errors.Add("1日の稼働時間（分）は1〜1440の整数で入力してください。");
 
+        var newSharedDataFolderPath = TxtSharedDataFolderPath.Text.Trim();
+        if (!string.IsNullOrEmpty(newSharedDataFolderPath))
+        {
+            try
+            {
+                Directory.CreateDirectory(newSharedDataFolderPath);
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"共有データフォルダにアクセスできません: {ex.Message}");
+            }
+        }
+
         if (errors.Count > 0)
         {
             MessageBox.Show(string.Join("\n", errors), "入力エラー", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        var newSharedDataFolderPath = TxtSharedDataFolderPath.Text.Trim();
         var sharedDataFolderPathChanged = newSharedDataFolderPath != _viewModel.Settings.SharedDataFolderPath;
 
         _viewModel.Settings.OdbcDsn = TxtOdbcDsn.Text.Trim();
@@ -85,12 +98,20 @@ public partial class SettingsWindow : Window
         _viewModel.SaveSettings();
         DialogResult = true;
 
-        await _viewModel.LoadOrdersAsync();
-
         // 共有データフォルダはDatabaseInitializer/EditLockServiceの静的フィールドとして
-        // アプリ起動時に一度だけ解決されるため、変更してもこのプロセス内では反映されない
+        // アプリ起動時に一度だけ解決されるため、変更してもこのプロセス内では反映されない。
+        // 古い設定のまま操作を続けさせても意味がないため、案内のうえ強制的に終了させる
+        // （これから終了するため、ODBCへの受注データ再取得(LoadOrdersAsync)は行わずスキップする）
         if (sharedDataFolderPathChanged)
-            MessageBox.Show("共有データフォルダの設定を反映するには、アプリを再起動してください。", "再起動が必要です", MessageBoxButton.OK, MessageBoxImage.Information);
+        {
+            MessageBox.Show(
+                "共有データフォルダの設定を反映するには、アプリの再起動が必要です。\nOKを押すとアプリを終了しますので、もう一度起動してください。",
+                "再起動してください", MessageBoxButton.OK, MessageBoxImage.Information);
+            Application.Current.Shutdown();
+            return;
+        }
+
+        await _viewModel.LoadOrdersAsync();
     }
 
     private void BtnBrowseSharedDataFolder_Click(object sender, RoutedEventArgs e)

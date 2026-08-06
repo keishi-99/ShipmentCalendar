@@ -35,10 +35,17 @@ public static class AppSettingsService {
         File.WriteAllText(_settingsPath, json);
     }
 
+    private static string? _cachedSharedDataDir;
+
     /// <summary>マスタDB・編集ロックファイルを配置するフォルダを返す。
-    /// 設定で共有フォルダが指定されていればそれを、未設定ならローカルのdataフォルダを返す</summary>
+    /// 設定で共有フォルダが指定されていればそれを、未設定ならローカルのdataフォルダを返す。
+    /// 初回呼び出し時の値をプロセス内でキャッシュし、以降は設定が変更されても同じ値を返す
+    /// （DatabaseInitializerとEditLockServiceが、同じプロセス内で常に同じパスを使うようにするため）</summary>
     public static string GetSharedDataDir() {
+        if (_cachedSharedDataDir != null) return _cachedSharedDataDir;
+
         var sharedPath = Load().SharedDataFolderPath;
-        return string.IsNullOrWhiteSpace(sharedPath) ? _dataDir : sharedPath;
+        _cachedSharedDataDir = string.IsNullOrWhiteSpace(sharedPath) ? _dataDir : sharedPath;
+        return _cachedSharedDataDir;
     }
 }

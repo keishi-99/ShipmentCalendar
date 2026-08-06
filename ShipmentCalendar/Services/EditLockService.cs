@@ -3,7 +3,8 @@ using System.Text.Json;
 
 namespace ShipmentCalendar.Services;
 
-/// <summary>複数PCからの同時編集を防ぐための共有ロック（dataフォルダにロックファイルを作成して管理する）</summary>
+/// <summary>複数PCからの同時編集を防ぐための共有ロック（共有データフォルダにロックファイルを作成して管理する。
+/// 共有フォルダが未設定の場合はローカルのdataフォルダを使用する）</summary>
 public static class EditLockService {
     private static readonly string _lockPath = Path.Combine(AppSettingsService.GetSharedDataDir(), "edit.lock");
 
@@ -16,20 +17,30 @@ public static class EditLockService {
 
     public readonly record struct AcquireResult(bool Acquired, string? HeldByMessage);
 
-    /// <summary>編集ロックの取得を試みる。取得できない場合は、現在の保持者を説明するメッセージを返す</summary>
+    /// <summary>編集ロックの取得を試みる。取得できない場合は、現在の保持者を説明するメッセージを返す。
+    /// 「存在しなければ作成」をOSレベルでアトミックに行うことで、複数PCがほぼ同時に取得を試みても
+    /// どちらか一方しか成功しないようにする（読み込み→判定→書き込みの間に競合状態が生まれるのを防ぐ）</summary>
     public static AcquireResult TryAcquire() {
         Directory.CreateDirectory(Path.GetDirectoryName(_lockPath)!);
 
-        var existing = ReadLockFile();
-
-        if (existing != null) {
-            var now = DateTime.Now;
-            if (now - existing.LastHeartbeat < StaleTimeout) {
-                return new AcquireResult(false, $"編集中のためロックできません。{existing.UserName}さんが{existing.MachineName}で編集中です。");
-            }
+        var info = new LockInfo(Environment.UserName, Environment.MachineName, DateTime.Now);
+        if (TryCreateLockFileExclusively(info)) {
+            _heldByThisProcess = true;
+            return new AcquireResult(true, null);
         }
 
-        WriteLockFile(new LockInfo(Environment.UserName, Environment.MachineName, DateTime.Now));
+        var existing = ReadLockFile();
+        if (existing != null && DateTime.Now - existing.LastHeartbeat < StaleTimeout) {
+            return new AcquireResult(false, $"編集中のためロックできません。{existing.UserName}さんが{existing.MachineName}で編集中です。");
+        }
+
+        // ここに来るのは、ロックファイルはあるが期限切れ（クラッシュ等で残った）とみなせる場合。
+        // 削除してから改めてアトミックに作成し直す
+        try { File.Delete(_lockPath); } catch { /* 他PCが同時に削除・再取得している可能性があるため無視する */ }
+
+        if (!TryCreateLockFileExclusively(info))
+            return new AcquireResult(false, "編集中のためロックできません（他のPCと取得のタイミングが重なりました。もう一度お試しください）。");
+
         _heldByThisProcess = true;
         return new AcquireResult(true, null);
     }
@@ -40,11 +51,30 @@ public static class EditLockService {
         WriteLockFile(new LockInfo(Environment.UserName, Environment.MachineName, DateTime.Now));
     }
 
-    /// <summary>編集ロックを解放する</summary>
+    /// <summary>編集ロックを解放する。ロックファイルの内容を確認し、自分が取得したロックのままである場合のみ削除する
+    /// （タイムアウトで他PCに正当に引き継がれた後は、誤って相手のロックを削除しないようにする）</summary>
     public static void Release() {
         if (!_heldByThisProcess) return;
-        try { File.Delete(_lockPath); } catch { /* 削除に失敗してもStaleTimeout経過で自然に解放される */ }
         _heldByThisProcess = false;
+
+        var existing = ReadLockFile();
+        if (existing == null || existing.UserName != Environment.UserName || existing.MachineName != Environment.MachineName)
+            return;
+
+        try { File.Delete(_lockPath); } catch { /* 削除に失敗してもStaleTimeout経過で自然に解放される */ }
+    }
+
+    /// <summary>ロックファイルが存在しない場合のみアトミックに作成する。
+    /// 既に存在する場合は例外になるため、複数PCが同時に作成を試みても成功するのは1つだけになる</summary>
+    private static bool TryCreateLockFileExclusively(LockInfo info) {
+        try {
+            using var stream = new FileStream(_lockPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            using var writer = new StreamWriter(stream);
+            writer.Write(JsonSerializer.Serialize(info));
+            return true;
+        } catch (IOException) {
+            return false;
+        }
     }
 
     private static LockInfo? ReadLockFile() {

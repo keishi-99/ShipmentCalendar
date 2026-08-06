@@ -20,8 +20,6 @@ public partial class App : Application
             return;
         }
 
-        DatabaseInitializer.Initialize();
-
         Exit += (_, _) => { _mutex?.ReleaseMutex(); _mutex?.Dispose(); };
 
         // UIスレッドの未処理例外
@@ -39,5 +37,9 @@ public partial class App : Application
                     "エラー", MessageBoxButton.OK, MessageBoxImage.Error));
             args.SetObserved();
         };
+
+        // DB初期化は共有ネットワークフォルダに接続する可能性があり失敗しうるため、
+        // 未処理例外ハンドラの登録後に呼び出し、生のクラッシュではなくエラーダイアログで通知されるようにする
+        DatabaseInitializer.Initialize();
     }
 }
