@@ -4,7 +4,12 @@ using System.IO;
 
 namespace ShipmentCalendar.Data;
 
-/// <summary>SQLiteデータベース初期化・接続管理（工程マスタ・休日のみ管理）</summary>
+/// <summary>SQLiteデータベース初期化・接続管理（工程マスタ・休日のみ管理）。
+/// 既存テーブルへの列追加マイグレーションは行わない（複数PC同時起動時の競合を避けるため）。
+/// そのため、このバージョンより前に作成された共有DBを引き続き使う場合は、
+/// 管理者が事前に手動でスキーマを最新化しておく必要がある
+/// （例: ALTER TABLE Departments ADD COLUMN Headcount INTEGER NOT NULL DEFAULT 0;）。
+/// 新規に作成する共有DBはCREATE TABLE IF NOT EXISTSの定義がそのまま最新スキーマになるため対応不要</summary>
 public static class DatabaseInitializer {
     private static readonly string? _dataDir = AppSettingsService.GetSharedDataDir();
 
