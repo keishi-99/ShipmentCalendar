@@ -252,6 +252,7 @@
                             <ComboBox
                                 DisplayMemberPath="Name"
                                 ItemsSource="{Binding Tag, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                PreviewKeyDown="DepartmentComboBox_PreviewKeyDown"
                                 SelectedValue="{Binding DepartmentId, UpdateSourceTrigger=PropertyChanged}"
                                 SelectedValuePath="Id" />
                         </DataTemplate>

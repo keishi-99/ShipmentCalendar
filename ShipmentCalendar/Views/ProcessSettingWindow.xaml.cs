@@ -117,21 +117,42 @@ public partial class ProcessSettingWindow : Window
             return;
         }
 
-        if (DepartmentsSource is not { } depts) return;
+        if (ProcessGrid.CurrentCell.Item is not ProcessDefinition definition) return;
+        if (TrySetDepartmentByDigitKey(definition, e.Key))
+            e.Handled = true;
+    }
+
+    /// <summary>担当部署ComboBoxのドロップダウンが開いている間は、キー入力がComboBox自身の
+    /// ポップアップ内で処理されProcessGrid側のPreviewKeyDownまで届かないことがあるため、
+    /// ComboBox自体にも同じ数字キー処理を登録しておく（ProcessGrid_PreviewKeyDownで既に
+    /// 処理済みの場合はe.Handledが立っているため、ここは呼ばれない）</summary>
+    private void DepartmentComboBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (sender is not ComboBox { DataContext: ProcessDefinition definition } comboBox) return;
+        if (!TrySetDepartmentByDigitKey(definition, e.Key)) return;
+
+        comboBox.IsDropDownOpen = false;
+        e.Handled = true;
+    }
+
+    /// <summary>数字キー（D0-D9 / NumPad0-NumPad9）をDepartmentsSource内のインデックスとして扱い、
+    /// 該当する部署のIdをdefinition.DepartmentIdに直接セットする。処理した場合はtrueを返す</summary>
+    private static bool TrySetDepartmentByDigitKey(ProcessDefinition definition, Key key)
+    {
+        if (DepartmentsSource is not { } depts) return false;
 
         int digit;
-        if (e.Key >= Key.D0 && e.Key <= Key.D9)
-            digit = e.Key - Key.D0;
-        else if (e.Key >= Key.NumPad0 && e.Key <= Key.NumPad9)
-            digit = e.Key - Key.NumPad0;
+        if (key >= Key.D0 && key <= Key.D9)
+            digit = key - Key.D0;
+        else if (key >= Key.NumPad0 && key <= Key.NumPad9)
+            digit = key - Key.NumPad0;
         else
-            return;
+            return false;
 
-        if (digit >= depts.Count) return;
-        if (ProcessGrid.CurrentCell.Item is not ProcessDefinition definition) return;
+        if (digit >= depts.Count) return false;
 
         definition.DepartmentId = depts[digit].Id;
-        e.Handled = true;
+        return true;
     }
 
     /// <summary>担当部署列のCurrentCellを上下に1行移動し、実際にキーボードフォーカスも新しいセルへ移す</summary>
