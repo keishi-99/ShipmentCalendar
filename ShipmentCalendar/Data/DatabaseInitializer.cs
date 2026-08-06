@@ -14,7 +14,7 @@ public static class DatabaseInitializer {
     public static bool IsAvailable => _dbPath != null;
 
     public static string ConnectionString => _dbPath != null
-        ? $"Data Source={_dbPath}"
+        ? new SqliteConnectionStringBuilder { DataSource = _dbPath, DefaultTimeout = 5 }.ToString()
         : throw new InvalidOperationException("共有データフォルダが設定されていません。設定 > 基本設定 から設定してください。");
 
     public static void Initialize() {
@@ -80,33 +80,5 @@ public static class DatabaseInitializer {
 
         ";
         command.ExecuteNonQuery();
-
-        // CREATE TABLE IF NOT EXISTSは既存テーブルには列を追加しないため、既存DBへの列追加はALTER TABLEで個別に行う
-        MigrateAddColumnIfMissing(connection, "Departments", "Headcount", "INTEGER NOT NULL DEFAULT 0");
-    }
-
-    private static void MigrateAddColumnIfMissing(SqliteConnection connection, string table, string column, string columnDefinition) {
-        bool exists;
-        using (var checkCommand = connection.CreateCommand()) {
-            checkCommand.CommandText = $"PRAGMA table_info({table})";
-            using var reader = checkCommand.ExecuteReader();
-            exists = false;
-            while (reader.Read()) {
-                if (string.Equals(reader.GetString(1), column, StringComparison.OrdinalIgnoreCase)) {
-                    exists = true;
-                    break;
-                }
-            }
-        }
-        if (exists) return;
-
-        using var alterCommand = connection.CreateCommand();
-        alterCommand.CommandText = $"ALTER TABLE {table} ADD COLUMN {column} {columnDefinition}";
-        try {
-            alterCommand.ExecuteNonQuery();
-        } catch (SqliteException ex) when (ex.Message.Contains("duplicate column name", StringComparison.OrdinalIgnoreCase)) {
-            // 共有DBに対して複数PCがほぼ同時に起動した場合、他PCが先にこの列を追加済みであることがある。
-            // 上のexistsチェックと実際のALTER TABLEの間には排他がないため、ここで発生しうる
-        }
     }
 }
