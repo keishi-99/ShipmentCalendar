@@ -35,8 +35,11 @@ public static class EditLockService {
         }
 
         // ここに来るのは、ロックファイルはあるが期限切れ（クラッシュ等で残った）とみなせる場合。
-        // 削除してから改めてアトミックに作成し直す
-        try { File.Delete(_lockPath); } catch { /* 他PCが同時に削除・再取得している可能性があるため無視する */ }
+        // 削除の直前にもう一度読み直し、stale判定時と同じ内容のままであることを確認してから削除する
+        // （他PCが直前に取得し直した新しいロックを、内容を確認せず削除してしまわないようにするため）
+        if (existing != null && ReadLockFile() == existing) {
+            try { File.Delete(_lockPath); } catch { /* 他PCが同時に削除・再取得している可能性があるため無視する */ }
+        }
 
         if (!TryCreateLockFileExclusively(info))
             return new AcquireResult(false, "編集中のためロックできません（他のPCと取得のタイミングが重なりました。もう一度お試しください）。");
@@ -45,9 +48,12 @@ public static class EditLockService {
         return new AcquireResult(true, null);
     }
 
-    /// <summary>編集継続中であることを示すため、ロックファイルの最終更新時刻を更新する（長時間の編集がタイムアウトで奪われないようにする）</summary>
+    /// <summary>編集継続中であることを示すため、ロックファイルの最終更新時刻を更新する（長時間の編集がタイムアウトで奪われないようにする）。
+    /// 既に他PCに正当に引き継がれている場合は、誤って上書きしないよう何もしない</summary>
     public static void RefreshHeartbeat() {
         if (!_heldByThisProcess) return;
+        if (!StillOwnsLock()) { _heldByThisProcess = false; return; }
+
         WriteLockFile(new LockInfo(Environment.UserName, Environment.MachineName, DateTime.Now));
     }
 
@@ -57,11 +63,14 @@ public static class EditLockService {
         if (!_heldByThisProcess) return;
         _heldByThisProcess = false;
 
-        var existing = ReadLockFile();
-        if (existing == null || existing.UserName != Environment.UserName || existing.MachineName != Environment.MachineName)
-            return;
-
+        if (!StillOwnsLock()) return;
         try { File.Delete(_lockPath); } catch { /* 削除に失敗してもStaleTimeout経過で自然に解放される */ }
+    }
+
+    /// <summary>ロックファイルの内容が、自分（このユーザー・このマシン）が取得したものと一致するか確認する</summary>
+    private static bool StillOwnsLock() {
+        var existing = ReadLockFile();
+        return existing != null && existing.UserName == Environment.UserName && existing.MachineName == Environment.MachineName;
     }
 
     /// <summary>ロックファイルが存在しない場合のみアトミックに作成する。
