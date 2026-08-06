@@ -71,10 +71,16 @@ public partial class SettingsWindow : Window
             try
             {
                 Directory.CreateDirectory(newSharedDataFolderPath);
+
+                // フォルダの作成に成功しても、権限不足等でファイルの書き込みができない場合があるため、
+                // 実際にファイルを作成・削除して書き込み可否まで確認する
+                var probePath = Path.Combine(newSharedDataFolderPath, $".write_test_{Guid.NewGuid():N}.tmp");
+                using (File.Create(probePath)) { }
+                File.Delete(probePath);
             }
             catch (Exception ex)
             {
-                errors.Add($"共有データフォルダにアクセスできません: {ex.Message}");
+                errors.Add($"共有データフォルダに書き込めません: {ex.Message}");
             }
         }
 
@@ -124,9 +130,17 @@ public partial class SettingsWindow : Window
         if (dialog.ShowDialog() != true) return;
 
         TxtSharedDataFolderPath.Text = dialog.FolderName;
+        UpdateSharedDataFolderPathWarning();
+    }
 
-        // ドライブレター経由(Z:\...)だとPCごとにマッピング先が異なる可能性があるため、UNCパスでない場合は注意を促す
-        TxtSharedDataFolderStatus.Text = dialog.FolderName.StartsWith(@"\\")
+    private void TxtSharedDataFolderPath_LostFocus(object sender, RoutedEventArgs e) => UpdateSharedDataFolderPathWarning();
+
+    /// <summary>ドライブレター経由(Z:\...)だとPCごとにマッピング先が異なる可能性があるため、UNCパスでない場合は注意を促す。
+    /// 「参照...」での選択時と、テキストボックスへの手入力時の両方から呼ばれる</summary>
+    private void UpdateSharedDataFolderPathWarning()
+    {
+        var path = TxtSharedDataFolderPath.Text.Trim();
+        TxtSharedDataFolderStatus.Text = string.IsNullOrEmpty(path) || path.StartsWith(@"\\")
             ? string.Empty
             : "選択したフォルダはUNCパス（\\\\サーバー名\\共有名 の形式）ではありません。他のPCから見ても同じ場所を指すか確認してください。";
     }

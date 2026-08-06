@@ -95,6 +95,11 @@ public static class DatabaseInitializer {
 
         using var alterCommand = connection.CreateCommand();
         alterCommand.CommandText = $"ALTER TABLE {table} ADD COLUMN {column} {columnDefinition}";
-        alterCommand.ExecuteNonQuery();
+        try {
+            alterCommand.ExecuteNonQuery();
+        } catch (SqliteException ex) when (ex.Message.Contains("duplicate column name", StringComparison.OrdinalIgnoreCase)) {
+            // 共有DBに対して複数PCがほぼ同時に起動した場合、他PCが先にこの列を追加済みであることがある。
+            // 上のexistsチェックと実際のALTER TABLEの間には排他がないため、ここで発生しうる
+        }
     }
 }

@@ -239,6 +239,7 @@
                     Width="220"
                     Padding="4"
                     VerticalContentAlignment="Center"
+                    LostFocus="TxtSharedDataFolderPath_LostFocus"
                     ToolTip="複数PCでマスタデータを共有する場合の共有フォルダパス（例: \\server\share\ShipmentCalendarData）。空欄ならローカルのdataフォルダを使用" />
                 <Button
                     Margin="4,0,0,0"

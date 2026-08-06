@@ -33,15 +33,25 @@ public class DialogService : IDialogService {
             return;
         }
 
+        var window = createWindow();
+        window.Owner = Owner;
+
         var heartbeatTimer = new System.Windows.Threading.DispatcherTimer {
             Interval = TimeSpan.FromMinutes(5)
         };
-        heartbeatTimer.Tick += (_, _) => EditLockService.RefreshHeartbeat();
+        heartbeatTimer.Tick += (_, _) => {
+            if (EditLockService.RefreshHeartbeat()) return;
+
+            // 他PCに正当に引き継がれてしまった場合、気づかず編集を続けさせないよう画面を強制的に閉じる
+            heartbeatTimer.Stop();
+            MessageBox.Show(
+                "編集ロックが失われたため、この画面を閉じます（他のPCに引き継がれた可能性があります）。",
+                "編集ロックが失われました", MessageBoxButton.OK, MessageBoxImage.Warning);
+            window.Close();
+        };
         heartbeatTimer.Start();
 
         try {
-            var window = createWindow();
-            window.Owner = Owner;
             window.ShowDialog();
         } finally {
             heartbeatTimer.Stop();
