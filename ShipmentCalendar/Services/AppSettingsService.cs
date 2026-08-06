@@ -34,4 +34,11 @@ public static class AppSettingsService {
         Directory.CreateDirectory(_dataDir);
         File.WriteAllText(_settingsPath, json);
     }
+
+    /// <summary>マスタDB・編集ロックファイルを配置するフォルダを返す。
+    /// 設定で共有フォルダが指定されていればそれを、未設定ならローカルのdataフォルダを返す</summary>
+    public static string GetSharedDataDir() {
+        var sharedPath = Load().SharedDataFolderPath;
+        return string.IsNullOrWhiteSpace(sharedPath) ? _dataDir : sharedPath;
+    }
 }

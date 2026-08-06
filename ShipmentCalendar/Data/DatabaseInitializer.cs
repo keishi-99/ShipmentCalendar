@@ -1,12 +1,12 @@
 using Microsoft.Data.Sqlite;
+using ShipmentCalendar.Services;
 using System.IO;
 
 namespace ShipmentCalendar.Data;
 
 /// <summary>SQLiteデータベース初期化・接続管理（工程マスタ・休日のみ管理）</summary>
 public static class DatabaseInitializer {
-    private static readonly string _dataDir = Path.Combine(
-        AppDomain.CurrentDomain.BaseDirectory, "data");
+    private static readonly string _dataDir = AppSettingsService.GetSharedDataDir();
 
     private static readonly string _dbPath = Path.Combine(_dataDir, "shipment.db");
 

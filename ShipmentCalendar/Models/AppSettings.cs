@@ -7,6 +7,9 @@ public class AppSettings
     public string OdbcDsn { get; set; } = string.Empty;
     /// <summary>ODBCから受注データ・休日データを取得する際の絞り込みに使う工場番号</summary>
     public string OdbcFactoryNumber { get; set; } = string.Empty;
+    /// <summary>マスタDB・編集ロックファイルを配置する共有フォルダのパス（例: \\server\share\ShipmentCalendarData）。
+    /// 空欄ならローカルのdataフォルダを使用する。変更はアプリ再起動後に反映される</summary>
+    public string SharedDataFolderPath { get; set; } = string.Empty;
     /// <summary>自動更新間隔（分）。0=自動更新なし</summary>
     public int AutoRefreshMinutes { get; set; } = 5;
     /// <summary>表示する納期の範囲（今日から何日先まで）</summary>

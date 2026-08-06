@@ -22,6 +22,7 @@ public partial class SettingsWindow : Window
         TxtRangeDays.Text = settings.DeliveryDateRangeDays.ToString();
         TxtCompletionLeadDays.Text = settings.CompletionDateLeadDays.ToString();
         TxtDayMinutes.Text = settings.DayMinutes.ToString();
+        TxtSharedDataFolderPath.Text = settings.SharedDataFolderPath;
     }
 
     private AppSettings BuildSettingsFromInputs() => new()
@@ -69,6 +70,9 @@ public partial class SettingsWindow : Window
             return;
         }
 
+        var newSharedDataFolderPath = TxtSharedDataFolderPath.Text.Trim();
+        var sharedDataFolderPathChanged = newSharedDataFolderPath != _viewModel.Settings.SharedDataFolderPath;
+
         _viewModel.Settings.OdbcDsn = TxtOdbcDsn.Text.Trim();
         _viewModel.Settings.OdbcFactoryNumber = TxtFactoryNumber.Text.Trim();
         _viewModel.Settings.AutoRefreshMinutes = refreshMinutes;
@@ -76,11 +80,34 @@ public partial class SettingsWindow : Window
         _viewModel.Settings.DeliveryDateRangeDays = rangeDays;
         _viewModel.Settings.CompletionDateLeadDays = leadDays;
         _viewModel.Settings.DayMinutes = dayMinutes;
+        _viewModel.Settings.SharedDataFolderPath = newSharedDataFolderPath;
 
         _viewModel.SaveSettings();
         DialogResult = true;
 
         await _viewModel.LoadOrdersAsync();
+
+        // 共有データフォルダはDatabaseInitializer/EditLockServiceの静的フィールドとして
+        // アプリ起動時に一度だけ解決されるため、変更してもこのプロセス内では反映されない
+        if (sharedDataFolderPathChanged)
+            MessageBox.Show("共有データフォルダの設定を反映するには、アプリを再起動してください。", "再起動が必要です", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    private void BtnBrowseSharedDataFolder_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFolderDialog
+        {
+            Title = "共有データフォルダを選択",
+            InitialDirectory = TxtSharedDataFolderPath.Text
+        };
+        if (dialog.ShowDialog() != true) return;
+
+        TxtSharedDataFolderPath.Text = dialog.FolderName;
+
+        // ドライブレター経由(Z:\...)だとPCごとにマッピング先が異なる可能性があるため、UNCパスでない場合は注意を促す
+        TxtSharedDataFolderStatus.Text = dialog.FolderName.StartsWith(@"\\")
+            ? string.Empty
+            : "選択したフォルダはUNCパス（\\\\サーバー名\\共有名 の形式）ではありません。他のPCから見ても同じ場所を指すか確認してください。";
     }
 
     private void BtnCancel_Click(object sender, RoutedEventArgs e) => DialogResult = false;
