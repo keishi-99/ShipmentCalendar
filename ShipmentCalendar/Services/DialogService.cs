@@ -29,7 +29,7 @@ public class DialogService : IDialogService {
     private void ShowWithEditLock(Func<Window> createWindow) {
         var result = EditLockService.TryAcquire();
         if (!result.Acquired) {
-            MessageBox.Show(result.HeldByMessage, "編集中のため開けません", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(result.HeldByMessage, "開けません", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 

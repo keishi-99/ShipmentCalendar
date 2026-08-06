@@ -3,10 +3,9 @@ using System.Text.Json;
 
 namespace ShipmentCalendar.Services;
 
-/// <summary>複数PCからの同時編集を防ぐための共有ロック（共有データフォルダにロックファイルを作成して管理する。
-/// 共有フォルダが未設定の場合はローカルのdataフォルダを使用する）</summary>
+/// <summary>複数PCからの同時編集を防ぐための共有ロック（共有データフォルダにロックファイルを作成して管理する）</summary>
 public static class EditLockService {
-    private static readonly string _lockPath = Path.Combine(AppSettingsService.GetSharedDataDir(), "edit.lock");
+    private static readonly string? _lockPath = AppSettingsService.GetSharedDataDir() is { } dir ? Path.Combine(dir, "edit.lock") : null;
 
     /// <summary>この時間だけハートビートが更新されなければ、クラッシュ等で残ったロックとみなして上書きを許可する</summary>
     private static readonly TimeSpan StaleTimeout = TimeSpan.FromMinutes(30);
@@ -22,6 +21,9 @@ public static class EditLockService {
     /// 排他ハンドルを保持したまま行うことで、複数PCがほぼ同時に取得を試みても
     /// どちらか一方しか成功しないようにする</summary>
     public static AcquireResult TryAcquire() {
+        if (_lockPath == null)
+            return new AcquireResult(false, "共有データフォルダが設定されていません。設定 > 基本設定 から設定してください。");
+
         Directory.CreateDirectory(Path.GetDirectoryName(_lockPath)!);
 
         var info = new LockInfo(Environment.UserName, Environment.MachineName, DateTime.Now);
@@ -61,7 +63,7 @@ public static class EditLockService {
     /// 既に存在する場合は例外になるため、複数PCが同時に作成を試みても成功するのは1つだけになる</summary>
     private static bool TryCreateLockFileExclusively(LockInfo info) {
         try {
-            using var stream = new FileStream(_lockPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            using var stream = new FileStream(_lockPath!, FileMode.CreateNew, FileAccess.Write, FileShare.None);
             using var writer = new StreamWriter(stream);
             writer.Write(JsonSerializer.Serialize(info));
             return true;
@@ -77,7 +79,7 @@ public static class EditLockService {
     private static bool TryTakeOverIfNotActivelyHeld(LockInfo newInfo, out string? heldByMessage) {
         heldByMessage = null;
         try {
-            using var stream = new FileStream(_lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+            using var stream = new FileStream(_lockPath!, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
             var current = TryParseLockInfo(ReadAllText(stream));
 
             if (current != null && DateTime.Now - current.LastHeartbeat < StaleTimeout) {
@@ -95,7 +97,7 @@ public static class EditLockService {
     /// <summary>ロックファイルを排他アクセスで開いたまま、自分が現在の所有者であることを確認したうえでハートビートを更新する</summary>
     private static bool TryRefreshIfStillOwned(LockInfo newInfo) {
         try {
-            using var stream = new FileStream(_lockPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+            using var stream = new FileStream(_lockPath!, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
             var current = TryParseLockInfo(ReadAllText(stream));
             if (current == null || current.UserName != Environment.UserName || current.MachineName != Environment.MachineName)
                 return false;
@@ -110,7 +112,7 @@ public static class EditLockService {
     /// <summary>ロックファイルを排他アクセスで開いたまま、自分が現在の所有者であることを確認したうえで解放する（空にする）</summary>
     private static void ReleaseIfStillOwned() {
         try {
-            using var stream = new FileStream(_lockPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+            using var stream = new FileStream(_lockPath!, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
             var current = TryParseLockInfo(ReadAllText(stream));
             if (current == null || current.UserName != Environment.UserName || current.MachineName != Environment.MachineName)
                 return;

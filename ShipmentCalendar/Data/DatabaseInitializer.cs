@@ -6,13 +6,20 @@ namespace ShipmentCalendar.Data;
 
 /// <summary>SQLiteデータベース初期化・接続管理（工程マスタ・休日のみ管理）</summary>
 public static class DatabaseInitializer {
-    private static readonly string _dataDir = AppSettingsService.GetSharedDataDir();
+    private static readonly string? _dataDir = AppSettingsService.GetSharedDataDir();
 
-    private static readonly string _dbPath = Path.Combine(_dataDir, "shipment.db");
+    private static readonly string? _dbPath = _dataDir != null ? Path.Combine(_dataDir, "shipment.db") : null;
 
-    public static string ConnectionString => $"Data Source={_dbPath}";
+    /// <summary>共有データフォルダが設定されているか。falseの場合、マスタDBを扱う機能は使用できない</summary>
+    public static bool IsAvailable => _dbPath != null;
+
+    public static string ConnectionString => _dbPath != null
+        ? $"Data Source={_dbPath}"
+        : throw new InvalidOperationException("共有データフォルダが設定されていません。設定 > 基本設定 から設定してください。");
 
     public static void Initialize() {
+        if (_dataDir == null) return;
+
         Directory.CreateDirectory(_dataDir);
 
         using var connection = new SqliteConnection(ConnectionString);
