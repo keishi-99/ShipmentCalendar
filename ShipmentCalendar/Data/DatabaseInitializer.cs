@@ -1,18 +1,30 @@
 using Microsoft.Data.Sqlite;
+using ShipmentCalendar.Services;
 using System.IO;
 
 namespace ShipmentCalendar.Data;
 
-/// <summary>SQLiteデータベース初期化・接続管理（工程マスタ・休日のみ管理）</summary>
+/// <summary>SQLiteデータベース初期化・接続管理（工程マスタ・休日のみ管理）。
+/// 既存テーブルへの列追加マイグレーションは行わない（複数PC同時起動時の競合を避けるため）。
+/// そのため、このバージョンより前に作成された共有DBを引き続き使う場合は、
+/// 管理者が事前に手動でスキーマを最新化しておく必要がある
+/// （例: ALTER TABLE Departments ADD COLUMN Headcount INTEGER NOT NULL DEFAULT 0;）。
+/// 新規に作成する共有DBはCREATE TABLE IF NOT EXISTSの定義がそのまま最新スキーマになるため対応不要</summary>
 public static class DatabaseInitializer {
-    private static readonly string _dataDir = Path.Combine(
-        AppDomain.CurrentDomain.BaseDirectory, "data");
+    private static readonly string? _dataDir = AppSettingsService.GetSharedDataDir();
 
-    private static readonly string _dbPath = Path.Combine(_dataDir, "shipment.db");
+    private static readonly string? _dbPath = _dataDir != null ? Path.Combine(_dataDir, "shipment.db") : null;
 
-    public static string ConnectionString => $"Data Source={_dbPath}";
+    /// <summary>共有データフォルダが設定されているか。falseの場合、マスタDBを扱う機能は使用できない</summary>
+    public static bool IsAvailable => _dbPath != null;
+
+    public static string ConnectionString => _dbPath != null
+        ? new SqliteConnectionStringBuilder { DataSource = _dbPath, DefaultTimeout = 5 }.ToString()
+        : throw new InvalidOperationException("共有データフォルダが設定されていません。設定 > 基本設定 から設定してください。");
 
     public static void Initialize() {
+        if (_dataDir == null) return;
+
         Directory.CreateDirectory(_dataDir);
 
         using var connection = new SqliteConnection(ConnectionString);
@@ -73,28 +85,5 @@ public static class DatabaseInitializer {
 
         ";
         command.ExecuteNonQuery();
-
-        // CREATE TABLE IF NOT EXISTSは既存テーブルには列を追加しないため、既存DBへの列追加はALTER TABLEで個別に行う
-        MigrateAddColumnIfMissing(connection, "Departments", "Headcount", "INTEGER NOT NULL DEFAULT 0");
-    }
-
-    private static void MigrateAddColumnIfMissing(SqliteConnection connection, string table, string column, string columnDefinition) {
-        bool exists;
-        using (var checkCommand = connection.CreateCommand()) {
-            checkCommand.CommandText = $"PRAGMA table_info({table})";
-            using var reader = checkCommand.ExecuteReader();
-            exists = false;
-            while (reader.Read()) {
-                if (string.Equals(reader.GetString(1), column, StringComparison.OrdinalIgnoreCase)) {
-                    exists = true;
-                    break;
-                }
-            }
-        }
-        if (exists) return;
-
-        using var alterCommand = connection.CreateCommand();
-        alterCommand.CommandText = $"ALTER TABLE {table} ADD COLUMN {column} {columnDefinition}";
-        alterCommand.ExecuteNonQuery();
     }
 }

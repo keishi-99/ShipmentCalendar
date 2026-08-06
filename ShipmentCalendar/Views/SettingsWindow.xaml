@@ -4,7 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="設定"
     Width="520"
-    Height="490"
+    Height="566"
     ResizeMode="NoResize"
     WindowStartupLocation="CenterOwner">
     <DockPanel Margin="16">
@@ -48,6 +48,9 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="16" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
@@ -215,6 +218,44 @@
                     Foreground="#888"
                     Text="　※ 工程期限日・工程バーの1営業日分の計算に使う" />
             </StackPanel>
+
+            <Separator
+                Grid.Row="8"
+                Grid.ColumnSpan="3"
+                Margin="0,4" />
+
+            <TextBlock
+                Grid.Row="9"
+                Grid.Column="0"
+                VerticalAlignment="Center"
+                Text="共有データフォルダ：" />
+            <StackPanel
+                Grid.Row="9"
+                Grid.Column="1"
+                Grid.ColumnSpan="2"
+                Orientation="Horizontal">
+                <TextBox
+                    Name="TxtSharedDataFolderPath"
+                    Width="220"
+                    Padding="4"
+                    VerticalContentAlignment="Center"
+                    LostFocus="TxtSharedDataFolderPath_LostFocus"
+                    ToolTip="複数PCでマスタデータを共有する場合の共有フォルダパス（例: \\server\share\ShipmentCalendarData）。空欄ならローカルのdataフォルダを使用" />
+                <Button
+                    Margin="4,0,0,0"
+                    Padding="8,4"
+                    Click="BtnBrowseSharedDataFolder_Click"
+                    Content="参照..." />
+            </StackPanel>
+            <TextBlock
+                Name="TxtSharedDataFolderStatus"
+                Grid.Row="10"
+                Grid.Column="1"
+                Grid.ColumnSpan="2"
+                Margin="0,4,0,0"
+                FontSize="12"
+                Foreground="#E65100"
+                TextWrapping="Wrap" />
         </Grid>
     </DockPanel>
 </Window>
