@@ -3,30 +3,13 @@ using ShipmentCalendar.Repositories;
 using ShipmentCalendar.Services;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace ShipmentCalendar.Views;
-
-/// <summary>DepartmentId → 部署名に変換するコンバーター（ProcessSettingWindow 用）</summary>
-public class DeptIdToNameConverter : IValueConverter
-{
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        if (value is int id && id > 0)
-        {
-            var dept = ProcessSettingWindow.DepartmentsSource?.FirstOrDefault(d => d.Id == id);
-            return dept?.Name ?? string.Empty;
-        }
-        return string.Empty;
-    }
-
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        => throw new NotImplementedException();
-}
 
 public partial class ProcessSettingWindow : Window
 {
@@ -103,7 +86,7 @@ public partial class ProcessSettingWindow : Window
         ModelCodeGrid.ItemsSource = _modelCodes;
         Loaded += async (_, _) =>
         {
-            // 部署リストをDBから読み込んでDataGrid.Tag経由でCellEditingTemplateに渡す
+            // 部署リストをDBから読み込んでDataGrid.Tag経由でCellTemplate内のComboBoxに渡す
             var depts = (await SqliteDepartmentRepository.GetAllAsync()).ToList();
             // 先頭に「未設定」（Id=0）を追加
             List<Department> allDepts = [new Department { Id = 0, Name = "（未設定）" }];
@@ -115,6 +98,83 @@ public partial class ProcessSettingWindow : Window
             await RefreshRegisteredListAsync();
             await RefreshModelCodesAsync();
         };
+    }
+
+    /// <summary>担当部署セルが選択されている状態で数字キーを押すと、DataGridの編集モードを使わずに
+    /// 該当インデックスの部署を直接セットする（DataGridTemplateColumnはIsReadOnly=Trueのため、
+    /// このセルはBeginEdit/編集トランザクションと無縁のまま完結する）。
+    /// また、担当部署セルのComboBoxはクリックするとキーボードフォーカスを受け取るため、
+    /// 上下矢印キーがDataGridの行移動ではなくComboBox自身の選択切り替えに使われてしまう。
+    /// これを防ぐため、上下矢印キーもここで横取りしてDataGridの行移動を直接行う</summary>
+    private void ProcessGrid_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (ProcessGrid.CurrentCell.Column != DepartmentColumn) return;
+
+        if (e.Key == Key.Down || e.Key == Key.Up)
+        {
+            MoveDepartmentCurrentCellVertically(e.Key == Key.Down ? 1 : -1);
+            e.Handled = true;
+            return;
+        }
+
+        if (ProcessGrid.CurrentCell.Item is not ProcessDefinition definition) return;
+        if (TrySetDepartmentByDigitKey(definition, e.Key))
+            e.Handled = true;
+    }
+
+    /// <summary>担当部署ComboBoxのドロップダウンが開いている間は、キー入力がComboBox自身の
+    /// ポップアップ内で処理されProcessGrid側のPreviewKeyDownまで届かないことがあるため、
+    /// ComboBox自体にも同じ数字キー処理を登録しておく（ProcessGrid_PreviewKeyDownで既に
+    /// 処理済みの場合はe.Handledが立っているため、ここは呼ばれない）</summary>
+    private void DepartmentComboBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (sender is not ComboBox { DataContext: ProcessDefinition definition } comboBox) return;
+        if (!TrySetDepartmentByDigitKey(definition, e.Key)) return;
+
+        comboBox.IsDropDownOpen = false;
+        e.Handled = true;
+    }
+
+    /// <summary>数字キー（D0-D9 / NumPad0-NumPad9）をDepartmentsSource内のインデックスとして扱い、
+    /// 該当する部署のIdをdefinition.DepartmentIdに直接セットする。処理した場合はtrueを返す</summary>
+    private static bool TrySetDepartmentByDigitKey(ProcessDefinition definition, Key key)
+    {
+        if (DepartmentsSource is not { } depts) return false;
+
+        int digit;
+        if (key >= Key.D0 && key <= Key.D9)
+            digit = key - Key.D0;
+        else if (key >= Key.NumPad0 && key <= Key.NumPad9)
+            digit = key - Key.NumPad0;
+        else
+            return false;
+
+        if (digit >= depts.Count) return false;
+
+        definition.DepartmentId = depts[digit].Id;
+        return true;
+    }
+
+    /// <summary>担当部署列のCurrentCellを上下に1行移動し、実際にキーボードフォーカスも新しいセルへ移す</summary>
+    private void MoveDepartmentCurrentCellVertically(int rowDelta)
+    {
+        var column = ProcessGrid.CurrentCell.Column;
+        if (ProcessGrid.CurrentCell.Item is not ProcessDefinition currentItem) return;
+
+        var currentIndex = ProcessGrid.Items.IndexOf(currentItem);
+        var newIndex = currentIndex + rowDelta;
+        if (newIndex < 0 || newIndex >= ProcessGrid.Items.Count) return;
+
+        var newItem = ProcessGrid.Items[newIndex];
+        ProcessGrid.CurrentCell = new DataGridCellInfo(newItem, column);
+        ProcessGrid.SelectedCells.Clear();
+        ProcessGrid.SelectedCells.Add(ProcessGrid.CurrentCell);
+        ProcessGrid.ScrollIntoView(newItem, column);
+
+        ProcessGrid.UpdateLayout();
+        if (ProcessGrid.ItemContainerGenerator.ContainerFromItem(newItem) is DataGridRow row
+            && column.GetCellContent(row)?.Parent is DataGridCell cell)
+            cell.Focus();
     }
 
     /// <summary>機種コード登録マスタをDBから読み込む</summary>
@@ -257,7 +317,8 @@ public partial class ProcessSettingWindow : Window
                 .Select(i => new UnregisteredItemEntry
                 {
                     ItemNumber = i.ItemNumber,
-                    DisplayName = i.ItemName
+                    DisplayName = i.ItemName,
+                    SeibanYearMonth = i.SeibanYearMonth
                 })
                 .ToList();
         }
