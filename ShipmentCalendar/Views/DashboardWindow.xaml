@@ -109,7 +109,7 @@
                                 </Style>
                             </DataGrid.Resources>
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="製番" Binding="{Binding ManufactureNumber}" Width="110"/>
+                                <DataGridTextColumn Header="製番" Binding="{Binding ManufactureNumber}" Width="180"/>
                                 <DataGridTextColumn Header="品目名" Binding="{Binding ProductName}" Width="*"/>
                                 <DataGridTextColumn Header="出荷日" Binding="{Binding DeliveryDate, StringFormat=yyyy/MM/dd}" Width="90"/>
                                 <DataGridTextColumn Header="全工程数" Binding="{Binding TotalProcessCount}" Width="90"/>

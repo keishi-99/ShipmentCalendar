@@ -153,13 +153,13 @@ public partial class DashboardWindow : Window {
     }
 
     // 列（全工程数／完了工程数／残工程数／超過件数）ごとに対応する内訳一覧を出し分ける。
-    // 製番・品目名・出荷日の各列を選択した場合は「残工程」を既定として表示する
+    // 製番・品目名・出荷日の各列を選択した場合は「全工程」を既定として表示する
     private void OrderGrid_CurrentCellChanged(object sender, EventArgs e) {
         if (OrderGrid.CurrentCell.Item is not DashboardOrderRow row || OrderGrid.CurrentCell.Column is not { } column) return;
 
         var columnIndex = OrderGrid.Columns.IndexOf(column);
         var (label, items) = columnIndex switch {
-            3 => ("全工程", row.AllItems),
+            0 or 1 or 2 or 3 => ("全工程", row.AllItems),
             4 => ("完了工程", row.CompletedItems),
             6 => ("超過", row.OverdueItems),
             _ => ("残工程", row.RemainingItems),
