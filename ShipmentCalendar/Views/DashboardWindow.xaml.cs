@@ -32,7 +32,15 @@ public partial class DashboardWindow : Window {
         _cachedRangeMax = today.AddDays(settings.DeliveryDateRangeDays);
         TxtRangeHint.Text = $"現在表示中のデータの範囲: {_cachedRangeMin:yyyy/MM/dd}～{_cachedRangeMax:yyyy/MM/dd}（この範囲外を指定するとODBCへ再取得します）";
 
+        // 開いた直後は現在表示中のデータの範囲をそのままDatePickerに示す
+        ResetToDefaultRange();
+
         Loaded += async (_, _) => await RefreshAsync();
+    }
+
+    private void ResetToDefaultRange() {
+        StartDatePicker.SelectedDate = _cachedRangeMin.ToDateTime(TimeOnly.MinValue);
+        EndDatePicker.SelectedDate = _cachedRangeMax.ToDateTime(TimeOnly.MinValue);
     }
 
     private async Task RefreshAsync() {
@@ -100,8 +108,7 @@ public partial class DashboardWindow : Window {
     private async void BtnApply_Click(object sender, RoutedEventArgs e) => await RefreshAsync();
 
     private async void BtnClearRange_Click(object sender, RoutedEventArgs e) {
-        StartDatePicker.SelectedDate = null;
-        EndDatePicker.SelectedDate = null;
+        ResetToDefaultRange();
         await RefreshAsync();
     }
 
