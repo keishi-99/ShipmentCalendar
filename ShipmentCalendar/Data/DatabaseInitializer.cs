@@ -55,8 +55,7 @@ public static class DatabaseInitializer {
             );
 
             CREATE TABLE IF NOT EXISTS Holidays (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                Date TEXT NOT NULL UNIQUE,
+                Date TEXT PRIMARY KEY,
                 Description TEXT NOT NULL DEFAULT ''
             );
 

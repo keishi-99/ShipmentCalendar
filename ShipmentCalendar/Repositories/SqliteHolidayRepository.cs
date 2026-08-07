@@ -13,7 +13,7 @@ public class SqliteHolidayRepository : IHolidayRepository
         await connection.OpenAsync();
 
         var command = connection.CreateCommand();
-        command.CommandText = "SELECT Id, Date, Description FROM Holidays ORDER BY Date";
+        command.CommandText = "SELECT Date, Description FROM Holidays ORDER BY Date";
         using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
             holidays.Add(ReadHoliday(reader));
@@ -28,7 +28,7 @@ public class SqliteHolidayRepository : IHolidayRepository
         await connection.OpenAsync();
 
         var command = connection.CreateCommand();
-        command.CommandText = "SELECT Id, Date, Description FROM Holidays WHERE Date LIKE $year ORDER BY Date";
+        command.CommandText = "SELECT Date, Description FROM Holidays WHERE Date LIKE $year ORDER BY Date";
         command.Parameters.AddWithValue("$year", $"{year}%");
         using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
@@ -64,8 +64,7 @@ public class SqliteHolidayRepository : IHolidayRepository
 
     private static Holiday ReadHoliday(SqliteDataReader reader) => new()
     {
-        Id = reader.GetInt32(0),
-        Date = DateOnly.Parse(reader.GetString(1)),
-        Description = reader.GetString(2)
+        Date = DateOnly.Parse(reader.GetString(0)),
+        Description = reader.GetString(1)
     };
 }
