@@ -91,7 +91,7 @@
         <DataGrid Name="DepartmentGrid" AlternatingRowBackground="#F5F5F5"
                   AutoGenerateColumns="False" CanUserAddRows="False"
                   IsReadOnly="True" HeadersVisibility="Column" RowHeight="32"
-                  GridLinesVisibility="Horizontal"
+                  GridLinesVisibility="Horizontal" SelectionUnit="Cell"
                   CurrentCellChanged="DepartmentGrid_CurrentCellChanged">
             <DataGrid.Resources>
                 <Style TargetType="DataGridCell">
