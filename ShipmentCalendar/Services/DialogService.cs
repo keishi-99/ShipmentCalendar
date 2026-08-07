@@ -12,22 +12,23 @@ public class DialogService : IDialogService {
         new SettingsWindow(viewModel) { Owner = Owner }.ShowDialog();
 
     public void ShowProcessSetting() =>
-        ShowWithEditLock(() => new ProcessSettingWindow());
+        ShowWithEditLock("process_setting", () => new ProcessSettingWindow());
 
     public void ShowHolidaySetting() =>
-        ShowWithEditLock(() => new HolidaySettingWindow());
+        ShowWithEditLock("holiday_setting", () => new HolidaySettingWindow());
 
     public void ShowDepartmentSetting() =>
-        ShowWithEditLock(() => new DepartmentSettingWindow());
+        ShowWithEditLock("department_setting", () => new DepartmentSettingWindow());
 
     public void ShowDepartmentAbsenceSetting() =>
-        ShowWithEditLock(() => new DepartmentAbsenceSettingWindow());
+        ShowWithEditLock("department_absence_setting", () => new DepartmentAbsenceSettingWindow());
 
     /// <summary>マスタDBを編集する画面を、共有編集ロックを取得した状態でモーダル表示する。
-    /// 他PCが編集中でロックを取得できない場合は警告のみ表示して画面は開かない。
+    /// ロックはlockNameごとに独立しているため、他の画面のロックには影響しない。
+    /// 他PCが同じ画面を編集中でロックを取得できない場合は警告のみ表示して画面は開かない。
     /// 表示中は一定間隔でロックのハートビートを更新し、長時間の編集がタイムアウトで奪われないようにする</summary>
-    private void ShowWithEditLock(Func<Window> createWindow) {
-        var result = EditLockService.TryAcquire();
+    private void ShowWithEditLock(string lockName, Func<Window> createWindow) {
+        var result = EditLockService.TryAcquire(lockName);
         if (!result.Acquired) {
             MessageBox.Show(result.HeldByMessage, "開けません", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
@@ -40,7 +41,7 @@ public class DialogService : IDialogService {
             Interval = TimeSpan.FromMinutes(5)
         };
         heartbeatTimer.Tick += (_, _) => {
-            if (EditLockService.RefreshHeartbeat()) return;
+            if (EditLockService.RefreshHeartbeat(lockName)) return;
 
             // 他PCに正当に引き継がれてしまった場合、気づかず編集を続けさせないよう画面を強制的に閉じる
             heartbeatTimer.Stop();
@@ -55,7 +56,7 @@ public class DialogService : IDialogService {
             window.ShowDialog();
         } finally {
             heartbeatTimer.Stop();
-            EditLockService.Release();
+            EditLockService.Release(lockName);
         }
     }
 
