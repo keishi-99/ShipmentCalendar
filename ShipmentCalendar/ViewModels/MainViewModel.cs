@@ -368,14 +368,14 @@ public partial class MainViewModel : ObservableObject {
     }
 
     private void UpdateStatusMessage() {
-        var lastStr = _lastLoaded.HasValue ? $"　最終更新：{_lastLoaded.Value:HH:mm:ss}" : string.Empty;
         // 見落とし防止のため、現在の絞り込みに関わらず全件（_allOrders）から集計する
         var overdueCount = _allOrders.Count(o => o.HasOverdue);
         var warningCount = _allOrders.Count(o => o.HasWarning);
         var alertStr = overdueCount > 0 || warningCount > 0
             ? $"　超過：{overdueCount}件　警告：{warningCount}件"
             : string.Empty;
-        StatusMessage = $"{Orders.Count} 件表示中（全 {_allOrders.Count} 件）{lastStr}{alertStr}";
+        var lastStr = _lastLoaded.HasValue ? $"　最終更新：{_lastLoaded.Value:HH:mm:ss}" : string.Empty;
+        StatusMessage = $"{Orders.Count} 件表示中（全 {_allOrders.Count} 件）{alertStr}{lastStr}";
     }
 
     [ObservableProperty]
