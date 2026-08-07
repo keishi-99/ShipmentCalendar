@@ -4,7 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="進捗ダッシュボード"
     Width="960"
-    Height="560"
+    Height="700"
     WindowStartupLocation="CenterOwner">
     <DockPanel Margin="16">
         <TextBlock DockPanel.Dock="Top" FontSize="16" FontWeight="Bold"
@@ -18,6 +18,8 @@
             <TextBlock Text="～" VerticalAlignment="Center" Margin="0,0,8,0"/>
             <DatePicker Name="EndDatePicker" Height="24" Width="120" Margin="0,0,16,0"/>
             <Button Name="BtnApply" Content="適用" Padding="12,4" Margin="0,0,8,0" Click="BtnApply_Click"/>
+            <Button Name="BtnThisWeek" Content="今週" Padding="12,4" Margin="0,0,8,0" Click="BtnThisWeek_Click"
+                    ToolTip="今週（月～日）の範囲に設定する"/>
             <Button Name="BtnClearRange" Content="既定範囲" Padding="12,4" Click="BtnClearRange_Click"
                     ToolTip="出荷日の指定をクリアし、基本設定の表示範囲に戻す"/>
             <ProgressBar Name="LoadingProgressBar" Width="80" Height="16" Margin="12,0,0,0"
@@ -53,59 +55,94 @@
             </Border>
         </UniformGrid>
 
-        <TextBlock DockPanel.Dock="Top" Text="部署別 全工程数・完了工程数・残工程数・超過件数（セルを選択すると右側にその内訳を表示）" FontWeight="Bold" Margin="0,0,0,8"/>
-        <TextBlock DockPanel.Dock="Top" Name="TxtEmpty" Text="対象の工程がありません" Foreground="#666666" Visibility="Collapsed" Margin="0,0,0,8"/>
+        <TextBlock DockPanel.Dock="Top" Text="セルを選択すると下に明細を表示します" FontWeight="Bold" Margin="0,0,0,8"/>
 
-        <!--  セル選択時に該当列の内訳一覧を表示する固定幅のサイドパネル（ProcessBottleneckWindow.xamlと同じ構成）  -->
-        <Border DockPanel.Dock="Right" Width="280" Margin="12,0,0,0" Padding="8"
+        <!--  セル選択時に該当列の内訳一覧を表示する明細パネル。「部署別」「注文別」両タブで共有し、
+              タブ切り替え時にリセットする（DashboardWindow.xaml.cs参照）  -->
+        <Border DockPanel.Dock="Bottom" Height="180" Margin="0,12,0,0" Padding="8"
                 Background="#F5F5F5" BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="4">
             <DockPanel>
                 <TextBlock DockPanel.Dock="Top" Name="TxtDetailTitle" FontWeight="Bold" Margin="0,0,0,4"
-                           TextWrapping="Wrap" Text="セルを選択すると明細を表示します"/>
-                <ListBox Name="ItemDetailList" BorderThickness="0" Background="Transparent" HorizontalContentAlignment="Stretch"
-                         MouseDoubleClick="ItemDetailList_MouseDoubleClick">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel Margin="0,2" Cursor="Hand" ToolTip="ダブルクリックで注文詳細を表示">
-                                <TextBlock FontSize="11" FontWeight="SemiBold" Text="{Binding ManufactureNumber}"/>
-                                <TextBlock FontSize="10" Text="{Binding ProductName}" TextTrimming="CharacterEllipsis"/>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" FontSize="10" Text="{Binding ProcessName}" Foreground="#666666"/>
-                                    <TextBlock Grid.Column="1" FontSize="10" Text="{Binding DateText}" Foreground="#666666" Margin="4,0,0,0"/>
-                                    <TextBlock Grid.Column="2" FontSize="10" FontWeight="Bold" Foreground="{Binding StatusColor}" Text="{Binding StatusText}"/>
-                                </Grid>
-                            </StackPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
+                           Text="セルを選択すると明細を表示します"/>
+                <DataGrid Name="ItemDetailGrid" AlternatingRowBackground="#EFEFEF" Background="Transparent" BorderThickness="0"
+                          AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
+                          HeadersVisibility="Column" RowHeight="26" GridLinesVisibility="Horizontal"
+                          ToolTip="ダブルクリックで注文詳細を表示"
+                          MouseDoubleClick="ItemDetailGrid_MouseDoubleClick">
+                    <DataGrid.Resources>
+                        <Style TargetType="DataGridCell">
+                            <Setter Property="Padding" Value="6,0"/>
+                            <Setter Property="VerticalContentAlignment" Value="Center"/>
+                        </Style>
+                        <Style x:Key="StatusCellText" TargetType="TextBlock">
+                            <Setter Property="FontWeight" Value="Bold"/>
+                            <Setter Property="Foreground" Value="{Binding StatusColor}"/>
+                        </Style>
+                    </DataGrid.Resources>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="製番" Binding="{Binding ManufactureNumber}" Width="110"/>
+                        <DataGridTextColumn Header="品目名" Binding="{Binding ProductName}" Width="*"/>
+                        <DataGridTextColumn Header="工程名" Binding="{Binding ProcessName}" Width="140"/>
+                        <DataGridTextColumn Header="日付" Binding="{Binding DateText}" Width="100"/>
+                        <DataGridTextColumn Header="状態" Binding="{Binding StatusText}" Width="70" ElementStyle="{StaticResource StatusCellText}"/>
+                    </DataGrid.Columns>
+                </DataGrid>
             </DockPanel>
         </Border>
 
-        <!--  DockPanelはLastChildFill既定でTrueのため、DataGridをDock指定のない最後の子要素にして
+        <!--  DockPanelはLastChildFill既定でTrueのため、TabControlをDock指定のない最後の子要素にして
               残りスペースを埋めさせる（DepartmentLoadWindow.xamlと同じ構成）  -->
-        <DataGrid Name="DepartmentGrid" AlternatingRowBackground="#F5F5F5"
-                  AutoGenerateColumns="False" CanUserAddRows="False"
-                  IsReadOnly="True" HeadersVisibility="Column" RowHeight="32"
-                  GridLinesVisibility="Horizontal" SelectionUnit="Cell"
-                  CurrentCellChanged="DepartmentGrid_CurrentCellChanged">
-            <DataGrid.Resources>
-                <Style TargetType="DataGridCell">
-                    <Setter Property="Padding" Value="6,0"/>
-                    <Setter Property="VerticalContentAlignment" Value="Center"/>
-                </Style>
-            </DataGrid.Resources>
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="部署" Binding="{Binding DepartmentName}" Width="*"/>
-                <DataGridTextColumn Header="全工程数" Binding="{Binding TotalProcessCount}" Width="90"/>
-                <DataGridTextColumn Header="完了工程数" Binding="{Binding CompletedProcessCount}" Width="90"/>
-                <DataGridTextColumn Header="残工程数" Binding="{Binding RemainingProcessCount}" Width="90"/>
-                <DataGridTextColumn Header="超過件数" Binding="{Binding OverdueProcessCount}" Width="90"/>
-            </DataGrid.Columns>
-        </DataGrid>
+        <TabControl Name="MainTabControl" SelectionChanged="MainTabControl_SelectionChanged">
+            <TabItem Header="部署別">
+                <DockPanel Margin="0,8,0,0">
+                    <TextBlock DockPanel.Dock="Top" Name="TxtDepartmentEmpty" Text="対象の工程がありません" Foreground="#666666" Visibility="Collapsed" Margin="0,0,0,8"/>
+                    <DataGrid Name="DepartmentGrid" AlternatingRowBackground="#F5F5F5"
+                              AutoGenerateColumns="False" CanUserAddRows="False"
+                              IsReadOnly="True" HeadersVisibility="Column" RowHeight="32"
+                              GridLinesVisibility="Horizontal" SelectionUnit="Cell"
+                              CurrentCellChanged="DepartmentGrid_CurrentCellChanged">
+                        <DataGrid.Resources>
+                            <Style TargetType="DataGridCell">
+                                <Setter Property="Padding" Value="6,0"/>
+                                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                            </Style>
+                        </DataGrid.Resources>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="部署" Binding="{Binding DepartmentName}" Width="*"/>
+                            <DataGridTextColumn Header="全工程数" Binding="{Binding TotalProcessCount}" Width="90"/>
+                            <DataGridTextColumn Header="完了工程数" Binding="{Binding CompletedProcessCount}" Width="90"/>
+                            <DataGridTextColumn Header="残工程数" Binding="{Binding RemainingProcessCount}" Width="90"/>
+                            <DataGridTextColumn Header="超過件数" Binding="{Binding OverdueProcessCount}" Width="90"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+            <TabItem Header="注文別">
+                <DockPanel Margin="0,8,0,0">
+                    <TextBlock DockPanel.Dock="Top" Name="TxtOrderEmpty" Text="対象の注文がありません" Foreground="#666666" Visibility="Collapsed" Margin="0,0,0,8"/>
+                    <DataGrid Name="OrderGrid" AlternatingRowBackground="#F5F5F5"
+                              AutoGenerateColumns="False" CanUserAddRows="False"
+                              IsReadOnly="True" HeadersVisibility="Column" RowHeight="32"
+                              GridLinesVisibility="Horizontal" SelectionUnit="Cell"
+                              CurrentCellChanged="OrderGrid_CurrentCellChanged">
+                        <DataGrid.Resources>
+                            <Style TargetType="DataGridCell">
+                                <Setter Property="Padding" Value="6,0"/>
+                                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                            </Style>
+                        </DataGrid.Resources>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="製番" Binding="{Binding ManufactureNumber}" Width="110"/>
+                            <DataGridTextColumn Header="品目名" Binding="{Binding ProductName}" Width="*"/>
+                            <DataGridTextColumn Header="出荷日" Binding="{Binding DeliveryDate, StringFormat=yyyy/MM/dd}" Width="90"/>
+                            <DataGridTextColumn Header="全工程数" Binding="{Binding TotalProcessCount}" Width="90"/>
+                            <DataGridTextColumn Header="完了工程数" Binding="{Binding CompletedProcessCount}" Width="90"/>
+                            <DataGridTextColumn Header="残工程数" Binding="{Binding RemainingProcessCount}" Width="90"/>
+                            <DataGridTextColumn Header="超過件数" Binding="{Binding OverdueProcessCount}" Width="90"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+        </TabControl>
     </DockPanel>
 </Window>

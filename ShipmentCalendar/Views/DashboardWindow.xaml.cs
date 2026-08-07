@@ -4,6 +4,7 @@ using ShipmentCalendar.Services;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace ShipmentCalendar.Views;
 
@@ -98,14 +99,30 @@ public partial class DashboardWindow : Window {
         TxtOverdueCount.Text = $"{summary.OverdueCount}件";
         TxtWarningCount.Text = $"{summary.WarningCount}件";
         DepartmentGrid.ItemsSource = summary.DepartmentRows;
-        TxtEmpty.Visibility = summary.DepartmentRows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        TxtDepartmentEmpty.Visibility = summary.DepartmentRows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        OrderGrid.ItemsSource = summary.OrderRows;
+        TxtOrderEmpty.Visibility = summary.OrderRows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
         // 集計対象が変わると選択済みセルが示す明細も古くなるため表示をリセットする
+        ResetDetailPanel();
+    }
+
+    private void ResetDetailPanel() {
         TxtDetailTitle.Text = "セルを選択すると明細を表示します";
-        ItemDetailList.ItemsSource = null;
+        ItemDetailGrid.ItemsSource = null;
     }
 
     private async void BtnApply_Click(object sender, RoutedEventArgs e) => await RefreshAsync();
+
+    private async void BtnThisWeek_Click(object sender, RoutedEventArgs e) {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        // DayOfWeekは日曜=0・月曜=1...のため、+6してから%7すると月曜からの経過日数になる
+        var daysSinceMonday = ((int)today.DayOfWeek + 6) % 7;
+        var monday = today.AddDays(-daysSinceMonday);
+        StartDatePicker.SelectedDate = monday.ToDateTime(TimeOnly.MinValue);
+        EndDatePicker.SelectedDate = monday.AddDays(6).ToDateTime(TimeOnly.MinValue);
+        await RefreshAsync();
+    }
 
     private async void BtnClearRange_Click(object sender, RoutedEventArgs e) {
         ResetToDefaultRange();
@@ -127,16 +144,54 @@ public partial class DashboardWindow : Window {
 
         if (items.Count == 0) {
             TxtDetailTitle.Text = "対象の工程がありません";
-            ItemDetailList.ItemsSource = null;
+            ItemDetailGrid.ItemsSource = null;
             return;
         }
 
         TxtDetailTitle.Text = $"{row.DepartmentName}　{label} {items.Count}件";
-        ItemDetailList.ItemsSource = items;
+        ItemDetailGrid.ItemsSource = items;
     }
 
-    private void ItemDetailList_MouseDoubleClick(object sender, MouseButtonEventArgs e) {
-        if (ItemDetailList.SelectedItem is not DashboardProcessItem item) return;
+    // 列（全工程数／完了工程数／残工程数／超過件数）ごとに対応する内訳一覧を出し分ける。
+    // 製番・品目名・出荷日の各列を選択した場合は「残工程」を既定として表示する
+    private void OrderGrid_CurrentCellChanged(object sender, EventArgs e) {
+        if (OrderGrid.CurrentCell.Item is not DashboardOrderRow row || OrderGrid.CurrentCell.Column is not { } column) return;
+
+        var columnIndex = OrderGrid.Columns.IndexOf(column);
+        var (label, items) = columnIndex switch {
+            3 => ("全工程", row.AllItems),
+            4 => ("完了工程", row.CompletedItems),
+            6 => ("超過", row.OverdueItems),
+            _ => ("残工程", row.RemainingItems),
+        };
+
+        if (items.Count == 0) {
+            TxtDetailTitle.Text = "対象の工程がありません";
+            ItemDetailGrid.ItemsSource = null;
+            return;
+        }
+
+        TxtDetailTitle.Text = $"{row.ManufactureNumber}　{label} {items.Count}件";
+        ItemDetailGrid.ItemsSource = items;
+    }
+
+    // タブを切り替えると選択済みセルが示す明細が別タブのものになり古くなるため表示をリセットする
+    private void MainTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e) {
+        if (e.Source is not TabControl) return;
+        ResetDetailPanel();
+    }
+
+    private void ItemDetailGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e) {
+        // 行のない余白部分のダブルクリックでは、選択済み行が残っていても何もしない
+        if (e.OriginalSource is not DependencyObject source || !IsInRow(source)) return;
+        if (ItemDetailGrid.SelectedItem is not DashboardProcessItem item) return;
         new OrderDetailWindow(item.Order, _settings.ShowRequiredTimeInMinutes, _settings.DayMinutes) { Owner = this }.ShowDialog();
+    }
+
+    private static bool IsInRow(DependencyObject source) {
+        for (var current = source; current != null; current = VisualTreeHelper.GetParent(current)) {
+            if (current is DataGridRow) return true;
+        }
+        return false;
     }
 }

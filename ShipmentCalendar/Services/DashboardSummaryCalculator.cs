@@ -2,7 +2,7 @@ using ShipmentCalendar.Models;
 
 namespace ShipmentCalendar.Services;
 
-/// <summary>受注全体の進捗状況を、全体件数・完了率・超過/警告件数、および部署別の残工程数・超過件数で集計する</summary>
+/// <summary>受注全体の進捗状況を、全体件数・完了率・超過/警告件数、および部署別・注文別の工程数で集計する</summary>
 public static class DashboardSummaryCalculator
 {
     public static DashboardSummary Aggregate(IEnumerable<Order> orders, IEnumerable<Department> departments)
@@ -59,12 +59,52 @@ public static class DashboardSummaryCalculator
             .ThenByDescending(r => r.RemainingProcessCount)
             .ToList();
 
+        var orderRows = orderList
+            .Where(o => o.Processes.Count > 0)
+            .Select(o => {
+                var completed = o.Processes.Where(p => p.Status == ProcessStatus.Completed).ToList();
+                var remaining = o.Processes.Where(p => p.Status != ProcessStatus.Completed).ToList();
+                var overdue = remaining.Where(p => p.Status == ProcessStatus.Overdue).ToList();
+
+                return new DashboardOrderRow {
+                    Order = o,
+                    TotalProcessCount = o.Processes.Count,
+                    CompletedProcessCount = completed.Count,
+                    RemainingProcessCount = remaining.Count,
+                    OverdueProcessCount = overdue.Count,
+                    AllItems = o.Processes
+                        .OrderBy(p => p.Status == ProcessStatus.Completed)
+                        .ThenByDescending(p => p.Status == ProcessStatus.Overdue)
+                        .ThenBy(p => p.DueDate)
+                        .Select(p => new DashboardProcessItem { Order = o, Process = p })
+                        .ToList(),
+                    CompletedItems = completed
+                        .OrderByDescending(p => p.ActualDate)
+                        .Select(p => new DashboardProcessItem { Order = o, Process = p })
+                        .ToList(),
+                    RemainingItems = remaining
+                        .OrderByDescending(p => p.Status == ProcessStatus.Overdue)
+                        .ThenBy(p => p.DueDate)
+                        .Select(p => new DashboardProcessItem { Order = o, Process = p })
+                        .ToList(),
+                    OverdueItems = overdue
+                        .OrderBy(p => p.DueDate)
+                        .Select(p => new DashboardProcessItem { Order = o, Process = p })
+                        .ToList(),
+                };
+            })
+            // 超過が多い注文ほど先頭に来るようにし、その中では出荷日が近い順に並べて対応の優先度がわかるようにする
+            .OrderByDescending(r => r.OverdueProcessCount)
+            .ThenBy(r => r.DeliveryDate)
+            .ToList();
+
         return new DashboardSummary {
             TotalCount = orderList.Count,
             CompletedCount = orderList.Count(o => o.IsAllCompleted),
             OverdueCount = orderList.Count(o => o.HasOverdue),
             WarningCount = orderList.Count(o => o.HasWarning),
             DepartmentRows = departmentRows,
+            OrderRows = orderRows,
         };
     }
 }
