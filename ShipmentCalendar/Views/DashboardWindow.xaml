@@ -33,10 +33,10 @@
                     <TextBlock Name="TxtTotalCount" FontSize="20" FontWeight="Bold"/>
                 </StackPanel>
             </Border>
-            <Border Margin="0,0,8,0" Padding="12" Background="#F5F5F5" BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="4">
+            <Border Margin="0,0,8,0" Padding="12" Background="#E8F5E9" BorderBrush="#A5D6A7" BorderThickness="1" CornerRadius="4">
                 <StackPanel>
-                    <TextBlock Text="完了" Foreground="#666666" FontSize="11"/>
-                    <TextBlock Name="TxtCompletedCount" FontSize="20" FontWeight="Bold"/>
+                    <TextBlock Text="完了" Foreground="#2E7D32" FontSize="11"/>
+                    <TextBlock Name="TxtCompletedCount" FontSize="20" FontWeight="Bold" Foreground="#2E7D32"/>
                 </StackPanel>
             </Border>
             <Border Margin="0,0,8,0" Padding="12" Background="#FDECEA" BorderBrush="#F5C6C0" BorderThickness="1" CornerRadius="4">
