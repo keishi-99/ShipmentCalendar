@@ -13,6 +13,8 @@ public interface IDialogService {
     void ShowProductPerformance(AppSettings settings);
     void ShowDepartmentLoad(IEnumerable<Order> orders, ProductCategoryClassifier categoryClassifier, AppSettings settings);
     void ShowProcessBottleneck(AppSettings settings);
+    void ShowDashboard(IEnumerable<Order> orders, AppSettings settings, IReadOnlyList<Holiday> holidays,
+        IReadOnlyList<ProcessDefinition> odbcProcessDefinitions, Func<AppSettings, Repositories.IOdbcOrderRepository> odbcOrderRepositoryFactory);
 
     /// <summary>表示設定ダイアログを表示する。保存されたか（DialogResult）を返す</summary>
     bool? ShowDisplaySettings(MainViewModel viewModel, IDisplaySettingsPreviewTarget previewTarget);

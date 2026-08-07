@@ -160,13 +160,14 @@ public class OdbcOrderRepository(AppSettings settings) : IOdbcOrderRepository {
 
     public IEnumerable<Order> GetAll() {
         var today = DateOnly.FromDateTime(DateTime.Today);
-        var rangeStart = today.AddDays(-settings.DeliveryDatePastDays);
-        var rangeEnd = today.AddDays(settings.DeliveryDateRangeDays);
+        return GetByDeliveryDateRange(today.AddDays(-settings.DeliveryDatePastDays), today.AddDays(settings.DeliveryDateRangeDays));
+    }
 
+    public IEnumerable<Order> GetByDeliveryDateRange(DateOnly from, DateOnly to) {
         using var conn = OdbcConnectionFactory.Create(settings);
         conn.Open();
 
-        var orders = LoadSeisanKeikaku(conn, rangeStart, rangeEnd);
+        var orders = LoadSeisanKeikaku(conn, from, to);
         LoadUkeireJisseki(conn, orders);
 
         return orders.Values;

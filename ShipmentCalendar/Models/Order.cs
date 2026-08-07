@@ -21,4 +21,7 @@ public class Order
 
     public bool HasOverdue =>
         Processes.Any(p => p.Status == ProcessStatus.Overdue);
+
+    public bool HasWarning =>
+        Processes.Any(p => p.Status == ProcessStatus.Warning);
 }
