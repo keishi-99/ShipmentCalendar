@@ -258,20 +258,6 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTemplateColumn Width="44" Header="">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <Button
-                                Padding="4,2"
-                                Background="Transparent"
-                                BorderThickness="0"
-                                Click="BtnDeleteRow_Click"
-                                Content="✕"
-                                FontSize="11"
-                                Foreground="#D32F2F" />
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
             </DataGrid.Columns>
         </DataGrid>
 

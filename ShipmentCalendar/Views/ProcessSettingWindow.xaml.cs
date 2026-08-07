@@ -675,12 +675,5 @@ public partial class ProcessSettingWindow : Window
         TxtItemNumber.Text = string.Empty;
     }
 
-    /// <summary>グリッド行の削除ボタン：選択行をコレクションから除去する（保存まで確定しない）</summary>
-    private void BtnDeleteRow_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is FrameworkElement fe2 && fe2.DataContext is ProcessDefinition def)
-            _currentDefinitions.Remove(def);
-    }
-
     private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();
 }
