@@ -222,14 +222,11 @@ public partial class ProcessSettingWindow : Window
         }
 
         var toSave = _modelCodes.Where(m => !string.IsNullOrWhiteSpace(m.ModelCode)).ToList();
-        var savedCount = 0;
-        foreach (var def in toSave)
-            def.SortOrder = savedCount++;
 
         await _modelCodeRepository.ReplaceAllAsync(toSave);
 
         await RefreshModelCodesAsync();
-        TxtModelCodeStatus.Text = $"保存しました（{savedCount} 件）";
+        TxtModelCodeStatus.Text = $"保存しました（{toSave.Count} 件）";
     }
 
     /// <summary>DB に登録済みの品目番号一覧を保持する（一覧選択ウィンドウ用）</summary>
@@ -658,7 +655,7 @@ public partial class ProcessSettingWindow : Window
             await _dbRepository.DeleteAsync(def.Id);
 
         // Productsテーブルから品目名も削除
-        using var connection = new Microsoft.Data.Sqlite.SqliteConnection(ShipmentCalendar.Data.DatabaseInitializer.ConnectionString);
+        using var connection = new Microsoft.Data.Sqlite.SqliteConnection(ShipmentCalendar.Data.ProcessDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
         var cmd = connection.CreateCommand();
         cmd.CommandText = "DELETE FROM Products WHERE ItemNumber = $in";

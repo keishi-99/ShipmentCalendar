@@ -10,7 +10,7 @@ public static class SqliteDepartmentRepository
     public static async Task<IEnumerable<Department>> GetAllAsync()
     {
         List<Department> list = [];
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(DepartmentDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         var command = connection.CreateCommand();
@@ -31,7 +31,7 @@ public static class SqliteDepartmentRepository
     /// <summary>部署の基本人数を更新する</summary>
     public static async Task UpdateHeadcountAsync(int id, int headcount)
     {
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(DepartmentDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         var command = connection.CreateCommand();
@@ -41,10 +41,23 @@ public static class SqliteDepartmentRepository
         await command.ExecuteNonQueryAsync();
     }
 
+    /// <summary>部署の表示順を更新する</summary>
+    public static async Task UpdateSortOrderAsync(int id, int sortOrder)
+    {
+        using var connection = new SqliteConnection(DepartmentDatabaseInitializer.ConnectionString);
+        await connection.OpenAsync();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "UPDATE Departments SET SortOrder = $sortOrder WHERE Id = $id";
+        command.Parameters.AddWithValue("$sortOrder", sortOrder);
+        command.Parameters.AddWithValue("$id", id);
+        await command.ExecuteNonQueryAsync();
+    }
+
     /// <summary>部署を追加する。名前が既存と重複していてINSERTされなかった場合はfalseを返す</summary>
     public static async Task<bool> AddAsync(string name)
     {
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(DepartmentDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         var command = connection.CreateCommand();
@@ -56,7 +69,7 @@ public static class SqliteDepartmentRepository
 
     public static async Task DeleteAsync(int id)
     {
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(DepartmentDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         // 部署削除と同時にProcessDefinitionsの該当DepartmentIdを0（未設定）に更新

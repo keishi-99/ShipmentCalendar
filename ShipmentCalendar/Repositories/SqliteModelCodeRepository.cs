@@ -9,7 +9,7 @@ public class SqliteModelCodeRepository : IModelCodeRepository
     public async Task<IEnumerable<ModelCodeDefinition>> GetAllAsync()
     {
         List<ModelCodeDefinition> definitions = [];
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(ProcessDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         using var command = connection.CreateCommand();
@@ -23,7 +23,7 @@ public class SqliteModelCodeRepository : IModelCodeRepository
 
     public async Task AddAsync(ModelCodeDefinition definition)
     {
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(ProcessDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         using var command = connection.CreateCommand();
@@ -39,7 +39,7 @@ public class SqliteModelCodeRepository : IModelCodeRepository
 
     public async Task UpdateAsync(ModelCodeDefinition definition)
     {
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(ProcessDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         using var command = connection.CreateCommand();
@@ -56,7 +56,7 @@ public class SqliteModelCodeRepository : IModelCodeRepository
 
     public async Task DeleteAsync(int id)
     {
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(ProcessDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         using var command = connection.CreateCommand();
@@ -67,7 +67,7 @@ public class SqliteModelCodeRepository : IModelCodeRepository
 
     public async Task ReplaceAllAsync(IEnumerable<ModelCodeDefinition> definitions)
     {
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(ProcessDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
         using var transaction = connection.BeginTransaction();
 

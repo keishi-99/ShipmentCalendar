@@ -42,7 +42,7 @@ public static class AppSettingsService {
     /// （管理者が共有DBを一元管理する運用のため、ローカルフォルダへの暗黙のフォールバックは行わない。
     /// ローカルで運用したい場合は、設定画面の共有データフォルダにローカルのパスを明示的に指定する）。
     /// 初回呼び出し時の値をプロセス内でキャッシュし、以降は設定が変更されても同じ値を返す
-    /// （DatabaseInitializerとEditLockServiceが、同じプロセス内で常に同じパスを使うようにするため）</summary>
+    /// （SharedDatabaseとEditLockServiceが、同じプロセス内で常に同じパスを使うようにするため）</summary>
     public static string? GetSharedDataDir() {
         if (_sharedDataDirResolved) return _cachedSharedDataDir;
 

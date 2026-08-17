@@ -312,6 +312,10 @@
             SelectionUnit="Cell">
             <DataGrid.Columns>
                 <DataGridTextColumn
+                    Width="50"
+                    Binding="{Binding SortOrder, UpdateSourceTrigger=PropertyChanged}"
+                    Header="順序" />
+                <DataGridTextColumn
                     Width="120"
                     Binding="{Binding ModelCode, UpdateSourceTrigger=PropertyChanged}"
                     Header="機種コード" />

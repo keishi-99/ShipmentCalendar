@@ -9,7 +9,7 @@ public static class SqliteProductDisplayNameRepository
     /// <summary>品目番号に対応する表示名を取得する（未登録時はnull）</summary>
     public static async Task<string?> GetDisplayNameAsync(string itemNumber)
     {
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(ProcessDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         using var command = connection.CreateCommand();
@@ -23,7 +23,7 @@ public static class SqliteProductDisplayNameRepository
     public static async Task<Dictionary<string, string>> GetAllDisplayNamesAsync()
     {
         var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(ProcessDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         using var command = connection.CreateCommand();
@@ -38,7 +38,7 @@ public static class SqliteProductDisplayNameRepository
     /// <summary>品目番号に対応する表示名を保存する（INSERT OR REPLACE）</summary>
     public static async Task SaveDisplayNameAsync(string itemNumber, string displayName)
     {
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(ProcessDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         using var command = connection.CreateCommand();
@@ -54,7 +54,7 @@ public static class SqliteProductDisplayNameRepository
     /// <summary>品目番号に対応する完了日リードタイム（営業日数）を取得する（未設定時はnull）</summary>
     public static async Task<int?> GetCompletionDateLeadDaysAsync(string itemNumber)
     {
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(ProcessDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         using var command = connection.CreateCommand();
@@ -68,7 +68,7 @@ public static class SqliteProductDisplayNameRepository
     public static async Task<Dictionary<string, int>> GetAllCompletionDateLeadDaysAsync()
     {
         var dict = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(ProcessDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         using var command = connection.CreateCommand();
@@ -83,7 +83,7 @@ public static class SqliteProductDisplayNameRepository
     /// <summary>品目番号に対応する完了日リードタイムを保存する（null指定で未設定=グローバル値使用に戻す）</summary>
     public static async Task SaveCompletionDateLeadDaysAsync(string itemNumber, int? leadDays)
     {
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(ProcessDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         using var command = connection.CreateCommand();

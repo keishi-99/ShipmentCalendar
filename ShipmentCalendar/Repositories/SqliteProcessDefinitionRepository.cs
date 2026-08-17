@@ -9,7 +9,7 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
     public async Task<IEnumerable<ProcessDefinition>> GetAllAsync()
     {
         List<ProcessDefinition> definitions = [];
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(ProcessDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         using var command = connection.CreateCommand();
@@ -24,7 +24,7 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
     public async Task<IEnumerable<ProcessDefinition>> GetByItemNumberAsync(string itemNumber)
     {
         List<ProcessDefinition> definitions = [];
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(ProcessDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         using var command = connection.CreateCommand();
@@ -40,7 +40,7 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
     public async Task<IEnumerable<string>> GetItemNumbersAsync()
     {
         List<string> names = [];
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(ProcessDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         var command = connection.CreateCommand();
@@ -54,7 +54,7 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
 
     public async Task AddAsync(ProcessDefinition definition)
     {
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(ProcessDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         using var command = connection.CreateCommand();
@@ -77,7 +77,7 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
 
     public async Task UpdateAsync(ProcessDefinition definition)
     {
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(ProcessDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         using var command = connection.CreateCommand();
@@ -100,7 +100,7 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
 
     public async Task DeleteAsync(int id)
     {
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(ProcessDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         var command = connection.CreateCommand();
@@ -111,7 +111,7 @@ public class SqliteProcessDefinitionRepository : IProcessDefinitionRepository
 
     public async Task ReplaceForItemNumberAsync(string itemNumber, IEnumerable<ProcessDefinition> definitions)
     {
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(ProcessDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
         using var transaction = connection.BeginTransaction();
 
