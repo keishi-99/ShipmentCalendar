@@ -207,6 +207,17 @@ public partial class ProcessSettingWindow : Window
     /// <summary>「保存」ボタン：機種コード一覧をDBの内容と全置換する</summary>
     private async void BtnSaveModelCodes_Click(object sender, RoutedEventArgs e)
     {
+        // 編集中のセル（「順序」に不正な値が入っている等）を確定させ、それでもエラーが残る場合は保存を中断する
+        // （不正な入力はモデルに書き込まれないため、気づかず古い値のまま保存されるのを防ぐ）
+        ModelCodeGrid.CommitEdit(DataGridEditingUnit.Row, true);
+        if (HasValidationError(ModelCodeGrid))
+        {
+            const string Message = "編集中のセルに不正な値があります。修正するかEscでキャンセルしてください。";
+            TxtModelCodeStatus.Text = Message;
+            MessageBox.Show(Message, "入力エラー", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
         // 機種コードの重複チェック（DBのUNIQUE制約違反を事前に検知し、わかりやすいエラーを表示する）
         var duplicates = _modelCodes
             .Where(m => !string.IsNullOrWhiteSpace(m.ModelCode))

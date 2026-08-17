@@ -23,11 +23,11 @@
         <!-- 部署一覧 -->
         <DataGrid Name="DeptGrid" DockPanel.Dock="Top"
                   AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
-                  HeadersVisibility="Column" IsReadOnly="True"
+                  HeadersVisibility="Column"
                   CellEditEnding="DeptGrid_CellEditEnding">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="順序" Binding="{Binding SortOrder}" Width="50" IsReadOnly="False"/>
-                <DataGridTextColumn Header="部署名" Binding="{Binding Name}" Width="*"/>
+                <DataGridTextColumn Header="順序" Binding="{Binding SortOrder}" Width="50"/>
+                <DataGridTextColumn Header="部署名" Binding="{Binding Name}" Width="*" IsReadOnly="True"/>
                 <DataGridTemplateColumn Header="" Width="50">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>

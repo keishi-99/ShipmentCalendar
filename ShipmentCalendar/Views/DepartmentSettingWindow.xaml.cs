@@ -86,6 +86,8 @@ public partial class DepartmentSettingWindow : Window
         }
         catch (Exception ex)
         {
+            // 保存失敗時、グリッドには入力値がそのまま反映されてDBの実際の値とズレてしまうため、再読込して戻す
+            await LoadAsync();
             TxtStatus.Text = $"保存エラー: {ex.Message}";
         }
     }

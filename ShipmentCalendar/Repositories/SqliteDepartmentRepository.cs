@@ -69,10 +69,21 @@ public static class SqliteDepartmentRepository
 
     public static async Task DeleteAsync(int id)
     {
+        // ProcessDefinitionsはprocess.db（別ファイル）にあるため、department.dbのトランザクションには含められない。
+        // 先に工程側の担当部署を未設定へ更新してから部署を削除することで、
+        // 万一この後の削除に失敗しても「存在しない部署IDを参照したままの工程」が残らないようにする
+        using (var processConnection = new SqliteConnection(ProcessDatabaseInitializer.ConnectionString))
+        {
+            await processConnection.OpenAsync();
+            var updateCmd = processConnection.CreateCommand();
+            updateCmd.CommandText = "UPDATE ProcessDefinitions SET DepartmentId = 0 WHERE DepartmentId = $id";
+            updateCmd.Parameters.AddWithValue("$id", id);
+            await updateCmd.ExecuteNonQueryAsync();
+        }
+
         using var connection = new SqliteConnection(DepartmentDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
-        // 部署削除と同時にProcessDefinitionsの該当DepartmentIdを0（未設定）に更新
         using var transaction = await connection.BeginTransactionAsync();
         try
         {
@@ -81,12 +92,6 @@ public static class SqliteDepartmentRepository
             deleteCmd.CommandText = "DELETE FROM Departments WHERE Id = $id";
             deleteCmd.Parameters.AddWithValue("$id", id);
             await deleteCmd.ExecuteNonQueryAsync();
-
-            var updateCmd = connection.CreateCommand();
-            updateCmd.Transaction = transaction as SqliteTransaction;
-            updateCmd.CommandText = "UPDATE ProcessDefinitions SET DepartmentId = 0 WHERE DepartmentId = $id";
-            updateCmd.Parameters.AddWithValue("$id", id);
-            await updateCmd.ExecuteNonQueryAsync();
 
             var deleteAbsencesCmd = connection.CreateCommand();
             deleteAbsencesCmd.Transaction = transaction as SqliteTransaction;
