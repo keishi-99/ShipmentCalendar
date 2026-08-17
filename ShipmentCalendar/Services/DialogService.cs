@@ -69,9 +69,9 @@ public class DialogService : IDialogService {
     public void ShowProcessBottleneck(AppSettings settings) =>
         new ProcessBottleneckWindow(settings) { Owner = Owner }.ShowDialog();
 
-    public void ShowDashboard(IEnumerable<Order> orders, AppSettings settings, IReadOnlyList<Holiday> holidays,
+    public void ShowDashboard(IEnumerable<Order> orders, ProductCategoryClassifier categoryClassifier, AppSettings settings, IReadOnlyList<Holiday> holidays,
         IReadOnlyList<ProcessDefinition> odbcProcessDefinitions, Func<AppSettings, Repositories.IOdbcOrderRepository> odbcOrderRepositoryFactory) =>
-        new DashboardWindow(orders, settings, holidays, odbcProcessDefinitions, odbcOrderRepositoryFactory) { Owner = Owner }.ShowDialog();
+        new DashboardWindow(orders, categoryClassifier, settings, holidays, odbcProcessDefinitions, odbcOrderRepositoryFactory) { Owner = Owner }.ShowDialog();
 
     public bool? ShowDisplaySettings(MainViewModel viewModel, IDisplaySettingsPreviewTarget previewTarget) {
         var window = new DisplaySettingsWindow(viewModel, previewTarget) { Owner = Owner };

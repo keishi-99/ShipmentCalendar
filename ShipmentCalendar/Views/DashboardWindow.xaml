@@ -20,8 +20,11 @@
             <Button Name="BtnApply" Content="適用" Padding="12,4" Margin="0,0,8,0" Click="BtnApply_Click"/>
             <Button Name="BtnThisWeek" Content="今週" Padding="12,4" Margin="0,0,8,0" Click="BtnThisWeek_Click"
                     ToolTip="今週（月～日）の範囲に設定する"/>
-            <Button Name="BtnClearRange" Content="既定範囲" Padding="12,4" Click="BtnClearRange_Click"
+            <Button Name="BtnClearRange" Content="既定範囲" Padding="12,4" Margin="0,0,16,0" Click="BtnClearRange_Click"
                     ToolTip="出荷日の指定をクリアし、基本設定の表示範囲に戻す"/>
+            <TextBlock Text="区分:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+            <ComboBox Name="CmbCategory" Width="160" VerticalContentAlignment="Center"
+                      SelectionChanged="CmbCategory_SelectionChanged"/>
             <ProgressBar Name="LoadingProgressBar" Width="80" Height="16" Margin="12,0,0,0"
                          IsIndeterminate="True" Visibility="Collapsed"/>
         </StackPanel>
@@ -91,7 +94,7 @@
                                 <DataGridTextColumn Header="全工程数" Binding="{Binding TotalProcessCount}" Width="90"/>
                                 <DataGridTextColumn Header="完了工程数" Binding="{Binding CompletedProcessCount}" Width="90"/>
                                 <DataGridTextColumn Header="残工程数" Binding="{Binding RemainingProcessCount}" Width="90"/>
-                                <DataGridTextColumn Header="超過件数" Binding="{Binding OverdueProcessCount}" Width="90"/>
+                                <DataGridTextColumn Header="超過工程数" Binding="{Binding OverdueProcessCount}" Width="90"/>
                             </DataGrid.Columns>
                         </DataGrid>
                     </DockPanel>
@@ -117,7 +120,7 @@
                                 <DataGridTextColumn Header="全工程数" Binding="{Binding TotalProcessCount}" Width="90"/>
                                 <DataGridTextColumn Header="完了工程数" Binding="{Binding CompletedProcessCount}" Width="90"/>
                                 <DataGridTextColumn Header="残工程数" Binding="{Binding RemainingProcessCount}" Width="90"/>
-                                <DataGridTextColumn Header="超過件数" Binding="{Binding OverdueProcessCount}" Width="90"/>
+                                <DataGridTextColumn Header="超過工程数" Binding="{Binding OverdueProcessCount}" Width="90"/>
                             </DataGrid.Columns>
                         </DataGrid>
                     </DockPanel>

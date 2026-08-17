@@ -1,6 +1,7 @@
 using ShipmentCalendar.Models;
 using ShipmentCalendar.Repositories;
 using ShipmentCalendar.Services;
+using ShipmentCalendar.ViewModels;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -10,6 +11,7 @@ namespace ShipmentCalendar.Views;
 
 public partial class DashboardWindow : Window {
     private readonly List<Order> _allOrders;
+    private readonly ProductCategoryClassifier _categoryClassifier;
     private readonly AppSettings _settings;
     private readonly IReadOnlyList<Holiday> _holidays;
     private readonly IReadOnlyList<ProcessDefinition> _odbcProcessDefinitions;
@@ -19,10 +21,11 @@ public partial class DashboardWindow : Window {
     private readonly DateOnly _cachedRangeMin;
     private readonly DateOnly _cachedRangeMax;
 
-    public DashboardWindow(IEnumerable<Order> orders, AppSettings settings, IReadOnlyList<Holiday> holidays,
+    public DashboardWindow(IEnumerable<Order> orders, ProductCategoryClassifier categoryClassifier, AppSettings settings, IReadOnlyList<Holiday> holidays,
         IReadOnlyList<ProcessDefinition> odbcProcessDefinitions, Func<AppSettings, IOdbcOrderRepository> odbcOrderRepositoryFactory) {
         InitializeComponent();
         _allOrders = orders.ToList();
+        _categoryClassifier = categoryClassifier;
         _settings = settings;
         _holidays = holidays;
         _odbcProcessDefinitions = odbcProcessDefinitions;
@@ -35,6 +38,8 @@ public partial class DashboardWindow : Window {
 
         // 開いた直後は現在表示中のデータの範囲をそのままDatePickerに示す
         ResetToDefaultRange();
+        CmbCategory.ItemsSource = MainViewModel.ProductCategoryOptions;
+        CmbCategory.SelectedIndex = 0;
 
         Loaded += async (_, _) => await RefreshAsync();
     }
@@ -50,7 +55,7 @@ public partial class DashboardWindow : Window {
 
         SetLoading(true);
         try {
-            var orders = await ResolveOrdersAsync(from, to);
+            var orders = FilterByCategory(await ResolveOrdersAsync(from, to));
             var departments = await SqliteDepartmentRepository.GetAllAsync();
             ApplySummary(DashboardSummaryCalculator.Aggregate(orders, departments));
         } catch (Exception ex) {
@@ -87,6 +92,20 @@ public partial class DashboardWindow : Window {
         return orders;
     }
 
+    private IEnumerable<Order> FilterByCategory(IEnumerable<Order> orders) => (CmbCategory.SelectedItem as string) switch {
+        "製品" => orders.Where(o => _categoryClassifier.Classify(o) == ProductCategoryClassifier.Product),
+        "半製品" => orders.Where(o => _categoryClassifier.Classify(o) == ProductCategoryClassifier.SemiProduct),
+        "半製品（工程未登録）" => orders.Where(o => _categoryClassifier.IsUnregisteredSemiProduct(o)),
+        "どちらでもない" => orders.Where(o => _categoryClassifier.Classify(o) == ProductCategoryClassifier.Other),
+        _ => orders,
+    };
+
+    // Window.Loaded前（コンストラクタでの初期選択設定）は不要な再取得が走らないよう何もしない
+    private async void CmbCategory_SelectionChanged(object sender, SelectionChangedEventArgs e) {
+        if (!IsLoaded) return;
+        await RefreshAsync();
+    }
+
     private void SetLoading(bool isLoading) {
         BtnApply.IsEnabled = !isLoading;
         BtnClearRange.IsEnabled = !isLoading;
@@ -94,10 +113,10 @@ public partial class DashboardWindow : Window {
     }
 
     private void ApplySummary(DashboardSummary summary) {
-        TxtTotalCount.Text = $"{summary.TotalCount}件";
-        TxtCompletedCount.Text = $"{summary.CompletedCount}件（{summary.CompletedRateText}）";
-        TxtOverdueCount.Text = $"{summary.OverdueCount}件";
-        TxtWarningCount.Text = $"{summary.WarningCount}件";
+        TxtTotalCount.Text = $"{summary.TotalCount}件（{summary.TotalProcessCount}工程）";
+        TxtCompletedCount.Text = $"{summary.CompletedCount}件（{summary.CompletedProcessCount}工程）";
+        TxtOverdueCount.Text = $"{summary.OverdueCount}件（{summary.OverdueProcessCount}工程）";
+        TxtWarningCount.Text = $"{summary.WarningCount}件（{summary.WarningProcessCount}工程）";
         DepartmentGrid.ItemsSource = summary.DepartmentRows;
         TxtDepartmentEmpty.Visibility = summary.DepartmentRows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         OrderGrid.ItemsSource = summary.OrderRows;
