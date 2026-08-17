@@ -303,6 +303,16 @@
                 <Fluent:RibbonTabItem Header="分析">
                     <Fluent:RibbonGroupBox Header="分析">
                         <Fluent:Button
+                            Command="{Binding OpenDashboardCommand}"
+                            Header="進捗ダッシュボード"
+                            SizeDefinition="Middle,Middle,Small"
+                            Style="{StaticResource RibbonWhiteForegroundButtonStyle}"
+                            ToolTip="全体の進捗状況（完了率・超過/警告件数）と部署別の残工程数・超過件数を表示する">
+                            <Fluent:Button.Icon>
+                                <iconPacks:PackIconMaterial Kind="ViewDashboard" />
+                            </Fluent:Button.Icon>
+                        </Fluent:Button>
+                        <Fluent:Button
                             Command="{Binding OpenDepartmentLoadCommand}"
                             Header="締切集中度"
                             SizeDefinition="Middle,Middle,Small"

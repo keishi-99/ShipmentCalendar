@@ -29,6 +29,7 @@ public partial class MainViewModel : ObservableObject {
     private List<Order> _allOrders = [];
     // ODBC工程定義キャッシュ（工程設定変更後の再構築でODBC再アクセスを避けるため保持）
     private List<ProcessDefinition> _allOdbcDefs = [];
+    public IReadOnlyList<ProcessDefinition> OdbcProcessDefinitions => _allOdbcDefs;
     // 製品/半製品区分の判定（フィルター・部署別締切集中度で共有）
     private ProductCategoryClassifier _categoryClassifier = new([], [], []);
     public ProductCategoryClassifier CategoryClassifier => _categoryClassifier;
@@ -287,6 +288,9 @@ public partial class MainViewModel : ObservableObject {
     private void OpenDepartmentLoad() => _dialogService.ShowDepartmentLoad(_allOrders, _categoryClassifier, Settings);
 
     [RelayCommand]
+    private void OpenDashboard() => _dialogService.ShowDashboard(_allOrders, Settings, Holidays, OdbcProcessDefinitions, _odbcOrderRepositoryFactory);
+
+    [RelayCommand]
     private void OpenProcessBottleneck() => _dialogService.ShowProcessBottleneck(Settings);
 
     [RelayCommand]
@@ -364,8 +368,14 @@ public partial class MainViewModel : ObservableObject {
     }
 
     private void UpdateStatusMessage() {
+        // 見落とし防止のため、現在の絞り込みに関わらず全件（_allOrders）から集計する
+        var overdueCount = _allOrders.Count(o => o.HasOverdue);
+        var warningCount = _allOrders.Count(o => o.HasWarning);
+        var alertStr = overdueCount > 0 || warningCount > 0
+            ? $"　超過：{overdueCount}件　警告：{warningCount}件"
+            : string.Empty;
         var lastStr = _lastLoaded.HasValue ? $"　最終更新：{_lastLoaded.Value:HH:mm:ss}" : string.Empty;
-        StatusMessage = $"{Orders.Count} 件表示中（全 {_allOrders.Count} 件）{lastStr}";
+        StatusMessage = $"{Orders.Count} 件表示中（全 {_allOrders.Count} 件）{alertStr}{lastStr}";
     }
 
     [ObservableProperty]
