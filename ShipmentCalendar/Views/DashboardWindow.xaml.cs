@@ -20,6 +20,9 @@ public partial class DashboardWindow : Window {
     // 指定期間がこの範囲に収まっていればキャッシュから絞り込み、はみ出す場合のみODBCへ再取得する
     private readonly DateOnly _cachedRangeMin;
     private readonly DateOnly _cachedRangeMax;
+    // 日付範囲変更・区分変更が短時間に連続すると複数のRefreshAsyncが並行し、
+    // 先に開始した古い要求が後から完了してApplySummaryを呼ぶ可能性があるため、世代番号で最新の要求以外を破棄する
+    private int _refreshRevision;
 
     public DashboardWindow(IEnumerable<Order> orders, ProductCategoryClassifier categoryClassifier, AppSettings settings, IReadOnlyList<Holiday> holidays,
         IReadOnlyList<ProcessDefinition> odbcProcessDefinitions, Func<AppSettings, IOdbcOrderRepository> odbcOrderRepositoryFactory) {
@@ -50,6 +53,7 @@ public partial class DashboardWindow : Window {
     }
 
     private async Task RefreshAsync() {
+        var revision = ++_refreshRevision;
         var from = StartDatePicker.SelectedDate is { } start ? DateOnly.FromDateTime(start) : (DateOnly?)null;
         var to = EndDatePicker.SelectedDate is { } end ? DateOnly.FromDateTime(end) : (DateOnly?)null;
 
@@ -57,11 +61,16 @@ public partial class DashboardWindow : Window {
         try {
             var orders = FilterByCategory(await ResolveOrdersAsync(from, to));
             var departments = await SqliteDepartmentRepository.GetAllAsync();
+            // より新しい要求が既に開始している場合、この要求の結果は古いため画面に反映しない
+            if (revision != _refreshRevision) return;
             ApplySummary(DashboardSummaryCalculator.Aggregate(orders, departments));
         } catch (Exception ex) {
+            if (revision != _refreshRevision) return;
             MessageBox.Show($"データの取得に失敗しました: {ex.Message}", "取得エラー", MessageBoxButton.OK, MessageBoxImage.Error);
         } finally {
-            SetLoading(false);
+            // 古い要求が最後にSetLoading(false)を呼ぶと、まだ進行中の新しい要求の表示を誤って解除してしまうため、
+            // 最新の要求のみがローディング状態を解除する
+            if (revision == _refreshRevision) SetLoading(false);
         }
     }
 
@@ -109,6 +118,7 @@ public partial class DashboardWindow : Window {
     private void SetLoading(bool isLoading) {
         BtnApply.IsEnabled = !isLoading;
         BtnClearRange.IsEnabled = !isLoading;
+        CmbCategory.IsEnabled = !isLoading;
         LoadingProgressBar.Visibility = isLoading ? Visibility.Visible : Visibility.Collapsed;
     }
 
