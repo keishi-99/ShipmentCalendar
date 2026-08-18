@@ -12,7 +12,7 @@ public class ProcessStatusToLabelConverter : IValueConverter {
             ProcessStatus.InProgress => "進行中",
             ProcessStatus.Warning => "警告",
             ProcessStatus.Overdue => "超過",
-            ProcessStatus.NotStarted => "未着手",
+            ProcessStatus.NotStarted => "着手前",
             _ => ""
         } : "";
 

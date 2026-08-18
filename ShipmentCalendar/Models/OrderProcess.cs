@@ -46,7 +46,7 @@ public class OrderProcess
 
 public enum ProcessStatus
 {
-    NotStarted,  // 未着手
+    NotStarted,  // 着手前
     InProgress,  // 進行中
     Warning,     // 期限間近
     Completed,   // 完了

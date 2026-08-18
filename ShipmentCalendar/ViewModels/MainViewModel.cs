@@ -82,7 +82,7 @@ public partial class MainViewModel : ObservableObject {
     partial void OnFilterDeliveryFromChanged(DateTime? value) => ApplyFilter();
     partial void OnFilterDeliveryToChanged(DateTime? value) => ApplyFilter();
     partial void OnFilterHideCompletedChanged(bool value) {
-        // 「完了のみ表示」と同時にONだと常に0件になるため、矛盾を避けて解除する
+        // 「完了」と同時にONだと常に0件になるため、矛盾を避けて解除する
         if (value)
             FilterCompletedOnly = false;
         ApplyFilter();
@@ -103,11 +103,15 @@ public partial class MainViewModel : ObservableObject {
     /// <summary>全工程が完了済みの注文のみ表示</summary>
     [ObservableProperty] private bool _filterCompletedOnly = false;
     partial void OnFilterCompletedOnlyChanged(bool value) {
-        // 「完了済みを非表示」と同時にONだと常に0件になるため、矛盾を避けて解除する
+        // 「完了以外」と同時にONだと常に0件になるため、矛盾を避けて解除する
         if (value)
             FilterHideCompleted = false;
         ApplyFilter();
     }
+
+    /// <summary>次の未完了工程が着手前の注文のみ表示</summary>
+    [ObservableProperty] private bool _filterNotStarted = false;
+    partial void OnFilterNotStartedChanged(bool value) => ApplyFilter();
 
     /// <summary>「本日のみ」トグル：ONなら出荷日範囲を今日に固定し、OFFなら範囲をクリアする</summary>
     partial void OnFilterTodayOnlyChanged(bool value) {
@@ -330,6 +334,7 @@ public partial class MainViewModel : ObservableObject {
         WarningOnly = FilterWarningOnly,
         TodayTaskOnly = FilterTodayTask,
         CompletedOnly = FilterCompletedOnly,
+        NotStartedOnly = FilterNotStarted,
         ProductCategory = FilterProductCategory,
         DepartmentId = FilterDepartmentId,
     };

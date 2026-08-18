@@ -258,6 +258,15 @@
                                 </Fluent:ToggleButton.Tag>
                             </Fluent:ToggleButton>
                             <Fluent:ToggleButton
+                                Header="着手前"
+                                IsChecked="{Binding FilterNotStarted}"
+                                SizeDefinition="Middle,Middle,Small"
+                                Style="{StaticResource QuickFilterToggleButtonStyle}">
+                                <Fluent:ToggleButton.Tag>
+                                    <SolidColorBrush Color="#616161" />
+                                </Fluent:ToggleButton.Tag>
+                            </Fluent:ToggleButton>
+                            <Fluent:ToggleButton
                                 Header="進行中"
                                 IsChecked="{Binding FilterTodayTask}"
                                 SizeDefinition="Middle,Middle,Small"
@@ -273,6 +282,15 @@
                                 Style="{StaticResource QuickFilterToggleButtonStyle}">
                                 <Fluent:ToggleButton.Tag>
                                     <SolidColorBrush Color="#2E7D32" />
+                                </Fluent:ToggleButton.Tag>
+                            </Fluent:ToggleButton>
+                            <Fluent:ToggleButton
+                                Header="完了以外"
+                                IsChecked="{Binding FilterHideCompleted}"
+                                SizeDefinition="Middle,Middle,Small"
+                                Style="{StaticResource QuickFilterToggleButtonStyle}">
+                                <Fluent:ToggleButton.Tag>
+                                    <SolidColorBrush Color="#1565C0" />
                                 </Fluent:ToggleButton.Tag>
                             </Fluent:ToggleButton>
                         </StackPanel>
@@ -586,11 +604,6 @@
                             Kind="Close" />
                     </Button>
                 </Grid>
-                <CheckBox
-                    Margin="0,0,10,0"
-                    VerticalAlignment="Center"
-                    Content="完了済みを非表示"
-                    IsChecked="{Binding FilterHideCompleted}" />
                 <Button
                     Padding="8,3"
                     Command="{Binding ClearFilterCommand}"
@@ -615,7 +628,7 @@
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
                                 FontSize="11"
-                                Text="未着手" />
+                                Text="着手前" />
                         </Border>
                         <Border
                             Width="80"
