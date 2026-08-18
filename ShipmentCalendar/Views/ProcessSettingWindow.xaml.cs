@@ -207,6 +207,17 @@ public partial class ProcessSettingWindow : Window
     /// <summary>「保存」ボタン：機種コード一覧をDBの内容と全置換する</summary>
     private async void BtnSaveModelCodes_Click(object sender, RoutedEventArgs e)
     {
+        // 編集中のセル（「順序」に不正な値が入っている等）を確定させ、それでもエラーが残る場合は保存を中断する
+        // （不正な入力はモデルに書き込まれないため、気づかず古い値のまま保存されるのを防ぐ）
+        ModelCodeGrid.CommitEdit(DataGridEditingUnit.Row, true);
+        if (HasValidationError(ModelCodeGrid))
+        {
+            const string Message = "編集中のセルに不正な値があります。修正するかEscでキャンセルしてください。";
+            TxtModelCodeStatus.Text = Message;
+            MessageBox.Show(Message, "入力エラー", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
         // 機種コードの重複チェック（DBのUNIQUE制約違反を事前に検知し、わかりやすいエラーを表示する）
         var duplicates = _modelCodes
             .Where(m => !string.IsNullOrWhiteSpace(m.ModelCode))
@@ -222,14 +233,11 @@ public partial class ProcessSettingWindow : Window
         }
 
         var toSave = _modelCodes.Where(m => !string.IsNullOrWhiteSpace(m.ModelCode)).ToList();
-        var savedCount = 0;
-        foreach (var def in toSave)
-            def.SortOrder = savedCount++;
 
         await _modelCodeRepository.ReplaceAllAsync(toSave);
 
         await RefreshModelCodesAsync();
-        TxtModelCodeStatus.Text = $"保存しました（{savedCount} 件）";
+        TxtModelCodeStatus.Text = $"保存しました（{toSave.Count} 件）";
     }
 
     /// <summary>DB に登録済みの品目番号一覧を保持する（一覧選択ウィンドウ用）</summary>
@@ -658,7 +666,7 @@ public partial class ProcessSettingWindow : Window
             await _dbRepository.DeleteAsync(def.Id);
 
         // Productsテーブルから品目名も削除
-        using var connection = new Microsoft.Data.Sqlite.SqliteConnection(ShipmentCalendar.Data.DatabaseInitializer.ConnectionString);
+        using var connection = new Microsoft.Data.Sqlite.SqliteConnection(ShipmentCalendar.Data.ProcessDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
         var cmd = connection.CreateCommand();
         cmd.CommandText = "DELETE FROM Products WHERE ItemNumber = $in";

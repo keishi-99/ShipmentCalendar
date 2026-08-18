@@ -9,7 +9,7 @@ public class SqliteHolidayRepository : IHolidayRepository
     public async Task<IEnumerable<Holiday>> GetAllAsync()
     {
         List<Holiday> holidays = [];
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(HolidayDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         var command = connection.CreateCommand();
@@ -24,7 +24,7 @@ public class SqliteHolidayRepository : IHolidayRepository
     public async Task<IEnumerable<Holiday>> GetByYearAsync(int year)
     {
         List<Holiday> holidays = [];
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(HolidayDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         var command = connection.CreateCommand();
@@ -39,7 +39,7 @@ public class SqliteHolidayRepository : IHolidayRepository
 
     public async Task ReplaceYearAsync(int year, IEnumerable<DateOnly> dates)
     {
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(HolidayDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
         using var transaction = connection.BeginTransaction();
 

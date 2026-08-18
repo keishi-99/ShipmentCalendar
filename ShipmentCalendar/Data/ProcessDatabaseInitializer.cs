@@ -1,31 +1,22 @@
 using Microsoft.Data.Sqlite;
-using ShipmentCalendar.Services;
-using System.IO;
 
 namespace ShipmentCalendar.Data;
 
-/// <summary>SQLiteデータベース初期化・接続管理（工程マスタ・休日のみ管理）。
+/// <summary>工程マスタDB（process.db）の初期化・接続管理（製品・工程・機種コードを管理）。
 /// 既存テーブルへの列追加マイグレーションは行わない（複数PC同時起動時の競合を避けるため）。
 /// そのため、このバージョンより前に作成された共有DBを引き続き使う場合は、
 /// 管理者が事前に手動でスキーマを最新化しておく必要がある
-/// （例: ALTER TABLE Departments ADD COLUMN Headcount INTEGER NOT NULL DEFAULT 0;）。
+/// （例: ALTER TABLE ProcessDefinitions ADD COLUMN OutsourceLeadDays INTEGER NOT NULL DEFAULT 0;）。
 /// 新規に作成する共有DBはCREATE TABLE IF NOT EXISTSの定義がそのまま最新スキーマになるため対応不要</summary>
-public static class DatabaseInitializer {
-    private static readonly string? _dataDir = AppSettingsService.GetSharedDataDir();
+public static class ProcessDatabaseInitializer {
+    private const string FileName = "process.db";
 
-    private static readonly string? _dbPath = _dataDir != null ? Path.Combine(_dataDir, "shipment.db") : null;
-
-    /// <summary>共有データフォルダが設定されているか。falseの場合、マスタDBを扱う機能は使用できない</summary>
-    public static bool IsAvailable => _dbPath != null;
-
-    public static string ConnectionString => _dbPath != null
-        ? new SqliteConnectionStringBuilder { DataSource = _dbPath, DefaultTimeout = 5 }.ToString()
-        : throw new InvalidOperationException("共有データフォルダが設定されていません。設定 > 基本設定 から設定してください。");
+    public static string ConnectionString => SharedDatabase.ConnectionStringFor(FileName);
 
     public static void Initialize() {
-        if (_dataDir == null) return;
+        if (!SharedDatabase.IsAvailable) return;
 
-        Directory.CreateDirectory(_dataDir);
+        SharedDatabase.EnsureDataDirExists();
 
         using var connection = new SqliteConnection(ConnectionString);
         connection.Open();
@@ -54,26 +45,6 @@ public static class DatabaseInitializer {
                 OutsourceLeadDays INTEGER NOT NULL DEFAULT 0
             );
 
-            CREATE TABLE IF NOT EXISTS Holidays (
-                Date TEXT PRIMARY KEY,
-                Description TEXT NOT NULL DEFAULT ''
-            );
-
-            CREATE TABLE IF NOT EXISTS Departments (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                Name TEXT NOT NULL UNIQUE,
-                SortOrder INTEGER NOT NULL DEFAULT 0,
-                Headcount INTEGER NOT NULL DEFAULT 0
-            );
-
-            CREATE TABLE IF NOT EXISTS DepartmentAbsences (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                DepartmentId INTEGER NOT NULL,
-                Date TEXT NOT NULL,
-                AbsentCount INTEGER NOT NULL DEFAULT 0,
-                UNIQUE(DepartmentId, Date)
-            );
-
             CREATE TABLE IF NOT EXISTS ModelCodeDefinitions (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 ModelCode TEXT NOT NULL UNIQUE,
@@ -81,7 +52,6 @@ public static class DatabaseInitializer {
                 Category TEXT NOT NULL DEFAULT '',
                 SortOrder INTEGER NOT NULL DEFAULT 0
             );
-
         ";
         command.ExecuteNonQuery();
     }

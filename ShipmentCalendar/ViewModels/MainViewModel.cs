@@ -288,7 +288,7 @@ public partial class MainViewModel : ObservableObject {
     private void OpenDepartmentLoad() => _dialogService.ShowDepartmentLoad(_allOrders, _categoryClassifier, Settings);
 
     [RelayCommand]
-    private void OpenDashboard() => _dialogService.ShowDashboard(_allOrders, Settings, Holidays, OdbcProcessDefinitions, _odbcOrderRepositoryFactory);
+    private void OpenDashboard() => _dialogService.ShowDashboard(_allOrders, _categoryClassifier, Settings, Holidays, OdbcProcessDefinitions, _odbcOrderRepositoryFactory);
 
     [RelayCommand]
     private void OpenProcessBottleneck() => _dialogService.ShowProcessBottleneck(Settings);

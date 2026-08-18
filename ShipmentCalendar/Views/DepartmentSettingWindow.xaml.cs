@@ -1,6 +1,8 @@
 using ShipmentCalendar.Models;
 using ShipmentCalendar.Repositories;
+using System.Globalization;
 using System.Windows;
+using System.Windows.Controls;
 
 namespace ShipmentCalendar.Views;
 
@@ -60,6 +62,33 @@ public partial class DepartmentSettingWindow : Window
         catch (Exception ex)
         {
             TxtStatus.Text = $"削除エラー: {ex.Message}";
+        }
+    }
+
+    /// <summary>「順序」列の編集完了時、DBへ保存して並び順を再読込する</summary>
+    private async void DeptGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+    {
+        if (e.EditAction == DataGridEditAction.Cancel) return;
+        if (e.Row.Item is not Department dept) return;
+        if (e.EditingElement is not TextBox textBox) return;
+
+        if (!int.TryParse(textBox.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out var sortOrder))
+        {
+            e.Cancel = true;
+            MessageBox.Show("整数で入力してください。", "入力エラー", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        try
+        {
+            await SqliteDepartmentRepository.UpdateSortOrderAsync(dept.Id, sortOrder);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            // 保存失敗時、グリッドには入力値がそのまま反映されてDBの実際の値とズレてしまうため、再読込して戻す
+            await LoadAsync();
+            TxtStatus.Text = $"保存エラー: {ex.Message}";
         }
     }
 

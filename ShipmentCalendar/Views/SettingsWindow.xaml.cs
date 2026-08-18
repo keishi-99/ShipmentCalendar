@@ -104,7 +104,7 @@ public partial class SettingsWindow : Window
         _viewModel.SaveSettings();
         DialogResult = true;
 
-        // 共有データフォルダはDatabaseInitializer/EditLockServiceの静的フィールドとして
+        // 共有データフォルダはSharedDatabase/EditLockServiceの静的フィールドとして
         // アプリ起動時に一度だけ解決されるため、変更してもこのプロセス内では反映されない。
         // 古い設定のまま操作を続けさせても意味がないため、案内のうえ強制的に終了させる
         // （これから終了するため、ODBCへの受注データ再取得(LoadOrdersAsync)は行わずスキップする）

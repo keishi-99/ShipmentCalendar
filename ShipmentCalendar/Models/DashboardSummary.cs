@@ -7,11 +7,16 @@ public class DashboardSummary
     public int CompletedCount { get; init; }
     public int OverdueCount { get; init; }
     public int WarningCount { get; init; }
+    /// <summary>全工程数（カード表示で受注件数に併記する内訳用）</summary>
+    public int TotalProcessCount { get; init; }
+    /// <summary>ステータスが完了の工程数</summary>
+    public int CompletedProcessCount { get; init; }
+    /// <summary>ステータスが超過の工程数</summary>
+    public int OverdueProcessCount { get; init; }
+    /// <summary>ステータスが警告の工程数</summary>
+    public int WarningProcessCount { get; init; }
     public List<DashboardDepartmentRow> DepartmentRows { get; init; } = [];
     public List<DashboardOrderRow> OrderRows { get; init; } = [];
-
-    public double CompletedRate => TotalCount > 0 ? (double)CompletedCount / TotalCount * 100 : 0;
-    public string CompletedRateText => TotalCount > 0 ? $"{CompletedRate:F0}%" : "-";
 }
 
 /// <summary>進捗ダッシュボードの部署別行</summary>

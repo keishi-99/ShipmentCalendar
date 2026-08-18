@@ -10,7 +10,7 @@ public static class SqliteDepartmentAbsenceRepository
     public static async Task<IEnumerable<DepartmentAbsence>> GetAllAsync()
     {
         List<DepartmentAbsence> list = [];
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(DepartmentDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         var command = connection.CreateCommand();
@@ -25,7 +25,7 @@ public static class SqliteDepartmentAbsenceRepository
     public static async Task<IEnumerable<DepartmentAbsence>> GetByMonthAsync(int year, int month)
     {
         List<DepartmentAbsence> list = [];
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(DepartmentDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         var command = connection.CreateCommand();
@@ -41,7 +41,7 @@ public static class SqliteDepartmentAbsenceRepository
     /// <summary>指定日の欠員数を更新する。0以下の場合は行自体を削除する（欠員なしがデフォルト状態のため）</summary>
     public static async Task UpsertAsync(int departmentId, DateOnly date, int absentCount)
     {
-        using var connection = new SqliteConnection(DatabaseInitializer.ConnectionString);
+        using var connection = new SqliteConnection(DepartmentDatabaseInitializer.ConnectionString);
         await connection.OpenAsync();
 
         var command = connection.CreateCommand();
