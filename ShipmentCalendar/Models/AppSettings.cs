@@ -31,6 +31,8 @@ public class AppSettings
     public bool ShowDueDateForNotStarted { get; set; } = false;
     /// <summary>注文一覧の並び順</summary>
     public SortMode SortMode { get; set; } = SortMode.DeliveryDate;
+    /// <summary>製品/半製品区分フィルター: "全て" / "製品" / "半製品" / "半製品（工程未登録）" / "どちらでもない"</summary>
+    public string FilterProductCategory { get; set; } = "全て";
 
     /// <summary>メイン画面の「出荷日」列を表示するか</summary>
     public bool ShowColumnDeliveryDate { get; set; } = true;

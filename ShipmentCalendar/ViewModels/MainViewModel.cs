@@ -124,7 +124,11 @@ public partial class MainViewModel : ObservableObject {
             FilterDeliveryTo = null;
         }
     }
-    partial void OnFilterProductCategoryChanged(string value) => ApplyFilter();
+    partial void OnFilterProductCategoryChanged(string value) {
+        Settings.FilterProductCategory = value;
+        SaveSettings();
+        ApplyFilter();
+    }
     partial void OnFilterDepartmentIdChanged(int value) {
         if (!_isUpdatingFilters) ApplyFilter();
     }
@@ -411,6 +415,10 @@ public partial class MainViewModel : ObservableObject {
 
         _filterDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
         _filterDebounceTimer.Tick += (_, _) => { _filterDebounceTimer.Stop(); ApplyFilter(); };
+
+        // OnFilterProductCategoryChangedがSaveSettings→ApplyRefreshIntervalを呼ぶため、
+        // _refreshTimer等の初期化が終わった後でなければならない
+        FilterProductCategory = _settings.FilterProductCategory;
     }
 
     /// <summary>タイマー間隔を設定から再適用する</summary>
