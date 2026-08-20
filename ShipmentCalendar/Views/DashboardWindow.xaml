@@ -31,7 +31,7 @@
         <!--  _allOrders自体が基本設定の範囲でしか取得されていないため、選択可能範囲をコード側でその範囲に合わせている（DashboardWindow.xaml.cs参照）  -->
         <TextBlock DockPanel.Dock="Top" Name="TxtRangeHint" Foreground="#999999" FontSize="11" Margin="0,0,0,16"/>
 
-        <UniformGrid DockPanel.Dock="Top" Columns="4" Margin="0,0,0,16">
+        <UniformGrid DockPanel.Dock="Top" Columns="5" Margin="0,0,0,16">
             <Border Margin="0,0,8,0" Padding="12" Background="#F5F5F5" BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="4">
                 <StackPanel>
                     <TextBlock Text="全体件数" Foreground="#666666" FontSize="11"/>
@@ -42,6 +42,12 @@
                 <StackPanel>
                     <TextBlock Text="完了" Foreground="#2E7D32" FontSize="11"/>
                     <TextBlock Name="TxtCompletedCount" FontSize="20" FontWeight="Bold" Foreground="#2E7D32"/>
+                </StackPanel>
+            </Border>
+            <Border Margin="0,0,8,0" Padding="12" Background="#EEEEEE" BorderBrush="#BDBDBD" BorderThickness="1" CornerRadius="4">
+                <StackPanel>
+                    <TextBlock Text="未完了" Foreground="#616161" FontSize="11"/>
+                    <TextBlock Name="TxtIncompleteCount" FontSize="20" FontWeight="Bold" Foreground="#616161"/>
                 </StackPanel>
             </Border>
             <Border Margin="0,0,8,0" Padding="12" Background="#FDECEA" BorderBrush="#F5C6C0" BorderThickness="1" CornerRadius="4">

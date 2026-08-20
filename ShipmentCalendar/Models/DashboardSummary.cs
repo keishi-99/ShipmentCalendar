@@ -7,6 +7,8 @@ public class DashboardSummary
     public int CompletedCount { get; init; }
     public int OverdueCount { get; init; }
     public int WarningCount { get; init; }
+    /// <summary>最終工程まで完了していない注文数（全体件数から完了件数を除いたもの）</summary>
+    public int IncompleteCount { get; init; }
     /// <summary>全工程数（カード表示で受注件数に併記する内訳用）</summary>
     public int TotalProcessCount { get; init; }
     /// <summary>ステータスが完了の工程数</summary>
@@ -15,6 +17,8 @@ public class DashboardSummary
     public int OverdueProcessCount { get; init; }
     /// <summary>ステータスが警告の工程数</summary>
     public int WarningProcessCount { get; init; }
+    /// <summary>完了していない工程数（ステータスが完了以外の全工程）</summary>
+    public int RemainingProcessCount { get; init; }
     public List<DashboardDepartmentRow> DepartmentRows { get; init; } = [];
     public List<DashboardOrderRow> OrderRows { get; init; } = [];
 }
