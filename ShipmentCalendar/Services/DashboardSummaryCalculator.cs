@@ -103,10 +103,12 @@ public static class DashboardSummaryCalculator
             CompletedCount = orderList.Count(o => o.IsAllCompleted),
             OverdueCount = orderList.Count(o => o.HasOverdue),
             WarningCount = orderList.Count(o => o.HasWarning),
+            IncompleteCount = orderList.Count(o => !o.IsAllCompleted),
             TotalProcessCount = processEntries.Count,
             CompletedProcessCount = processEntries.Count(x => x.Process.Status == ProcessStatus.Completed),
             OverdueProcessCount = processEntries.Count(x => x.Process.Status == ProcessStatus.Overdue),
             WarningProcessCount = processEntries.Count(x => x.Process.Status == ProcessStatus.Warning),
+            RemainingProcessCount = processEntries.Count(x => x.Process.Status != ProcessStatus.Completed),
             DepartmentRows = departmentRows,
             OrderRows = orderRows,
         };

@@ -127,6 +127,7 @@ public partial class DashboardWindow : Window {
         TxtCompletedCount.Text = $"{summary.CompletedCount}件（{summary.CompletedProcessCount}工程）";
         TxtOverdueCount.Text = $"{summary.OverdueCount}件（{summary.OverdueProcessCount}工程）";
         TxtWarningCount.Text = $"{summary.WarningCount}件（{summary.WarningProcessCount}工程）";
+        TxtIncompleteCount.Text = $"{summary.IncompleteCount}件（{summary.RemainingProcessCount}工程）";
         DepartmentGrid.ItemsSource = summary.DepartmentRows;
         TxtDepartmentEmpty.Visibility = summary.DepartmentRows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         OrderGrid.ItemsSource = summary.OrderRows;
@@ -178,7 +179,7 @@ public partial class DashboardWindow : Window {
         }
 
         TxtDetailTitle.Text = $"{row.DepartmentName}　{label} {items.Count}件";
-        ItemDetailGrid.ItemsSource = items;
+        ItemDetailGrid.ItemsSource = SortByManufactureNumberThenProcessOrder(items);
     }
 
     // 列（全工程数／完了工程数／残工程数／超過件数）ごとに対応する内訳一覧を出し分ける。
@@ -201,8 +202,12 @@ public partial class DashboardWindow : Window {
         }
 
         TxtDetailTitle.Text = $"{row.ManufactureNumber}　{label} {items.Count}件";
-        ItemDetailGrid.ItemsSource = items;
+        ItemDetailGrid.ItemsSource = SortByManufactureNumberThenProcessOrder(items);
     }
+
+    /// <summary>明細一覧の既定の並び順：製番→工程の処理順（SortOrder）</summary>
+    private static List<DashboardProcessItem> SortByManufactureNumberThenProcessOrder(List<DashboardProcessItem> items) =>
+        items.OrderBy(i => i.Order.ManufactureNumber).ThenBy(i => i.Process.SortOrder).ToList();
 
     // タブを切り替えると選択済みセルが示す明細が別タブのものになり古くなるため表示をリセットする
     private void MainTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e) {

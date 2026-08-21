@@ -84,6 +84,71 @@ public class OrderFilterServiceTests {
     }
 
     [Fact]
+    public void Apply_TodayTaskOnly_IncludesStartDateAndDueDateBoundaries() {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var orders = new[] {
+            MakeOrder(itemNumber: "starts-today", processes: [MakeProcess(ProcessStatus.InProgress, startDate: today, dueDate: today.AddDays(3))]),
+            MakeOrder(itemNumber: "due-today", processes: [MakeProcess(ProcessStatus.InProgress, startDate: today.AddDays(-3), dueDate: today)]),
+            MakeOrder(itemNumber: "starts-tomorrow", processes: [MakeProcess(ProcessStatus.NotStarted, startDate: today.AddDays(1), dueDate: today.AddDays(5))]),
+        };
+
+        var result = Apply(orders, new OrderFilterCriteria { TodayTaskOnly = true });
+
+        Assert.Equal(["starts-today", "due-today"], result.Select(o => o.ItemNumber));
+    }
+
+    [Fact]
+    public void Apply_CompletedOnly_ExcludesOrdersWithNoProcesses() {
+        var orders = new[] { MakeOrder(itemNumber: "no-processes", processes: []) };
+
+        var result = Apply(orders, new OrderFilterCriteria { CompletedOnly = true });
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public void Apply_CompletedOnly_MatchesOrdersWhereAllProcessesAreCompleted() {
+        var orders = new[] {
+            MakeOrder(itemNumber: "fully-done", processes: [MakeProcess(ProcessStatus.Completed), MakeProcess(ProcessStatus.Completed, sortOrder: 1)]),
+            MakeOrder(itemNumber: "partially-done", processes: [MakeProcess(ProcessStatus.Completed), MakeProcess(ProcessStatus.InProgress, sortOrder: 1)]),
+        };
+
+        var result = Apply(orders, new OrderFilterCriteria { CompletedOnly = true });
+
+        Assert.Equal(["fully-done"], result.Select(o => o.ItemNumber));
+    }
+
+    [Fact]
+    public void Apply_NotStartedOnly_MatchesOrdersWhoseNextIncompleteProcessIsNotStarted() {
+        var orders = new[] {
+            MakeOrder(itemNumber: "not-started-next", processes: [MakeProcess(ProcessStatus.Completed), MakeProcess(ProcessStatus.NotStarted, sortOrder: 1)]),
+            MakeOrder(itemNumber: "in-progress-next", processes: [MakeProcess(ProcessStatus.InProgress)]),
+            MakeOrder(itemNumber: "in-progress-before-not-started", processes: [
+                MakeProcess(ProcessStatus.InProgress, sortOrder: 0),
+                MakeProcess(ProcessStatus.NotStarted, sortOrder: 1),
+            ]),
+        };
+
+        var result = Apply(orders, new OrderFilterCriteria { NotStartedOnly = true });
+
+        Assert.Equal(["not-started-next"], result.Select(o => o.ItemNumber));
+    }
+
+    [Fact]
+    public void Apply_MultipleStatusFiltersCombinedWithHideCompleted_MatchesUnionMinusFullyCompleted() {
+        var orders = new[] {
+            MakeOrder(itemNumber: "overdue", processes: [MakeProcess(ProcessStatus.Overdue)]),
+            MakeOrder(itemNumber: "not-started", processes: [MakeProcess(ProcessStatus.NotStarted)]),
+            MakeOrder(itemNumber: "in-progress", processes: [MakeProcess(ProcessStatus.InProgress)]),
+            MakeOrder(itemNumber: "fully-done", processes: [MakeProcess(ProcessStatus.Completed)]),
+        };
+
+        var result = Apply(orders, new OrderFilterCriteria { HideCompleted = true, OverdueOnly = true, NotStartedOnly = true });
+
+        Assert.Equal(["overdue", "not-started"], result.Select(o => o.ItemNumber));
+    }
+
+    [Fact]
     public void Apply_ProductCategoryProduct_OnlyIncludesOrdersWithRegisteredProductModelCode() {
         var classifier = new ProductCategoryClassifier(productModelCodes: ["P1"], semiProductModelCodes: ["S1"], registeredItemNumbers: []);
         var orders = new[] {

@@ -14,6 +14,7 @@ public record OrderFilterCriteria {
     public bool WarningOnly { get; init; }
     public bool TodayTaskOnly { get; init; }
     public bool CompletedOnly { get; init; }
+    public bool NotStartedOnly { get; init; }
     public string ProductCategory { get; init; } = "全て";
     public int DepartmentId { get; init; }
 }
@@ -46,18 +47,17 @@ public static class OrderFilterService {
         if (criteria.HideCompleted)
             result = result.Where(o => o.Processes.Count == 0 || o.Processes.Any(p => p.Status != ProcessStatus.Completed));
 
-        if (criteria.OverdueOnly || criteria.WarningOnly || criteria.TodayTaskOnly || criteria.CompletedOnly) {
+        if (criteria.OverdueOnly || criteria.WarningOnly || criteria.TodayTaskOnly || criteria.CompletedOnly || criteria.NotStartedOnly) {
             var today = DateOnly.FromDateTime(DateTime.Today);
             result = result.Where(o => {
                 var isOverdue = criteria.OverdueOnly && o.HasOverdue;
                 var isWarning = criteria.WarningOnly && o.Processes.Any(p => p.Status == ProcessStatus.Warning);
-                var isToday = false;
-                if (criteria.TodayTaskOnly) {
-                    var next = GetNextIncompleteProcess(o);
-                    isToday = next != null && today >= next.StartDate && today <= next.DueDate;
-                }
-                var isCompleted = criteria.CompletedOnly && o.IsAllCompleted;
-                return isOverdue || isWarning || isToday || isCompleted;
+                var next = GetNextIncompleteProcess(o);
+                var isToday = criteria.TodayTaskOnly && next != null && today >= next.StartDate && today <= next.DueDate;
+                // 工程が1件も登録されていない注文をnext==nullだけで「完了」と誤判定しないようCountもチェック
+                var isCompleted = criteria.CompletedOnly && o.Processes.Count > 0 && next == null;
+                var isNotStarted = criteria.NotStartedOnly && next?.Status == ProcessStatus.NotStarted;
+                return isOverdue || isWarning || isToday || isCompleted || isNotStarted;
             });
         }
 
