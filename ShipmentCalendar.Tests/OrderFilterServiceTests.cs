@@ -123,6 +123,10 @@ public class OrderFilterServiceTests {
         var orders = new[] {
             MakeOrder(itemNumber: "not-started-next", processes: [MakeProcess(ProcessStatus.Completed), MakeProcess(ProcessStatus.NotStarted, sortOrder: 1)]),
             MakeOrder(itemNumber: "in-progress-next", processes: [MakeProcess(ProcessStatus.InProgress)]),
+            MakeOrder(itemNumber: "in-progress-before-not-started", processes: [
+                MakeProcess(ProcessStatus.InProgress, sortOrder: 0),
+                MakeProcess(ProcessStatus.NotStarted, sortOrder: 1),
+            ]),
         };
 
         var result = Apply(orders, new OrderFilterCriteria { NotStartedOnly = true });
