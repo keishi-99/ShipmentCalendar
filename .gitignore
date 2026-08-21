@@ -3,3 +3,5 @@ bin/
 obj/
 *.user
 *.csv
+TestResults/
+.claude/settings.local.json
