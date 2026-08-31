@@ -56,6 +56,23 @@ public static class EditLockService {
         return refreshed;
     }
 
+    /// <summary>ロックを取得せず、他PCが現在アクティブに保持中かどうかだけを確認する。
+    /// バックグラウンド処理が、ユーザーが編集画面を開いている間の書き込み競合を避けるために使う想定
+    /// （StaleTimeoutを超えた放置ロックは「保持されていない」扱いにする）</summary>
+    public static bool IsActivelyHeld(string lockName) {
+        var lockPath = GetLockPath(lockName);
+        if (lockPath == null || !File.Exists(lockPath)) return false;
+
+        try {
+            using var stream = new FileStream(lockPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            var current = TryParseLockInfo(ReadAllText(stream));
+            return current != null && DateTime.Now - current.LastHeartbeat < StaleTimeout;
+        } catch (IOException) {
+            // 他プロセスが排他アクセス中（取得・解放処理の最中）なので、安全側に倒して保持中とみなす
+            return true;
+        }
+    }
+
     /// <summary>編集ロックを解放する。ロックファイルの内容を確認し、自分が取得したロックのままである場合のみ解放する
     /// （タイムアウトで他PCに正当に引き継がれた後は、誤って相手のロックを消してしまわないようにする）</summary>
     public static void Release(string lockName) {

@@ -551,6 +551,10 @@ public partial class MainViewModel : ObservableObject {
         // 設定後の次回LoadOrdersAsync呼び出しで再試行できるようにする
         if (string.IsNullOrEmpty(settings.OdbcFactoryNumber)) return false;
 
+        // 他PCが休日設定ウィンドウを開いている間は、書き込みの競合を避けるため今回は同期をスキップする
+        // （_holidaysSyncedをfalseのままにして、次回のLoadOrdersAsync呼び出しで再試行する）
+        if (EditLockService.IsActivelyHeld("holiday_setting")) return false;
+
         try {
             await OdbcCalendarRepository.SyncCurrentAndNextYearAsync(settings, _holidayRepository);
             return true;
