@@ -479,11 +479,14 @@ public partial class MainViewModel : ObservableObject {
             }
 
             var holidaySyncFailed = false;
+            var holidaySyncDeferred = false;
             if (!_holidaysSynced) {
-                // 同期成功時のみtrueにする。失敗時はfalseのままにして、次回のLoadOrdersAsync呼び出し
+                // 同期成功時のみtrueにする。失敗・延期時はfalseのままにして、次回のLoadOrdersAsync呼び出し
                 // （自動更新タイマー等）で再試行できるようにする
-                _holidaysSynced = await SyncHolidaysFromOdbcAsync(settings);
-                holidaySyncFailed = !_holidaysSynced;
+                var holidaySyncOutcome = await SyncHolidaysFromOdbcAsync(settings);
+                _holidaysSynced = holidaySyncOutcome == HolidaySyncOutcome.Synced;
+                holidaySyncFailed = holidaySyncOutcome == HolidaySyncOutcome.Failed;
+                holidaySyncDeferred = holidaySyncOutcome == HolidaySyncOutcome.Deferred;
             }
 
             var holidays = await _holidayRepository.GetAllAsync();
@@ -515,6 +518,8 @@ public partial class MainViewModel : ObservableObject {
             ApplyFilter();
             if (holidaySyncFailed)
                 StatusMessage += "（休日データの自動同期に失敗したため、既存の休日データで計算しています）";
+            else if (holidaySyncDeferred)
+                StatusMessage += "（他のPCが休日設定を編集中のため、次回の読み込みで休日データを再同期します）";
 
             // ODBCが高速に応答する環境でもスピナーが視認できるよう最小表示時間を確保する
             // （通常はODBC通信自体が300ms以上かかるため、ここでの待機はほぼ発生しない）
@@ -544,23 +549,27 @@ public partial class MainViewModel : ObservableObject {
         });
     }
 
+    /// <summary>休日自動同期の結果。Deferredは失敗ではなく「他PCの編集中のため今回は見送った」ことを表し、
+    /// 呼び出し側で失敗とは異なるメッセージを表示するために区別する</summary>
+    private enum HolidaySyncOutcome { Synced, Deferred, Failed }
+
     /// <summary>起動時に一度だけ、当年・翌年の休日をVP_カレンダ情報_YDから取得しHolidaysへ反映する。
-    /// ODBC未設定・接続失敗時は既存のHolidaysデータのまま続行する。戻り値は同期成功可否</summary>
-    private async Task<bool> SyncHolidaysFromOdbcAsync(AppSettings settings) {
+    /// ODBC未設定・接続失敗時は既存のHolidaysデータのまま続行する</summary>
+    private async Task<HolidaySyncOutcome> SyncHolidaysFromOdbcAsync(AppSettings settings) {
         // 工場番号が未設定の間は「まだ準備が整っていない」状態として扱い、
         // 設定後の次回LoadOrdersAsync呼び出しで再試行できるようにする
-        if (string.IsNullOrEmpty(settings.OdbcFactoryNumber)) return false;
+        if (string.IsNullOrEmpty(settings.OdbcFactoryNumber)) return HolidaySyncOutcome.Failed;
 
         // 他PCが休日設定ウィンドウを開いている間は、書き込みの競合を避けるため今回は同期をスキップする
         // （_holidaysSyncedをfalseのままにして、次回のLoadOrdersAsync呼び出しで再試行する）
-        if (EditLockService.IsActivelyHeld("holiday_setting")) return false;
+        if (EditLockService.IsActivelyHeld("holiday_setting")) return HolidaySyncOutcome.Deferred;
 
         try {
             await OdbcCalendarRepository.SyncCurrentAndNextYearAsync(settings, _holidayRepository);
-            return true;
+            return HolidaySyncOutcome.Synced;
         } catch {
             // 休日データの同期に失敗しても、既存のHolidaysデータで計算を続行する
-            return false;
+            return HolidaySyncOutcome.Failed;
         }
     }
 

@@ -61,14 +61,20 @@ public static class EditLockService {
     /// （StaleTimeoutを超えた放置ロックは「保持されていない」扱いにする）</summary>
     public static bool IsActivelyHeld(string lockName) {
         var lockPath = GetLockPath(lockName);
-        if (lockPath == null || !File.Exists(lockPath)) return false;
+        if (lockPath == null) return false;
 
         try {
             using var stream = new FileStream(lockPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             var current = TryParseLockInfo(ReadAllText(stream));
             return current != null && DateTime.Now - current.LastHeartbeat < StaleTimeout;
+        } catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException) {
+            // ロックファイルがまだ存在しない＝誰も保持していない
+            return false;
         } catch (IOException) {
             // 他プロセスが排他アクセス中（取得・解放処理の最中）なので、安全側に倒して保持中とみなす
+            return true;
+        } catch (UnauthorizedAccessException) {
+            // 共有フォルダへの一時的なアクセス障害などでも、安全側に倒して保持中とみなす
             return true;
         }
     }
