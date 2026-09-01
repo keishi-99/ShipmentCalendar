@@ -396,8 +396,6 @@ public partial class MainViewModel : ObservableObject {
     [ObservableProperty]
     private AppSettings _settings;
 
-    private bool _holidaysSynced;
-
     public MainViewModel(IHolidayRepository holidayRepository, IProcessDefinitionRepository processDefinitionRepository, IModelCodeRepository modelCodeRepository, IDialogService dialogService, Func<AppSettings, IOdbcOrderRepository> odbcOrderRepositoryFactory, Func<AppSettings, IOdbcProcessDefinitionRepository> odbcProcessDefinitionRepositoryFactory) {
         _holidayRepository = holidayRepository;
         _processDefinitionRepository = processDefinitionRepository;
@@ -478,14 +476,6 @@ public partial class MainViewModel : ObservableObject {
                 }
             }
 
-            var holidaySyncFailed = false;
-            if (!_holidaysSynced) {
-                // 同期成功時のみtrueにする。失敗時はfalseのままにして、次回のLoadOrdersAsync呼び出し
-                // （自動更新タイマー等）で再試行できるようにする
-                _holidaysSynced = await SyncHolidaysFromOdbcAsync(settings);
-                holidaySyncFailed = !_holidaysSynced;
-            }
-
             var holidays = await _holidayRepository.GetAllAsync();
             _holidays = holidays.ToList();
             var calculator = new BusinessDayCalculator(holidays, Settings.DayMinutes);
@@ -513,8 +503,6 @@ public partial class MainViewModel : ObservableObject {
 
             _lastLoaded = DateTime.Now;
             ApplyFilter();
-            if (holidaySyncFailed)
-                StatusMessage += "（休日データの自動同期に失敗したため、既存の休日データで計算しています）";
 
             // ODBCが高速に応答する環境でもスピナーが視認できるよう最小表示時間を確保する
             // （通常はODBC通信自体が300ms以上かかるため、ここでの待機はほぼ発生しない）
@@ -542,22 +530,6 @@ public partial class MainViewModel : ObservableObject {
             var defs = processRepo.GetAll().ToList();
             return (orders, defs);
         });
-    }
-
-    /// <summary>起動時に一度だけ、当年・翌年の休日をVP_カレンダ情報_YDから取得しHolidaysへ反映する。
-    /// ODBC未設定・接続失敗時は既存のHolidaysデータのまま続行する。戻り値は同期成功可否</summary>
-    private async Task<bool> SyncHolidaysFromOdbcAsync(AppSettings settings) {
-        // 工場番号が未設定の間は「まだ準備が整っていない」状態として扱い、
-        // 設定後の次回LoadOrdersAsync呼び出しで再試行できるようにする
-        if (string.IsNullOrEmpty(settings.OdbcFactoryNumber)) return false;
-
-        try {
-            await OdbcCalendarRepository.SyncCurrentAndNextYearAsync(settings, _holidayRepository);
-            return true;
-        } catch {
-            // 休日データの同期に失敗しても、既存のHolidaysデータで計算を続行する
-            return false;
-        }
     }
 
     public void SaveSettings() {

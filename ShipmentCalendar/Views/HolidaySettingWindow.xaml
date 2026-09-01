@@ -15,7 +15,7 @@
         <TextBlock DockPanel.Dock="Top" FontSize="16" FontWeight="Bold"
                    Text="会社休日カレンダー設定" Margin="0,0,0,12"/>
         <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Foreground="#666666" Margin="0,0,0,12"
-                   Text="休日はVP_カレンダ情報_YD（稼働区分）から起動時に自動反映されます。最新の状態を今すぐ確認したい場合は「DBから再取得」を押してください（当年・翌年が対象）。"/>
+                   Text="休日はVP_カレンダ情報_YD（稼働区分）から取得します。最新の状態を反映したい場合は「DBから再取得」を押してください（当年・翌年が対象）。"/>
 
         <!-- 年フィルター -->
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
