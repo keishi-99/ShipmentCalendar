@@ -13,10 +13,8 @@ public static class SharedDatabase {
     /// <summary>共有データフォルダが設定されているか。falseの場合、マスタDBを扱う機能は使用できない</summary>
     public static bool IsAvailable => _dataDir != null;
 
-    // Pooling=falseにしないと接続破棄後もネイティブハンドルがプールに残り、
-    // アプリ起動中はDBファイルの削除・リネームがWindowsにブロックされ続ける
     public static string ConnectionStringFor(string fileName) => _dataDir != null
-        ? new SqliteConnectionStringBuilder { DataSource = Path.Combine(_dataDir, fileName), DefaultTimeout = 5, Pooling = false }.ToString()
+        ? new SqliteConnectionStringBuilder { DataSource = Path.Combine(_dataDir, fileName), DefaultTimeout = 5 }.ToString()
         : throw new InvalidOperationException("共有データフォルダが設定されていません。設定 > 基本設定 から設定してください。");
 
     public static void EnsureDataDirExists() {
