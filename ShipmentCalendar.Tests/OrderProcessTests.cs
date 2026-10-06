@@ -1,8 +1,21 @@
+using System.Globalization;
 using ShipmentCalendar.Models;
 
 namespace ShipmentCalendar.Tests;
 
-public class OrderProcessTests {
+public class OrderProcessTests : IDisposable {
+    private readonly CultureInfo _originalCulture = CultureInfo.CurrentCulture;
+
+    // F1書式はCurrentCultureに依存し、小数点がカンマの環境では固定文字列と一致しないため、ピリオドになるカルチャに固定する
+    // xUnitはテストごとにクラスを生成・破棄するので、コンストラクタで固定し、Disposeで元に戻す
+    public OrderProcessTests() {
+        CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+    }
+
+    public void Dispose() {
+        CultureInfo.CurrentCulture = _originalCulture;
+    }
+
     // お手本: 分表記では、0以下は「0分」、それ以外は小数点1桁で「N.N分」になる
     // Theory は InlineData の組ごとにテストが1回ずつ実行される（引数 = 入力, 期待値）
     [Theory]
